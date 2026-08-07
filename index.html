@@ -666,7 +666,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-08-01";
+const BUILD = "2026-08-08-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1072,6 +1072,40 @@ function runFx() {
 }
 
 // ═══════════════ FIRESTORE ═══════════════
+// 마지막으로 받은 데이터를 로컬에 둔다.
+// 익명 로그인(~1s) + Firestore 왕복(~0.6s)이 모바일 회선에서 몇 초로 늘어나
+// 그동안 "불러오는 중"만 보이던 문제 때문에 넣었다. 캐시가 있으면 즉시 그리고,
+// 서버 데이터가 도착하면 조용히 갈아끼운다.
+const CACHE_KEY = "et_cache_v1";
+let ready = false;   // Firestore 로드 완료 여부. 쓰기는 이게 참일 때만 허용한다.
+
+function saveCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ days: dayData, exprs: expressions }));
+  } catch (e) { /* 용량 초과 등 — 캐시가 없어도 앱은 동작한다 */ }
+}
+function loadCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    if (!c || !Array.isArray(c.exprs) || !c.exprs.length) return false;
+    dayData = c.days || {};
+    expressions = c.exprs;
+    return true;
+  } catch (e) { return false; }
+}
+function markSyncing(on) {
+  const el = document.getElementById("hDate");
+  const base = el.dataset.base || el.textContent;
+  el.dataset.base = base;
+  el.textContent = on ? base + " · 동기화 중…" : base;
+}
+// 인증 전에 누른 조작이 조용히 사라지지 않게 막는다.
+function canWrite() {
+  if (ready && auth.currentUser) return true;
+  toast("아직 연결 중입니다 — 잠시 후 다시 눌러주세요");
+  return false;
+}
+
 async function loadDays() {
   const snap = await db.collection(COL_DAYS).get();
   dayData = {};
@@ -1138,6 +1172,7 @@ function renderRoutines() {
 }
 
 async function toggleRoutine(key, card) {
+  if (!canWrite()) return;
   const d = dayData[today] || (dayData[today] = { tasks: {} });
   d.tasks = d.tasks || {};
   const wasDone = !!d.tasks[key];
@@ -1163,6 +1198,7 @@ async function toggleRoutine(key, card) {
       document.getElementById("allDone").classList.add("show");
     }, 500);
   }
+  saveCache();
   await saveDay(today);
 }
 
@@ -1391,6 +1427,7 @@ function newItems() {
     .sort((a, b) => (a.learnedDate || "") < (b.learnedDate || "") ? 1 : -1);
 }
 async function markStudied(e, card) {
+  if (!canWrite()) return;
   e.studied = true;
   e.studiedAt = today;
   e.stage = 0;
@@ -1399,6 +1436,7 @@ async function markStudied(e, card) {
   if (card) fadeOut(card, () => { renderNew(); renderDue(); renderDist(); updateDots(); });
   else { renderNew(); renderDue(); renderDist(); updateDots(); }
   toast("내일 첫 복습에서 만납니다");
+  saveCache();
   await saveExpr(e.id, { studied: true, studiedAt: today, stage: 0, nextReview: e.nextReview });
 }
 function renderNew() {
@@ -1434,6 +1472,7 @@ function renderNew() {
 // BACKLOG_SPREAD 일에 나눠 배치한다 (오래된 것부터 먼저).
 const BACKLOG_SPREAD = 5;
 document.getElementById("clearOld").addEventListener("click", async () => {
+  if (!canWrite()) return;
   const old = newItems().filter(e => (e.learnedDate || "") < today)
     .sort((a, b) => (a.learnedDate || "") < (b.learnedDate || "") ? -1 : 1);
   if (!old.length) return;
@@ -1498,6 +1537,7 @@ function renderPractice() {
 }
 
 async function grade(e, kind, card) {
+  if (!canWrite()) return;
   let stage = e.stage || 0;
   let next;
   if (kind === "good") {
@@ -1516,6 +1556,7 @@ async function grade(e, kind, card) {
   else if (kind === "good") toast(`${INTERVALS[stage]}일 뒤 다시 (${next})`);
   else if (kind === "hard") toast("단계 유지 · 내일 다시");
   else toast("1단계로 리셋 · 내일 처음부터");
+  saveCache();
   await saveExpr(e.id, { stage, nextReview: next });
 }
 
@@ -1902,6 +1943,7 @@ function updateDots() {
 }
 function rerenderActive() {
   renderNew(); renderDue(); renderDist(); renderBank(); updateDots();
+  saveCache();
 }
 
 // ═══════════════ 복습 방향 토글 ═══════════════
@@ -1930,6 +1972,7 @@ document.getElementById("mSave").onclick = async () => {
   const mean = document.getElementById("mMean").value.trim();
   const ctx = document.getElementById("mCtx").value.trim();
   if (!expr) { toast("표현을 입력해주세요"); return; }
+  if (!canWrite()) return;
   const doc = {
     expression: expr, meaning: mean, context: ctx,
     source: "manual", slot: "", learnedDate: today,
@@ -1997,14 +2040,7 @@ document.getElementById("voiceTest").onclick = ev => speak(VOICE_SAMPLE, ev.curr
 paintVoices();
 
 // ═══════════════ INIT ═══════════════
-async function init() {
-  renderHeader();
-  try {
-    await Promise.all([loadDays(), loadExpressions()]);
-  } catch (err) {
-    toast("데이터 로드 실패 — 새로고침 해주세요");
-    console.error(err);
-  }
+function renderAll() {
   renderRoutines();
   renderStreak();
   renderCalendar();
@@ -2014,6 +2050,30 @@ async function init() {
   renderDist();
   renderBank();
   updateDots();
+}
+
+// 인증을 기다리지 않고 먼저 그린다. 캐시가 없으면 기존처럼 "불러오는 중"이 보인다.
+function bootFromCache() {
+  renderHeader();
+  if (loadCache()) {
+    renderAll();
+    markSyncing(true);
+  }
+}
+bootFromCache();
+
+async function init() {
+  renderHeader();
+  try {
+    await Promise.all([loadDays(), loadExpressions()]);
+    ready = true;
+    saveCache();
+  } catch (err) {
+    toast("데이터 로드 실패 — 새로고침 해주세요");
+    console.error(err);
+  }
+  renderAll();
+  markSyncing(false);
 }
 
 // ═══════════════ AUTH ═══════════════

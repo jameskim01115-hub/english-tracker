@@ -6,8 +6,8 @@ import json, re, sys, time, urllib.parse, urllib.request
 API_KEY = "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8"
 PROJECT = "english-tracker-cea9f"
 TTS = "http://127.0.0.1:8080/tts"
-VOICE = sys.argv[1] if len(sys.argv) > 1 else "F1"
-SPEED = sys.argv[2] if len(sys.argv) > 2 else "0.9"
+VOICES = (sys.argv[1] if len(sys.argv) > 1 else "F2,M1").split(",")
+SPEED = sys.argv[2] if len(sys.argv) > 2 else "1.0"
 
 def plain(s):
     s = s.replace("**", "")
@@ -40,19 +40,20 @@ for d in docs(token()):
         if t and t not in seen:
             seen.add(t); texts.append(t)
 
-print(f"대상 {len(texts)}건")
+print(f"대상 {len(texts)}건 x {len(VOICES)}음성 = {len(texts)*len(VOICES)}")
 gen = hit = err = 0
 for i, t in enumerate(texts, 1):
-    url = f"{TTS}?t={urllib.parse.quote(t)}&v={VOICE}&s={SPEED}"
-    try:
-        t0 = time.time()
-        with urllib.request.urlopen(url, timeout=120) as r:
-            n = len(r.read())
-        el = time.time() - t0
-        if el < 0.3: hit += 1
-        else: gen += 1
-        print(f"  [{i}/{len(texts)}] {el:5.2f}s {n:6d}B  {t[:52]}")
-    except Exception as e:
-        err += 1
-        print(f"  [{i}/{len(texts)}] ERROR {e}  {t[:40]}", file=sys.stderr)
+    for v in VOICES:
+        url = f"{TTS}?t={urllib.parse.quote(t)}&v={v}&s={SPEED}"
+        try:
+            t0 = time.time()
+            with urllib.request.urlopen(url, timeout=120) as r:
+                n = len(r.read())
+            el = time.time() - t0
+            if el < 0.3: hit += 1
+            else: gen += 1
+            print(f"  [{i}/{len(texts)}] {v} {el:5.2f}s {n:6d}B  {t[:46]}")
+        except Exception as e:
+            err += 1
+            print(f"  [{i}/{len(texts)}] {v} ERROR {e}  {t[:40]}", file=sys.stderr)
 print(f"완료 — 생성 {gen} / 캐시 {hit} / 실패 {err}")

@@ -27,12 +27,12 @@ Traefik + Let's Encrypt가 인증서를 자동 발급한다. `*.srv1722311.hstgr
 `hermes-sync.py`의 `TTS_VOICE`/`TTS_SPEED`가 **같아야 한다.** 다르면 캐시 키가 어긋나
 미리 만들어둔 음성을 못 쓰고 매번 새로 생성한다.
 
-현재: 음성 `F1`, 속도 `1.0`.
+현재: 기본 음성 `F2`, 미리 생성 `F2`+`M1`, 속도 `1.0`. (Patrick이 고른 두 목소리)
 
 ## 캐시
 
 `/root/tts/cache/<sha1(voice|speed|text)>.mp3`. 표현 하나당 평생 한 번만 생성된다.
-83건 기준 3.1MB. 생성 ~1초, 캐시 히트 ~0.2초, mp3 한 건 15~50KB.
+83문장 x 2음성 기준 약 6MB. 생성 ~1초, 캐시 히트 ~0.2초, mp3 한 건 15~50KB.
 
 `hermes-sync.py`가 새 표현을 만들 때마다 미리 생성해두므로, 앱에서 처음 눌러도 기다리지 않는다.
 
@@ -70,7 +70,7 @@ Firestore의 표현·예문 음성을 한꺼번에 만들어 둔다. 컨테이�
 
 ```bash
 ssh hermes "docker cp /root/tts/prewarm.py english-tts:/tmp/ && \
-            docker exec english-tts python /tmp/prewarm.py F1 1.0"
+            docker exec english-tts python /tmp/prewarm.py F2,M1 1.0"
 ```
 
 속도나 기본 음성을 바꾸면 캐시가 전부 무효가 되므로 다시 돌릴 것.

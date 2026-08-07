@@ -661,7 +661,7 @@ const COL_EXPR = "english_expressions";
 const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
 const SRV_VOICES = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
 const SRV_PREFIX = "srv:";
-const DEFAULT_SRV_VOICE = SRV_PREFIX + "F1";
+const DEFAULT_SRV_VOICE = SRV_PREFIX + "F2";   // F2(여성)·M1(남성)을 Patrick이 고름. 둘 다 미리 생성해 둔다
 // paintVoices()가 스크립트 앞쪽 loadVoices()에서 먼저 호출되므로 여기 둔다.
 // 아래쪽에 두면 TDZ(선언 전 접근)로 스크립트 전체가 죽는다 — 실제로 겪었다.
 const SRV_LABEL = { F: "여성", M: "남성" };

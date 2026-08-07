@@ -88,8 +88,11 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 https://tts.srv1722311.hstgr.cloud/tts?t=<텍스트>&v=F1&s=1.0
 ```
 
-- `TTS_SPEED = 1.0`, 기본 음성 `srv:F1`. **`hermes-sync.py`·`prewarm.py`와 값이 같아야 한다** —
-  다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓴다.
+- `TTS_SPEED = 1.0`, 기본 음성 `srv:F2`. **`hermes-sync.py`의 `TTS_VOICES`·`TTS_SPEED`와 값이 같아야 한다** —
+  다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 매번 새로 생성한다.
+- Patrick이 고른 목소리는 **F2(여성)·M1(남성)** 둘. 미리 생성도 두 개 다 돌린다 —
+  앱에서 바꿔도 기다림이 없게 하려는 것. 목소리를 바꾸려면 `DEFAULT_SRV_VOICE`와
+  `hermes-sync.py`의 `TTS_VOICES`를 같이 고치고 프리워밍을 다시 돌릴 것.
 - 서버가 죽거나 오프라인이면 `speakServer()`가 `speakDevice()`로 자동 폴백한다. 소리는 항상 난다.
 - 설정 선택값(`localStorage.et_voice`)은 `srv:F1` 형태(서버) 또는 voiceURI(기기) 둘 중 하나다.
 

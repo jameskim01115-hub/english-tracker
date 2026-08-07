@@ -79,6 +79,10 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 
 Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patrick 기기는 맥북·아이폰·아이패드 전부 Apple.
 
+**음성 이름은 OS 언어로 번역돼 온다.** Patrick 기기는 한국어라 `"Ava(프리미엄)"`, `"Zoe(고급)"` 형태다.
+영어 `premium`·`enhanced`만 찾으면 프리미엄 음성을 못 알아본다 — 실제로 그 버그가 있었다.
+`PREMIUM_RE`·`ENHANCED_RE`·`GOOD_VOICE_RE`에 한글 표기를 함께 넣어뒀으니 지우지 말 것.
+
 **음성 선택 규칙 (중요).** `voiceScore()`가 Premium > Enhanced > Natural > Google > 기타 순으로 점수를 매긴다.
 `Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다 — **이 둘은 구형 compact 음성이다.
 다시 이름으로 하드코딩하지 말 것.** `NOVELTY_VOICE`로 Zarvox·Bahh·Grandma 같은 장난 음성은 목록에서 제외한다.
@@ -88,7 +92,7 @@ Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patr
 
 Premium/Enhanced/Natural이 하나도 없으면 `#voiceNote`에 다운로드 안내가 뜬다
 (Mac: 시스템 설정 → 손쉬운 사용 → 읽어주기 → 음성 관리 / iOS: 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성).
-2026-08-07 기준 집 맥북에는 프리미엄 음성이 하나도 설치돼 있지 않았다.
+2026-08-07 집 맥북에 Ava(프리미엄) 설치 완료 — 감지·자동 선택 확인함. 아이폰·아이패드는 기기별로 따로 받아야 한다.
 
 **Supertonic 3는 검토 후 보류.** (`02_projects/video-automation/supertonic/`)
 모델 합계 398MB라 브라우저 실행 불가 — `vector_estimator.onnx` 하나가 256MB로 GitHub 파일당 100MB 제한을 넘어

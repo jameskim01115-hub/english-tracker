@@ -885,13 +885,19 @@ if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged
 // macOS/iOS의 장난 음성들. 목록에서 아예 뺀다.
 const NOVELTY_VOICE = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Eddy|Flo|Fred|Good News|Grandma|Grandpa|Hysterical|Jester|Junior|Kathy|Organ|Pipe Organ|Princess|Ralph|Reed|Rocko|Sandy|Shelley|Superstar|Trinoids|Whisper|Wobble|Zarvox)\b/i;
 
+// macOS/iOS 언어가 한국어면 음성 이름도 한글로 온다 — "Ava(프리미엄)", "Zoe(고급)".
+// 영어 단어만 찾으면 프리미엄 음성을 못 알아본다. 실제로 그 버그가 있었다.
+const PREMIUM_RE = /premium|프리미엄/i;
+const ENHANCED_RE = /enhanced|고급/i;
+const GOOD_VOICE_RE = /premium|프리미엄|enhanced|고급|natural/i;
+
 // Samantha·Alex 같은 구형 compact 음성은 기계음이 난다.
 // Apple Premium/Enhanced, Google, Microsoft Natural 계열을 우선한다.
 function voiceScore(v) {
   const n = v.name;
   let s = 0;
-  if (/premium/i.test(n)) s += 100;
-  else if (/enhanced/i.test(n)) s += 70;
+  if (PREMIUM_RE.test(n)) s += 100;
+  else if (ENHANCED_RE.test(n)) s += 70;
   if (/natural/i.test(n)) s += 60;
   if (/Google US English/i.test(n)) s += 45;
   else if (/^Google/i.test(n)) s += 25;
@@ -1923,7 +1929,7 @@ function paintVoices() {
     ? list.map(v => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? " selected" : ""}>${esc(v.name)}</option>`).join("")
     : `<option>사용 가능한 영어 음성 없음</option>`;
   // Premium/Enhanced/Natural 이 하나도 없으면 기계음이 날 수밖에 없다 — 받는 법을 안내한다.
-  const hasGood = list.some(v => /premium|enhanced|natural/i.test(v.name) || /^Google/i.test(v.name));
+  const hasGood = list.some(v => GOOD_VOICE_RE.test(v.name) || /^Google/i.test(v.name));
   document.getElementById("voiceNote").innerHTML = hasGood ? "" :
     `이 기기엔 기본(compact) 음성만 있어 기계음이 납니다. <b>Apple 프리미엄 음성</b>을 받으면 크게 달라집니다.<br>
      · <b>Mac</b> — 시스템 설정 → 손쉬운 사용 → 읽어주기 → 시스템 음성 → 음성 관리 → 영어(미국) → <b>Ava(프리미엄)</b><br>

@@ -75,7 +75,11 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 - **힌트**: 첫 글자 골격(`L__ m_ …`) 방식은 Patrick이 거부했다. 실제 영어 조각을 단계로 준다 —
   ① 핵심 표현(=밑줄과 동일) ② 문장 앞 절반. 4단어 이하는 1단계뿐.
 - **「내 문장」 입력을 다시 넣지 말 것.** 한 번 넣었다가 Patrick이 부담된다고 해서 뺐다 (표현마다 작문은 시간이 너무 걸린다).
-- **TTS**: Web Speech API. 표현·예문·덩어리·내 문장 모두 🔊. 속도는 `localStorage.et_rate`.
+- **TTS**: Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. 속도는 `localStorage.et_rate`.
+  Supertonic 3(`02_projects/video-automation/supertonic/`)로 바꾸는 안은 검토 후 보류했다 —
+  모델이 398MB라 브라우저 실행이 불가하고(`vector_estimator.onnx` 256MB > GitHub 파일 100MB 제한),
+  이 앱은 영어만 읽는데 iOS 기본 영어 음성이 이미 충분하다. Supertonic의 강점인 한국어는 여기서 쓸 일이 없다.
+  굳이 한다면 VPS에서 미리 mp3를 만들어 저장소에 커밋하는 방식뿐이다.
 
 ## 게임 탭
 

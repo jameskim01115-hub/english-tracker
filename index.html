@@ -460,6 +460,13 @@
     opacity: 0; transition: all .3s; z-index: 100; pointer-events: none; white-space: nowrap;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .update-bar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 120;
+    background: var(--green); color: #08130d;
+    font-size: 13px; font-weight: 800; text-align: center;
+    padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+    cursor: pointer; animation: fade .25s ease;
+  }
   .loading { text-align: center; color: var(--sub); padding: 40px 0; font-size: 14px; }
   .sync-note { text-align: center; font-size: 11px; color: #3a4152; margin-top: 26px; line-height: 1.7; }
   .setting-row {
@@ -655,6 +662,11 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const COL_DAYS = "english_days";
 const COL_EXPR = "english_expressions";
+
+// 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
+// GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
+// "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
+const BUILD = "2026-08-08-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2013,6 +2025,30 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     console.error(err);
     toast("연결에 실패했습니다 — 새로고침 해주세요");
   });
+
+// ═══════════════ 새 버전 감지 ═══════════════
+// 서버의 index.html을 캐시 없이 받아 BUILD를 비교한다. 다르면 배너를 띄운다.
+// 새로고침은 쿼리를 붙여서 한다 — 그래야 Safari 캐시를 확실히 우회한다.
+let updateShown = false;
+async function checkUpdate() {
+  if (updateShown) return;
+  try {
+    const r = await fetch(`${location.pathname}?cb=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const BUILD = "([^"]+)"/);
+    if (!m || m[1] === BUILD) return;
+    updateShown = true;
+    const bar = document.createElement("div");
+    bar.className = "update-bar";
+    bar.textContent = "새 버전이 있습니다 — 탭해서 새로고침";
+    bar.onclick = () => location.replace(`${location.pathname}?v=${Date.now()}`);
+    document.body.appendChild(bar);
+  } catch (e) { /* 오프라인 등 — 조용히 넘어간다 */ }
+}
+checkUpdate();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkUpdate();
+});
 
 // 자정을 넘겨도 켜져 있으면 날짜 갱신
 setInterval(() => {

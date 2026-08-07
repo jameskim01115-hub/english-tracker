@@ -1,0 +1,16 @@
+services:
+  tts:
+    build: .
+    container_name: english-tts
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"   # 호스트 크론(prewarm)용. 외부 노출 아님
+    volumes:
+      - /root/tts/assets:/assets:ro
+      - /root/tts/cache:/cache
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.english-tts.rule=Host(`tts.srv1722311.hstgr.cloud`)
+      - traefik.http.routers.english-tts.entrypoints=websecure
+      - traefik.http.routers.english-tts.tls.certresolver=letsencrypt
+      - traefik.http.services.english-tts.loadbalancer.server.port=8080

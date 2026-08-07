@@ -4,8 +4,8 @@ status: 진행중
 priority: 3
 owner: Patrick
 started: 2026-08-07
-tech: [HTML, CSS, JavaScript, Firebase]
-servers: [GitHub Pages]
+tech: [HTML, CSS, JavaScript, Firebase, Supertonic 3, ONNX]
+servers: [GitHub Pages, Hostinger-187.77.153.220]
 ---
 
 # English Tracker
@@ -16,6 +16,8 @@ Patrick 개인 영어 학습 습관 추적기. 하단 탭 4개(오늘·복습·�
 복습은 **한→영(인출) 기본**이다. 한글 뜻이나 상황을 먼저 보고 입으로 말해본 뒤 정답과 비교한다.
 긴 문장은 핵심 표현 하나만 밑줄로 표시해 통문장 암기 부담을 없앴다.
 게임 탭은 아직 안 외운 것과 전에 틀린 것을 우선 출제한다.
+🔊 음성은 VPS의 Supertonic 3가 만든 mp3를 쓴다 — iOS Safari가 프리미엄 음성을 웹에 주지 않아
+아이폰에서 기계음밖에 못 쓰던 문제를 우회한 것이다. 서버가 안 되면 기기 음성으로 폴백한다.
 카드 뒷면 블록 순서와 학습 흐름은 `CLAUDE.md`에 규격으로 고정돼 있다.
 
 ## 구성
@@ -25,7 +27,8 @@ Patrick 개인 영어 학습 습관 추적기. 하단 탭 4개(오늘·복습·�
 | `index.html` | 앱 전체 (단일 파일) |
 | `firestore.rules` | Firestore 보안 규칙 — 콘솔에 붙여넣어 적용 |
 | `migrate.mjs` | 구 프로젝트 → 신규 프로젝트 데이터 이전 스크립트 |
-| `backup/` | 이전 전 Firestore 원본 백업 47건 (git 제외) |
+| `tts-server/` | Supertonic 3 음성 서버 (VPS 배포용 사본) — [README](tts-server/README.md) |
+| `backup/` | Firestore 원본 백업 (git 제외) |
 
 ## Firebase 프로젝트 (중요)
 
@@ -46,35 +49,29 @@ Patrick 혼자 쓰는 개인 도구라 주소로 들어가면 바로 열린다. 
 - **막지 못하는 것**: 앱 소스를 읽고 익명 로그인을 직접 흉내내는 사람. 영어 학습 기록이라 그 수준은 감수한다.
 - **따라서**: 민감한 데이터를 이 프로젝트에 넣지 말 것.
 
-## Hermes 봇 연동 (확인 필요)
+## 봇 연동 — 동작 중
 
-표현 46건이 전부 Hermes 봇을 통해 들어왔다(`source: hermes-delivered` 33건, `hermes-wanted` 13건). 즉 봇이 Firestore에 직접 쓰고 있다.
+봇은 Firestore에 직접 쓰지 않는다. VPS 파일에 append하고 크론이 옮긴다.
 
-**신규 프로젝트로 옮기면 봇 쪽 설정도 같이 바꿔야 한다.** 봇이 계속 구 프로젝트에 쓰면 이 앱에는 새 표현이 안 올라온다. 봇의 Firestore 연동 코드는 이 워크스페이스에 없어 위치를 확인하지 못했다.
+```
+Hermes 크론 → /docker/hermes-agent-7jge/data/english/{wanted_phrases,b2_vocab_log}.md
+            → sync_english_to_firestore.py (매시 :20)
+            → Firestore english-tracker-cea9f
+```
 
-봇 인증 방식에 따라 대응이 갈린다.
-
-| 봇 연동 방식 | 필요한 조치 |
-|---|---|
-| Firebase Admin SDK (서비스 계정) | 규칙을 우회하므로 프로젝트 설정만 교체하면 됨 |
-| REST + apiKey | 익명 로그인을 추가해야 함. 아니면 규칙에서 거부됨 |
+로컬 사본은 `hermes-sync.py`. 수정하면 VPS로 따로 배포해야 한다 (`CLAUDE.md` 참조).
+동기화는 doc id(sha1)로 멱등이라 앱에서 쌓은 학습 기록을 덮어쓰지 않는다.
 
 ## 분리 완료 (2026-08-07)
 
-전용 프로젝트 **`english-tracker-cea9f`** 로 이전 완료. M Building 프로젝트와 더 이상 아무것도 공유하지 않는다.
+전용 프로젝트 **`english-tracker-cea9f`** 로 이전 완료. M Building 프로젝트와 아무것도 공유하지 않는다.
 
-- Firestore 생성(프로덕션 모드) · 익명 인증 사용 설정 · 규칙 게시 완료
-- 데이터 47건 이전 완료 (표현 46 + 기록 1)
-- 인증 없는 외부 접근 차단 확인, 앱 정상 동작 확인
+- Firestore 생성(프로덕션 모드) · 익명 인증 · 규칙 게시 완료
+- 데이터 47건 이전, 인증 없는 외부 접근 차단 확인
 - 라이브 HTML에서 구 M Building apiKey 0건 확인
 
-**남은 작업: Hermes 봇 재연결.** 봇은 아직 구 프로젝트(`m-building-fbe46`)의
-`english_expressions`에 쓰고 있다. 봇 설정을 `english-tracker-cea9f`로 바꾸기 전까지
-새 표현이 이 앱에 올라오지 않는다. 앱은 멀쩡해 보이고 표현만 조용히 끊기는 형태라
-눈치채기 어렵다. 봇 연동 코드 위치는 아직 확인되지 않았다.
-
-그 작업이 끝나면 M Building 규칙(`02_projects/m-building/firestore.rules`)의
-english_* 임시 개방 두 줄도 삭제할 것.
+M Building 규칙(`02_projects/m-building/firestore.rules`)에 english_* 임시 개방 두 줄이
+남아 있으면 삭제할 것.
 
 ## 배포
 

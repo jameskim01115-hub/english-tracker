@@ -78,41 +78,32 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 - **힌트**: 첫 글자 골격(`L__ m_ …`) 방식은 Patrick이 거부했다. 실제 영어 조각을 단계로 준다 —
   ① 핵심 표현(=밑줄과 동일) ② 문장 앞 절반. 4단어 이하는 1단계뿐.
 - **「내 문장」 입력을 다시 넣지 말 것.** 한 번 넣었다가 Patrick이 부담된다고 해서 뺐다 (표현마다 작문은 시간이 너무 걸린다).
-## TTS
+## TTS — 서버 음성이 기본이다
 
-Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patrick 기기는 맥북·아이폰·아이패드 전부 Apple.
+**기본은 VPS의 Supertonic 3 릴레이**다. 상세: `tts-server/README.md`.
+이유: iOS Safari가 다운로드한 Apple 프리미엄 음성을 웹에 노출하지 않아 아이폰에서 기계음밖에
+못 쓰던 문제를 해결하려는 것. 기기와 무관하게 같은 품질이 나온다.
 
-**음성 이름은 OS 언어로 번역돼 온다.** Patrick 기기는 한국어라 `"Ava(프리미엄)"`, `"Zoe(고급)"` 형태다.
-영어 `premium`·`enhanced`만 찾으면 프리미엄 음성을 못 알아본다 — 실제로 그 버그가 있었다.
-`PREMIUM_RE`·`ENHANCED_RE`·`GOOD_VOICE_RE`에 한글 표기를 함께 넣어뒀으니 지우지 말 것.
+```
+https://tts.srv1722311.hstgr.cloud/tts?t=<텍스트>&v=F1&s=1.0
+```
 
-**음성 선택 규칙 (중요).** `voiceScore()`가 Premium > Enhanced > Natural > Google > 기타 순으로 점수를 매긴다.
-`Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다 — **이 둘은 구형 compact 음성이다.
-다시 이름으로 하드코딩하지 말 것.** `NOVELTY_VOICE`로 Zarvox·Bahh·Grandma 같은 장난 음성은 목록에서 제외한다.
+- `TTS_SPEED = 1.0`, 기본 음성 `srv:F1`. **`hermes-sync.py`·`prewarm.py`와 값이 같아야 한다** —
+  다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓴다.
+- 서버가 죽거나 오프라인이면 `speakServer()`가 `speakDevice()`로 자동 폴백한다. 소리는 항상 난다.
+- 설정 선택값(`localStorage.et_voice`)은 `srv:F1` 형태(서버) 또는 voiceURI(기기) 둘 중 하나다.
 
-`enVoices()`는 한 번 더 걸러 **프리미엄/고급/Natural · Google 계열 · 미국 영어만** 남긴다.
-Daniel(영국)·Karen(호주)·Moira(아일랜드)·Rishi(인도)·Tessa(남아공)는 전부 구형 compact라
-목록에 두면 고를 이유 없는 기계음만 늘어난다 (Patrick 지적). 저장된 음성이 목록에서 빠지면
-`pickVoice()`가 최고 점수 음성으로 자동 복구한다.
+**기기 음성 폴백 쪽 규칙** (설정에서 직접 고를 때만 쓰임)
 
-설정에 음성 선택기(`#voiceSel`)와 현재 음성 품질 표시(`#voiceCur`)가 있다.
-선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
-기기마다 설치된 음성이 다르므로 이름이 아니라 voiceURI로 저장한다.
+- 음성 이름은 OS 언어로 번역돼 온다. 한국어 맥은 `"Ava(프리미엄)"`. 영어 `premium`만 찾으면 못 알아본다 —
+  `PREMIUM_RE`·`ENHANCED_RE`·`GOOD_VOICE_RE`에 한글 표기를 넣어뒀으니 지우지 말 것.
+- `Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다. **이름으로 하드코딩하지 말 것.**
+- `enVoices()`가 프리미엄/고급/Natural · Google · 미국 영어만 남긴다.
+  Daniel(영국)·Karen(호주)·Moira(아일랜드)·Rishi(인도)·Tessa(남아공)는 구형 compact라 뺐다.
+- **iOS에는 프리미엄 음성 다운로드를 권하지 말 것.** 받아도 웹에 안 나온다. `isIOS()`로 분기해 사실을 알린다.
 
-**iOS는 프리미엄 음성을 웹에 주지 않는다 (확인된 사실, 2026-08-07).**
-아이폰에서 Ava(프리미엄)를 다운로드해도 `speechSynthesis.getVoices()`에 나타나지 않는다 —
-Safari는 기본 품질 음성만 웹에 노출하고, 받은 프리미엄 음성은 VoiceOver·화면 읽어주기 전용이다.
-그래서 `#voiceNote`는 `isIOS()`로 분기해 아이폰에는 "받아도 소용없다"고 알린다.
-**이 분기를 지우고 Mac 안내를 아이폰에도 띄우지 말 것** — Patrick이 실제로 받았다가 헛수고했다.
-
-Mac은 정상이다. 2026-08-07 집 맥북에 Ava(프리미엄) 설치 → 감지·자동 선택 확인함.
-
-아이폰에서도 좋은 음성을 쓰려면 **미리 만든 오디오 파일을 재생하는 수밖에 없다** (아래 Supertonic 항목).
-
-**Supertonic 3는 검토 후 보류.** (`02_projects/video-automation/supertonic/`)
-모델 합계 398MB라 브라우저 실행 불가 — `vector_estimator.onnx` 하나가 256MB로 GitHub 파일당 100MB 제한을 넘어
-Pages에 올릴 수조차 없다. 게다가 이 앱은 영어만 읽는데 Supertonic의 강점은 한국어다.
-굳이 한다면 VPS에서 미리 mp3를 만들어 저장소에 커밋하는 방식뿐이다.
+**효과음·말하기 속도 설정을 다시 넣지 말 것.** Patrick이 불필요하다고 해서 뺐다.
+습관 체크의 파편 효과와 진동은 성취감 장치라 유지한다.
 
 ## 게임 탭
 
@@ -141,13 +132,19 @@ Pages에 올릴 수조차 없다. 게다가 이 앱은 영어만 읽는데 Super
 예전 `addDays()`가 이 버그를 갖고 있어 복습 예정일과 스트릭이 하루 어긋나 있었다.
 `isoToUTC()`를 거쳐 `setUTCDate()`로만 계산할 것.
 
-## 남은 과제 — 봇 쪽
+## 한국어 원문 (`ko` 필드) — 해결됨 2026-08-08
 
-「막힌 표현」 13건에 **한국어 원문이 없다**(`meaning`이 빈 문자열). 그래서 한→영 복습에서
-상황 태그로 대체하고 있다. `wanted_phrases.md`에 Patrick이 입력한 한국어가 남아 있다면
-`hermes-sync.py`가 `ko` 필드로 실어 보내야 한다. 앱은 `e.ko`를 이미 우선 프롬프트로 쓴다.
+한→영 복습은 `e.ko`를 프롬프트로 쓴다. 없으면 상황 태그로 대체한다.
 
-주의: 동기화는 doc id로 멱등이라 **기존 문서는 갱신되지 않는다.** 백필하려면 별도 업데이트 경로가 필요하다.
+- 봇 출력이 두 형식이다. 7월 긴 형식엔 `Korean meaning:`이 있었는데 8월 축약 형식에서 빠졌다.
+  `hermes-sync.py`의 `parse_wanted()`가 **두 형식을 모두** 읽고 `ko`를 뽑는다 (19 → 33블록).
+- 봇 캡처 스펙에 `- Korean:` 줄을 필수로 못박았다:
+  `/docker/hermes-agent-7jge/data/skills/productivity/patrick-english-coaching/references/quiet-wanted-phrase-capture.md`
+  (chief-of-staff 쪽 examples 파일 2개도 같이 수정, 전부 `.bak-*` 백업 있음)
+- 기존 13건은 `ko`를 직접 채웠다 (updateMask로 `ko`만 PATCH — 학습 기록 보존 확인).
+
+주의: 동기화는 doc id로 멱등이라 **기존 문서는 갱신되지 않는다.** 봇 형식이 또 바뀌어 기존 문서를
+고쳐야 하면 별도 PATCH 경로가 필요하다.
 
 ## 절대 규칙
 

@@ -551,8 +551,6 @@
     <div class="sec-head">
       <div class="sec-title">설정</div>
     </div>
-    <div class="setting-row">효과음 <button id="sndBtn">켜짐</button></div>
-    <div class="setting-row">말하기 속도 <button id="rateBtn">보통</button></div>
     <div class="setting-row">
       <span style="flex-shrink:0">영어 음성</span>
       <select id="voiceSel"></select>
@@ -658,6 +656,16 @@ const auth = firebase.auth();
 const COL_DAYS = "english_days";
 const COL_EXPR = "english_expressions";
 
+// Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
+// 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
+const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
+const SRV_VOICES = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
+const SRV_PREFIX = "srv:";
+const DEFAULT_SRV_VOICE = SRV_PREFIX + "F1";
+// paintVoices()가 스크립트 앞쪽 loadVoices()에서 먼저 호출되므로 여기 둔다.
+// 아래쪽에 두면 TDZ(선언 전 접근)로 스크립트 전체가 죽는다 — 실제로 겪었다.
+const SRV_LABEL = { F: "여성", M: "남성" };
+
 // 5개 일일 루틴
 const ROUTINES = [
   { k: "podcast",  icon: "🎧", short: "팟캐스트",  name: "유튜브 팟캐스트 1개" },
@@ -724,8 +732,11 @@ let calCursor = null;
 let bankShown = 30;
 let newShown = 12;
 let bankFilter = "all";
-let soundOn = localStorage.getItem("et_sound") !== "0";
-let speakRate = parseFloat(localStorage.getItem("et_rate") || "0.9");
+// 말하기 속도는 고정한다. Supertonic 기본값은 1.05지만 중립값 1.0으로 맞췄다 —
+// 차이는 미미하고 학습용으로는 조금 느린 쪽이 낫다.
+// 바꾸면 캐시 키가 달라져 서버에서 전부 재생성된다. prewarm.py도 같은 값으로 돌릴 것.
+const TTS_SPEED = 1.0;    // 서버(Supertonic)
+const DEVICE_RATE = 0.95; // 기기 음성 폴백
 let activeTab = "today";
 let revDir = localStorage.getItem("et_dir") || "ko2en";  // 복습 방향. 기본은 인출(한→영)
 
@@ -929,13 +940,35 @@ function pickVoice() {
   const list = enVoices();
   if (!list.length) return null;
   const saved = localStorage.getItem("et_voice");
-  if (saved) {
+  if (saved && !saved.startsWith(SRV_PREFIX)) {
     const f = list.find(v => v.voiceURI === saved);
     if (f) return f;
   }
   return list[0];
 }
-function speak(text, btn) {
+// 저장된 선택이 "srv:F1" 형태면 서버 음성, 아니면 기기 음성(voiceURI).
+function voiceKey() {
+  const saved = localStorage.getItem("et_voice");
+  if (saved) return saved;
+  return DEFAULT_SRV_VOICE;   // 기본은 서버 음성 — 기기와 무관하게 같은 품질이 나온다
+}
+
+let audioEl = null;
+function speakServer(text, voice, btn) {
+  const t = plain(text);
+  if (!t) return;
+  if (!audioEl) audioEl = new Audio();
+  try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
+  const done = () => { if (btn) btn.classList.remove("on"); };
+  audioEl.onended = done;
+  audioEl.onerror = () => { done(); speakDevice(text, btn); };   // 서버가 죽어도 소리는 나게
+  audioEl.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
+  if (btn) btn.classList.add("on");
+  const p = audioEl.play();
+  if (p && p.catch) p.catch(() => { done(); speakDevice(text, btn); });
+}
+
+function speakDevice(text, btn) {
   const t = plain(text);
   if (!t) return;
   if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
@@ -943,7 +976,7 @@ function speak(text, btn) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(t);
     u.lang = "en-US";
-    u.rate = speakRate;
+    u.rate = DEVICE_RATE;
     const v = pickVoice();
     if (v) u.voice = v;
     if (btn) {
@@ -954,26 +987,13 @@ function speak(text, btn) {
   } catch (e) { toast("음성 재생 실패"); }
 }
 
-// ═══════════════ SOUND & HAPTIC ═══════════════
-let audioCtx = null;
-function crackSound() {
-  if (!soundOn) return;
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const len = audioCtx.sampleRate * 0.18;
-    const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    const filt = audioCtx.createBiquadFilter();
-    filt.type = "highpass"; filt.frequency.value = 1800;
-    const gain = audioCtx.createGain();
-    gain.gain.value = 0.35;
-    src.connect(filt); filt.connect(gain); gain.connect(audioCtx.destination);
-    src.start();
-  } catch (e) { /* audio unavailable — ignore */ }
+function speak(text, btn) {
+  const k = voiceKey();
+  if (k.startsWith(SRV_PREFIX)) speakServer(text, k.slice(SRV_PREFIX.length), btn);
+  else speakDevice(text, btn);
 }
+
+// ═══════════════ HAPTIC ═══════════════
 function haptic(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
 // ═══════════════ FX ═══════════════
@@ -1125,7 +1145,6 @@ async function toggleRoutine(key, card) {
 
   d.tasks[key] = true;
   shatter(card);
-  crackSound();
   haptic(60);
   card.parentElement.classList.add("done");
   setTimeout(() => { renderRoutines(); renderCalendar(); renderStreak(); }, 350);
@@ -1369,7 +1388,7 @@ async function markStudied(e, card) {
   e.studiedAt = today;
   e.stage = 0;
   e.nextReview = addDays(today, INTERVALS[0]);
-  crackSound(); haptic(40);
+  haptic(40);
   if (card) fadeOut(card, () => { renderNew(); renderDue(); renderDist(); updateDots(); });
   else { renderNew(); renderDue(); renderDist(); updateDots(); }
   toast("내일 첫 복습에서 만납니다");
@@ -1745,7 +1764,7 @@ function finishRound(ok) {
   if (ok) {
     game.score++; game.combo++;
     game.bestCombo = Math.max(game.bestCombo, game.combo);
-    crackSound(); haptic(30);
+    haptic(30);
   } else {
     game.combo = 0;
     game.misses.push(e);
@@ -1922,38 +1941,30 @@ document.getElementById("mSave").onclick = async () => {
 };
 
 // ═══════════════ 설정 ═══════════════
-const sndBtn = document.getElementById("sndBtn");
-function paintSnd() { sndBtn.textContent = soundOn ? "켜짐" : "꺼짐"; sndBtn.classList.toggle("on", soundOn); }
-sndBtn.onclick = () => { soundOn = !soundOn; localStorage.setItem("et_sound", soundOn ? "1" : "0"); paintSnd(); };
-paintSnd();
 
 const VOICE_SAMPLE = "Let me know a day before if there's a viewing schedule.";
-const RATES = [[0.7, "느리게"], [0.9, "보통"], [1.1, "빠르게"]];
-const rateBtn = document.getElementById("rateBtn");
-function paintRate() {
-  const r = RATES.find(x => Math.abs(x[0] - speakRate) < 0.01) || RATES[1];
-  rateBtn.textContent = r[1];
-}
-rateBtn.onclick = () => {
-  const i = RATES.findIndex(x => Math.abs(x[0] - speakRate) < 0.01);
-  speakRate = RATES[(i + 1) % RATES.length][0];
-  localStorage.setItem("et_rate", String(speakRate));
-  paintRate();
-  speak(VOICE_SAMPLE, rateBtn);
-};
-paintRate();
 
 function paintVoices() {
   const sel = document.getElementById("voiceSel");
   if (!sel) return;
   const list = enVoices();
   const cur = pickVoice();
-  sel.innerHTML = list.length
-    ? list.map(v => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? " selected" : ""}>${esc(v.name)}</option>`).join("")
-    : `<option>사용 가능한 영어 음성 없음</option>`;
+  const k = voiceKey();
+  const srvOpts = SRV_VOICES.map(v =>
+    `<option value="${SRV_PREFIX}${v}"${k === SRV_PREFIX + v ? " selected" : ""}>서버 · ${v} (${SRV_LABEL[v[0]]})</option>`).join("");
+  const devOpts = list.map(v =>
+    `<option value="${esc(v.voiceURI)}"${k === v.voiceURI ? " selected" : ""}>기기 · ${esc(v.name)}</option>`).join("");
+  sel.innerHTML = `<optgroup label="서버 음성 — 모든 기기 동일 품질">${srvOpts}</optgroup>`
+    + (devOpts ? `<optgroup label="이 기기 음성">${devOpts}</optgroup>` : "");
   // 지금 쓰는 음성의 품질 등급을 그대로 보여준다.
   // 기기가 3대(맥·아이폰·아이패드)라 어디서 기계음이 나는지 바로 알 수 있어야 한다.
   const curEl = document.getElementById("voiceCur");
+  if (k.startsWith(SRV_PREFIX)) {
+    curEl.textContent = `현재: 서버 ${k.slice(SRV_PREFIX.length)} · Supertonic — 기기와 무관하게 같은 품질`;
+    curEl.className = "voice-cur good";
+    document.getElementById("voiceNote").innerHTML = "";
+    return;   // 서버 음성을 쓰면 기기 음성 안내는 필요 없다
+  }
   if (!cur) { curEl.textContent = ""; curEl.className = "voice-cur"; }
   else {
     const good = GOOD_VOICE_RE.test(cur.name) || /^Google/i.test(cur.name);

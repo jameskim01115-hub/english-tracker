@@ -20,6 +20,7 @@ import hashlib
 import json
 import re
 import sys
+import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import date, timedelta
@@ -30,6 +31,12 @@ PROJECT = "english-tracker-cea9f"
 API_KEY = "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8"
 COLLECTION = "english_expressions"
 BACKFILL_DAYS = 7  # only sync items learned within this window
+
+# Supertonic TTS 릴레이 (같은 서버의 english-tts 컨테이너, localhost로만 열려 있다).
+# 값은 index.html 의 TTS_SPEED / 기본 음성과 반드시 일치해야 한다 — 다르면 캐시가 안 맞는다.
+TTS_URL = "http://127.0.0.1:8080/tts"
+TTS_VOICE = "F1"
+TTS_SPEED = "1.0"
 
 FIRESTORE_URL = (
     "https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/%s"
@@ -113,18 +120,66 @@ def read(path):
         return ""
 
 
+def _block_field(block, label):
+    """Read a block-style field:  'Label:\\n<value lines>' until the next blank line."""
+    m = re.search(r"^%s\s*:?\s*$\n((?:.+\n?)+?)(?:\n|\Z)" % re.escape(label), block, flags=re.M)
+    if not m:
+        m = re.search(r"^%s\s*:\s*(.+)$" % re.escape(label), block, flags=re.M)
+        return m.group(1).strip() if m else ""
+    return " ".join(l.strip() for l in m.group(1).splitlines() if l.strip())
+
+
 def parse_wanted(text):
-    """Yield (date, expression, context) from wanted_phrases.md blocks."""
+    """Yield (date, expression, context, korean) from wanted_phrases.md blocks.
+
+    The file has two shapes and both are live:
+
+    1) compact (2026-08~)     ## <date> 막힌 표현
+                              - Original: ...
+                              - Context: ...
+                              - Korean: ...        <- optional, added 2026-08-07
+
+    2) verbose (2026-07)      ## <date> <weekday> <time>
+                              Original wanted expression:
+                              ...
+                              Korean meaning:
+                              ...
+                              Study focus:
+                              - chunk
+
+    Only the compact shape used to be parsed, so verbose entries were silently
+    skipped. Korean is what the app needs for 한→영 recall, so pull it from
+    whichever shape provides it.
+    """
     for block in re.split(r"^## ", text, flags=re.M):
         m = re.match(r"(\d{4}-\d{2}-\d{2})", block)
         if not m:
             continue
         learned = m.group(1)
+
+        # multiple Original lines = variants; last one is the preferred form
         originals = re.findall(r"^- Original[^:]*:\s*(.+)$", block, flags=re.M)
-        ctx = re.findall(r"^- Context:\s*(.+)$", block, flags=re.M)
         if originals:
-            # multiple Original lines = variants; last one is the preferred form
-            yield learned, originals[-1].strip(), (ctx[0].strip() if ctx else "")
+            ctx = re.findall(r"^- Context:\s*(.+)$", block, flags=re.M)
+            ko = re.findall(r"^- Korean[^:]*:\s*(.+)$", block, flags=re.M)
+            yield (learned, originals[-1].strip(),
+                   ctx[0].strip() if ctx else "",
+                   ko[0].strip() if ko else "")
+            continue
+
+        expr = (_block_field(block, "Original wanted expression(s)")
+                or _block_field(block, "Original wanted expression")
+                or _block_field(block, "Original"))
+        if not expr:
+            continue
+        ko = _block_field(block, "Korean meaning") or _block_field(block, "Korean")
+        focus = re.findall(r"^- (.+)$", block, flags=re.M)
+        situation = _block_field(block, "Possible practical situation")
+        ctx = situation
+        if focus:
+            ctx = (ctx + "; " if ctx else "") + "reusable chunks: " + ", ".join(
+                f.strip() for f in focus[:8])
+        yield learned, expr, ctx, ko
 
 
 def parse_vocab(text):
@@ -142,23 +197,50 @@ def parse_vocab(text):
                 yield current[0], current[1], parts[0], parts[1], example
 
 
+def prewarm(texts):
+    """새 표현의 음성을 미리 만들어 캐시에 넣는다.
+
+    앱에서 처음 🔊를 눌렀을 때 2초 기다리지 않게 하려는 것. 실패해도 무시한다 —
+    앱은 필요할 때 직접 생성하고, 그것도 안 되면 기기 음성으로 폴백한다.
+    """
+    done = 0
+    for raw in texts:
+        t = raw.replace("**", "")
+        t = re.sub(r"[→↘↓↗]", " ", t)
+        t = re.sub(r"\s+/\s+", " ", t)
+        t = re.sub(r"\s+", " ", t).strip()
+        if not t:
+            continue
+        url = "%s?t=%s&v=%s&s=%s" % (TTS_URL, urllib.parse.quote(t), TTS_VOICE, TTS_SPEED)
+        try:
+            with urllib.request.urlopen(url, timeout=120) as r:
+                r.read()
+            done += 1
+        except Exception as e:
+            print("WARN prewarm failed: %s (%s)" % (e, t[:40]), file=sys.stderr)
+    return done
+
+
 def main():
     today = today_manila()
     token = get_id_token()
     cutoff = (today - timedelta(days=BACKFILL_DAYS)).isoformat()
     created = skipped = 0
 
-    for learned, expr, ctx in parse_wanted(read(BASE + "/wanted_phrases.md")):
+    fresh = []   # 새로 만든 문서의 읽어줄 텍스트 — 음성을 미리 만들어 둔다
+
+    for learned, expr, ctx, ko in parse_wanted(read(BASE + "/wanted_phrases.md")):
         if learned < cutoff or not expr:
             continue
         did = doc_id("hermes-wanted", learned, expr)
         data = {
-            "expression": expr, "meaning": "", "context": ctx,
+            "expression": expr, "meaning": "", "context": ctx, "ko": ko,
             "source": "hermes-wanted", "slot": "", "learnedDate": learned,
             "stage": 0, "nextReview": next_review_for(learned, today),
         }
         if create_doc(did, data, token):
             created += 1
+            fresh.append(expr)
         else:
             skipped += 1
 
@@ -167,16 +249,19 @@ def main():
             continue
         did = doc_id("hermes-delivered", learned, expr)
         data = {
-            "expression": expr, "meaning": meaning, "context": example,
+            "expression": expr, "meaning": meaning, "context": example, "ko": "",
             "source": "hermes-delivered", "slot": slot, "learnedDate": learned,
             "stage": 0, "nextReview": next_review_for(learned, today),
         }
         if create_doc(did, data, token):
             created += 1
+            fresh.extend([expr, example])
         else:
             skipped += 1
 
-    print("%s sync done: created=%d skipped=%d" % (today.isoformat(), created, skipped))
+    warmed = prewarm(fresh)
+    print("%s sync done: created=%d skipped=%d tts_warmed=%d"
+          % (today.isoformat(), created, skipped, warmed))
 
 
 if __name__ == "__main__":

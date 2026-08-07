@@ -90,6 +90,11 @@ Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patr
 `Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다 — **이 둘은 구형 compact 음성이다.
 다시 이름으로 하드코딩하지 말 것.** `NOVELTY_VOICE`로 Zarvox·Bahh·Grandma 같은 장난 음성은 목록에서 제외한다.
 
+`enVoices()`는 한 번 더 걸러 **프리미엄/고급/Natural · Google 계열 · 미국 영어만** 남긴다.
+Daniel(영국)·Karen(호주)·Moira(아일랜드)·Rishi(인도)·Tessa(남아공)는 전부 구형 compact라
+목록에 두면 고를 이유 없는 기계음만 늘어난다 (Patrick 지적). 저장된 음성이 목록에서 빠지면
+`pickVoice()`가 최고 점수 음성으로 자동 복구한다.
+
 설정에 음성 선택기(`#voiceSel`)와 현재 음성 품질 표시(`#voiceCur`)가 있다.
 선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
 기기마다 설치된 음성이 다르므로 이름이 아니라 voiceURI로 저장한다.

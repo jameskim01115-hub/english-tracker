@@ -917,9 +917,13 @@ function isIOS() {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 function enVoices() {
-  return voices
-    .filter(v => /^en[-_]/i.test(v.lang) && !NOVELTY_VOICE.test(v.name))
-    .sort((a, b) => voiceScore(b) - voiceScore(a));
+  const all = voices.filter(v => /^en[-_]/i.test(v.lang) && !NOVELTY_VOICE.test(v.name));
+  // Daniel(영국)·Karen(호주)·Moira(아일랜드)·Rishi(인도)·Tessa(남아공) 같은
+  // 비영미권 억양의 구형 compact 음성은 전부 기계음이라 목록에서 뺀다.
+  // 남기는 것: 프리미엄/고급/Natural, Google 계열, 그리고 미국 영어.
+  const usable = all.filter(v =>
+    GOOD_VOICE_RE.test(v.name) || /^Google/i.test(v.name) || /en[-_]US/i.test(v.lang));
+  return (usable.length ? usable : all).sort((a, b) => voiceScore(b) - voiceScore(a));
 }
 function pickVoice() {
   const list = enVoices();

@@ -321,7 +321,7 @@
 
   <div class="sec-head">
     <div class="sec-title">오늘 배운 표현</div>
-    <div class="sec-sub">Hermes 봇 자동 연동</div>
+    <div class="sec-sub">봇 자동 연동</div>
   </div>
   <div id="todayList"><div class="loading">불러오는 중…</div></div>
 
@@ -336,7 +336,7 @@
   <div id="bankList"></div>
 
   <div class="sync-note">
-    막힌 표현 → Hermes 봇에 보내면 자동으로 여기에 쌓입니다<br>
+    막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다<br>
     복습 주기: 1 · 3 · 7 · 14 · 30 · 60일 (망각 곡선)
   </div>
 </div>
@@ -758,7 +758,7 @@ function esc(s) {
 }
 function srcLabel(e) {
   if (e.source === "hermes-wanted") return `<div class="src wanted">막힌 표현 · ${esc(e.learnedDate)}</div>`;
-  if (e.source === "hermes-delivered") return `<div class="src delivered">Hermes 배달 · ${esc(e.learnedDate)}</div>`;
+  if (e.source === "hermes-delivered") return `<div class="src delivered">봇 배달 · ${esc(e.learnedDate)}</div>`;
   return `<div class="src manual">직접 추가 · ${esc(e.learnedDate)}</div>`;
 }
 function renderDue() {
@@ -823,7 +823,7 @@ function renderToday() {
   const items = expressions.filter(e => e.learnedDate === today && e.source !== "manual");
   const box = document.getElementById("todayList");
   if (!items.length) {
-    box.innerHTML = `<div class="empty">아직 오늘 동기화된 표현이 없습니다.<br><b>Hermes 봇</b>이 보내주면 자동으로 나타납니다.</div>`;
+    box.innerHTML = `<div class="empty">아직 오늘 동기화된 표현이 없습니다.<br><b>봇</b>이 보내주면 자동으로 나타납니다.</div>`;
     return;
   }
   box.innerHTML = items.map(e => `

@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// English Tracker 전용 규칙.
+// Patrick 계정 한 개만 읽고 쓸 수 있다. 그 외에는 전부 거부한다.
+//
+// __PATRICK_UID__ 는 Firebase 콘솔 > Authentication > Users 목록의
+// "사용자 UID" 값으로 교체한다. 교체 전에는 아무도 접근할 수 없다.
+//
+// UID로 고정하는 이유: apiKey는 공개 값이라 누구나 가져갈 수 있고,
+// Email/Password 제공업체는 기본적으로 외부인의 회원가입을 허용한다.
+// 따라서 "로그인한 사람"이 아니라 "이 UID"로 좁혀야 실제로 잠긴다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isPatrick() {
+      return request.auth != null && request.auth.uid == "__PATRICK_UID__";
+    }
+
+    match /english_days/{day} {
+      allow read, write: if isPatrick();
+    }
+
+    match /english_expressions/{expression} {
+      allow read, write: if isPatrick();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

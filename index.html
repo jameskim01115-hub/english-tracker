@@ -54,26 +54,15 @@
   }
   .streak-chip small { font-weight: 600; font-size: 11px; color: #a98d5f; }
 
-  /* ───── quote ───── */
-  .quote-card {
-    background: linear-gradient(160deg, #1b1f2b 0%, #141720 100%);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 22px 20px 18px;
-    margin: 24px 0 4px;
-    position: relative;
-    overflow: hidden;
+  /* ───── quote — 매일 바뀌는 한 줄 ───── */
+  .quote-line {
+    margin: 20px 0 2px; padding: 11px 14px 11px 15px;
+    border-left: 2px solid var(--accent);
+    background: linear-gradient(90deg, rgba(255,92,92,.07), transparent 70%);
+    border-radius: 0 12px 12px 0;
+    font-size: 13.5px; font-weight: 600; font-style: italic;
+    color: #c6ccdb; line-height: 1.5;
   }
-  .quote-card::before {
-    content: "\201C";
-    position: absolute; top: -18px; left: 10px;
-    font-size: 90px; color: rgba(255,92,92,0.12); font-family: Georgia, serif;
-  }
-  .motto { font-size: 19px; font-weight: 800; line-height: 1.35; letter-spacing: -0.2px; }
-  .motto em { font-style: normal; color: var(--accent); }
-  .daily-quote { margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--line); }
-  .daily-quote .en { font-size: 14px; font-weight: 600; color: #c6ccdb; line-height: 1.45; }
-  .daily-quote .ko { font-size: 12.5px; color: var(--sub); margin-top: 5px; }
 
   /* ───── section ───── */
   .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 26px 2px 12px; }
@@ -134,29 +123,29 @@
   .allDone.show { display: block; animation: pop .5s cubic-bezier(.2,1.4,.4,1); }
   @keyframes pop { 0% { transform: scale(.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-  /* ───── calendar ───── */
-  .cal-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 14px 14px; }
-  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
-  .cal-nav b { font-size: 15px; font-weight: 800; }
+  /* ───── calendar (컴팩트) ───── */
+  .cal-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 11px 11px 10px; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; padding: 0 2px; }
+  .cal-nav b { font-size: 13.5px; font-weight: 800; }
   .cal-nav button {
-    background: var(--card2); border: 1px solid var(--line); color: var(--sub);
-    width: 32px; height: 32px; border-radius: 10px; font-size: 15px; cursor: pointer;
+    background: none; border: none; color: var(--sub);
+    width: 28px; height: 26px; border-radius: 8px; font-size: 16px; cursor: pointer;
   }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .cal-dow { text-align: center; font-size: 10.5px; color: var(--sub); padding: 4px 0 8px; font-weight: 700; }
-  .cal-cell { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
-  .cal-cell .d { font-size: 13px; color: #a7aec2; font-weight: 600; z-index: 1; }
-  .cal-cell.other .d { color: #3a4152; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .cal-dow { text-align: center; font-size: 9.5px; color: var(--dim); padding: 2px 0 4px; font-weight: 700; }
+  .cal-cell { position: relative; height: 31px; display: flex; align-items: center; justify-content: center; }
+  .cal-cell .d { font-size: 12px; color: #98a0b4; font-weight: 600; z-index: 1; }
+  .cal-cell.other .d { color: #333a49; }
   .cal-cell.today .d { color: #fff; font-weight: 900; }
   .cal-cell.today::after {
-    content: ""; position: absolute; inset: 18%;
+    content: ""; position: absolute; width: 25px; height: 25px;
     border-radius: 999px; background: rgba(255,255,255,0.07);
   }
-  .cal-cell svg { position: absolute; inset: 6%; width: 88%; height: 88%; z-index: 2; pointer-events: none; }
-  .cal-stats { display: flex; gap: 8px; margin-top: 14px; }
-  .cal-stat { flex: 1; background: var(--card2); border-radius: 12px; padding: 10px; text-align: center; }
-  .cal-stat b { display: block; font-size: 17px; font-weight: 800; }
-  .cal-stat span { font-size: 10.5px; color: var(--sub); }
+  .cal-cell svg { position: absolute; width: 27px; height: 27px; z-index: 2; pointer-events: none; }
+  .cal-stats { display: flex; gap: 6px; margin-top: 9px; }
+  .cal-stat { flex: 1; background: var(--card2); border-radius: 10px; padding: 7px 4px; text-align: center; }
+  .cal-stat b { display: block; font-size: 15px; font-weight: 800; }
+  .cal-stat span { font-size: 9.5px; color: var(--sub); }
 
   /* ───── expression card (공통 규격) ───── */
   .fc {
@@ -541,13 +530,7 @@
     <div class="routines" id="routines"></div>
     <div class="allDone" id="allDone">🎉 오늘 습관 전부 완료! 달력에 동그라미 쾅.</div>
 
-    <div class="quote-card">
-      <div class="motto">Anything is better<br>than <em>nothing.</em></div>
-      <div class="daily-quote">
-        <div class="en" id="qEn"></div>
-        <div class="ko" id="qKo"></div>
-      </div>
-    </div>
+    <div class="quote-line" id="qEn"></div>
 
     <div class="sec-head">
       <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
@@ -680,37 +663,49 @@ const ROUTINES = [
 const INTERVALS = [1, 3, 7, 14, 30, 60];
 const GRADUATED = "9999-12-31";
 
+// 한 줄짜리 영어 동기부여 문장. dayOfYear로 매일 바뀐다.
+// 화면에 한두 줄로 들어가도록 짧게 유지할 것.
 const QUOTES = [
-  { en: "A little progress each day adds up to big results.", ko: "매일의 작은 진전이 모여 큰 결과가 된다." },
-  { en: "You don't have to be great to start, but you have to start to be great.", ko: "시작하기 위해 위대할 필요는 없다. 위대해지려면 시작해야 한다." },
-  { en: "Consistency is the key to success.", ko: "꾸준함이 성공의 열쇠다." },
-  { en: "The secret of getting ahead is getting started.", ko: "앞서가는 비결은 일단 시작하는 것이다." },
-  { en: "Don't watch the clock; do what it does. Keep going.", ko: "시계를 보지 말고 시계처럼 하라. 계속 가라." },
-  { en: "Small steps every day.", ko: "매일 작은 한 걸음." },
-  { en: "Success is the sum of small efforts, repeated day in and day out.", ko: "성공은 매일 반복된 작은 노력의 합이다." },
-  { en: "It always seems impossible until it's done.", ko: "해내기 전까지는 항상 불가능해 보인다." },
-  { en: "The best time to plant a tree was 20 years ago. The second best time is now.", ko: "나무를 심기 가장 좋은 때는 20년 전이었다. 두 번째로 좋은 때는 지금이다." },
-  { en: "Fluency is built one sentence at a time.", ko: "유창함은 한 문장씩 쌓인다." },
-  { en: "Fall seven times, stand up eight.", ko: "일곱 번 넘어져도 여덟 번 일어나라." },
-  { en: "Discipline beats motivation.", ko: "꾸준한 규율이 반짝 의욕을 이긴다." },
-  { en: "Every expert was once a beginner.", ko: "모든 전문가도 한때는 초보자였다." },
-  { en: "Progress, not perfection.", ko: "완벽이 아니라 전진." },
-  { en: "One day or day one. You decide.", ko: "'언젠가' 할래, '오늘부터' 할래? 네가 정한다." },
-  { en: "Your future self will thank you.", ko: "미래의 네가 지금의 너에게 고마워할 것이다." },
-  { en: "Language is the road map of a culture.", ko: "언어는 문화로 가는 지도다." },
-  { en: "Don't be afraid of making mistakes. Be afraid of not trying.", ko: "실수를 두려워 말라. 시도하지 않는 것을 두려워하라." },
-  { en: "The more you use it, the more it becomes yours.", ko: "쓰면 쓸수록 네 것이 된다." },
-  { en: "Ten minutes today is better than one hour someday.", ko: "언젠가의 1시간보다 오늘의 10분이 낫다." },
-  { en: "Streaks are built on days you didn't feel like it.", ko: "기록은 하기 싫었던 날들 위에 쌓인다." },
-  { en: "You are one podcast away from a better ear.", ko: "팟캐스트 하나만큼 귀가 더 좋아진다." },
-  { en: "Speak badly today so you can speak well tomorrow.", ko: "내일 잘 말하기 위해 오늘 서툴게 말하라." },
-  { en: "What gets tracked gets done.", ko: "기록되는 것은 해내게 된다." },
-  { en: "Little by little, a little becomes a lot.", ko: "조금씩, 조금이 많아진다." },
-  { en: "Winners are just losers who never quit.", ko: "승자는 포기하지 않은 패자일 뿐이다." },
-  { en: "Your English grows in the minutes nobody sees.", ko: "영어 실력은 아무도 보지 않는 시간에 자란다." },
-  { en: "Show up. That's 80% of it.", ko: "일단 나타나라. 그게 80%다." },
-  { en: "Repetition is the mother of learning.", ko: "반복은 배움의 어머니다." },
-  { en: "Today's one expression is next month's fluent sentence.", ko: "오늘의 표현 하나가 다음 달의 유창한 문장이 된다." },
+  "Anything is better than nothing.",
+  "Small steps every day.",
+  "Progress, not perfection.",
+  "Discipline beats motivation.",
+  "Repetition is the mother of learning.",
+  "Fluency is built one sentence at a time.",
+  "Every expert was once a beginner.",
+  "Show up. That's 80% of it.",
+  "Your future self will thank you.",
+  "Ten minutes today beats one hour someday.",
+  "Speak badly today, speak well tomorrow.",
+  "Fall seven times, stand up eight.",
+  "The secret of getting ahead is getting started.",
+  "Little by little, a little becomes a lot.",
+  "What gets tracked gets done.",
+  "Consistency is the key to success.",
+  "One day or day one. You decide.",
+  "It always seems impossible until it's done.",
+  "Streaks are built on days you didn't feel like it.",
+  "Your English grows in the minutes nobody sees.",
+  "The more you use it, the more it becomes yours.",
+  "Today's expression is next month's fluent sentence.",
+  "Winners are just losers who never quit.",
+  "Don't fear mistakes. Fear not trying.",
+  "A little progress each day adds up.",
+  "You are one podcast away from a better ear.",
+  "Say it out loud. That's where it sticks.",
+  "Done is better than perfect.",
+  "Slow is smooth. Smooth is fast.",
+  "Confidence comes after the reps, not before.",
+  "You don't find time. You make it.",
+  "The words you use are the words you keep.",
+  "Practice until it feels boring. Then it's yours.",
+  "One more sentence. That's the whole trick.",
+  "Nobody remembers your accent. They remember your point.",
+  "Learn it the way you'll say it.",
+  "Rough English today beats silent English forever.",
+  "The best time to start was yesterday. The next best is now.",
+  "Talk more, translate less.",
+  "Momentum is built, not found.",
 ];
 
 // ═══════════════ STATE ═══════════════
@@ -758,14 +753,6 @@ function toast(msg) {
 function dayOfYear(iso) {
   const d = new Date(iso + "T00:00:00");
   return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
-}
-function seedRand(seed) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return function () {
-    h += h << 13; h ^= h >>> 7; h += h << 3; h ^= h >>> 17; h += h << 5;
-    return ((h >>> 0) % 1000) / 1000;
-  };
 }
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
@@ -1049,9 +1036,7 @@ function renderHeader() {
   document.getElementById("hDate").textContent =
     `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${dows[now.getDay()]}) · Manila`;
   document.getElementById("todayLabel").textContent = today;
-  const q = QUOTES[dayOfYear(today) % QUOTES.length];
-  document.getElementById("qEn").textContent = q.en;
-  document.getElementById("qKo").textContent = q.ko;
+  document.getElementById("qEn").textContent = QUOTES[dayOfYear(today) % QUOTES.length];
 }
 
 // ═══════════════ RENDER: ROUTINES ═══════════════
@@ -1129,22 +1114,6 @@ function renderStreak() {
 }
 
 // ═══════════════ RENDER: CALENDAR ═══════════════
-function circlePath(cx, cy, rx, ry, rand) {
-  const pts = [];
-  const n = 14;
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * Math.PI * 2 - 0.4;
-    const wob = 1 + (rand() - 0.5) * 0.16;
-    pts.push([cx + Math.cos(a) * rx * wob, cy + Math.sin(a) * ry * wob]);
-  }
-  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 1; i <= n; i++) {
-    const [x, y] = pts[i];
-    const [px, py] = pts[i - 1];
-    d += ` Q ${px.toFixed(1)} ${py.toFixed(1)} ${((x + px) / 2).toFixed(1)} ${((y + py) / 2).toFixed(1)}`;
-  }
-  return d;
-}
 function renderCalendar() {
   if (!calCursor) { const n = manilaNow(); calCursor = new Date(n.getFullYear(), n.getMonth(), 1); }
   const y = calCursor.getFullYear(), m = calCursor.getMonth();
@@ -1164,13 +1133,12 @@ function renderCalendar() {
     if (st === 2) full++; else if (st === 1) part++;
     let mark = "";
     if (st > 0) {
-      const rand = seedRand(iso);
-      const path = circlePath(50, 50, 38, 34, rand);
+      // 정원. 완주는 실선, 부분 완료는 균일한 점선.
       const color = st === 2 ? "#ff5c5c" : "#f5b942";
-      const dash = st === 2 ? "" : `stroke-dasharray="7 5"`;
-      mark = `<svg viewBox="0 0 100 100"><path d="${path}" fill="none" stroke="${color}"
-        stroke-width="${st === 2 ? 6 : 4.5}" stroke-linecap="round" ${dash} opacity="0.9"
-        transform="rotate(${(rand() * 20 - 10).toFixed(0)} 50 50)"/></svg>`;
+      const dash = st === 2 ? "" : ` stroke-dasharray="3.6 4.4"`;
+      mark = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" fill="none"
+        stroke="${color}" stroke-width="${st === 2 ? 5 : 4}" stroke-linecap="round"${dash}
+        opacity="${st === 2 ? 0.95 : 0.8}"/></svg>`;
     }
     grid.insertAdjacentHTML("beforeend",
       `<div class="cal-cell${iso === today ? " today" : ""}"><span class="d">${day}</span>${mark}</div>`);

@@ -36,7 +36,10 @@ Patrick 요청으로 정해진 것들이라 임의로 되돌리지 말 것:
 `studied: true`가 붙고 그때부터 복습 주기가 돈다. 안 본 표현이 복습을 막던 문제를 막기 위한 것이다.
 
 - 레거시 판정: `studied === true || stage > 0` (필드 없는 옛 문서 호환)
-- 「지난 것 정리」 버튼 = 오늘 이전 미학습 표현 일괄 처리 (`db.batch()`)
+- 「지난 것 넘기기」 버튼 = 오늘 이전 미학습 표현 일괄 처리 (`db.batch()`).
+  **전부 내일로 몰지 말 것** — `BACKLOG_SPREAD`(5일)에 나눠 배치한다. 31개를 한 번에 내일로 보내면
+  다음 날 복습이 31개가 된다. 확인 문구에 "카드를 하나씩 보지 않고 바로 태우는 방식"임을 명시해 둔다 —
+  정상 흐름은 카드별 「학습 완료」이고 이 버튼은 밀린 것 처리용이다.
 
 ## 복습 규칙
 
@@ -87,7 +90,8 @@ Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patr
 `Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다 — **이 둘은 구형 compact 음성이다.
 다시 이름으로 하드코딩하지 말 것.** `NOVELTY_VOICE`로 Zarvox·Bahh·Grandma 같은 장난 음성은 목록에서 제외한다.
 
-설정에 음성 선택기(`#voiceSel`)가 있고 선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
+설정에 음성 선택기(`#voiceSel`)와 현재 음성 품질 표시(`#voiceCur`)가 있다.
+선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
 기기마다 설치된 음성이 다르므로 이름이 아니라 voiceURI로 저장한다.
 
 Premium/Enhanced/Natural이 하나도 없으면 `#voiceNote`에 다운로드 안내가 뜬다

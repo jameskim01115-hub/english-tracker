@@ -488,6 +488,10 @@
   }
   .voice-note b { color: #dbe0ec; }
   .voice-note:empty { display: none; }
+  .voice-cur { font-size: 11.5px; font-weight: 700; margin: -3px 2px 9px; line-height: 1.5; }
+  .voice-cur.good { color: var(--green); }
+  .voice-cur.plain { color: var(--gold); }
+  .voice-cur:empty { display: none; }
 </style>
 </head>
 <body>
@@ -531,7 +535,7 @@
 
     <div class="sec-head">
       <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
-      <div class="sec-sub"><button id="clearOld">지난 것 정리</button></div>
+      <div class="sec-sub"><button id="clearOld">지난 것 넘기기</button></div>
     </div>
     <div id="newList"><div class="loading">불러오는 중…</div></div>
 
@@ -554,6 +558,7 @@
       <select id="voiceSel"></select>
       <button class="spk sm" id="voiceTest" title="들어보기">🔊</button>
     </div>
+    <div class="voice-cur" id="voiceCur"></div>
     <div class="voice-note" id="voiceNote"></div>
 
     <div class="sync-note">
@@ -1390,20 +1395,29 @@ function renderNew() {
     box.appendChild(b);
   }
 }
+// 밀린 표현 일괄 처리. 전부 내일로 몰면 하루에 수십 개를 복습해야 하므로
+// BACKLOG_SPREAD 일에 나눠 배치한다 (오래된 것부터 먼저).
+const BACKLOG_SPREAD = 5;
 document.getElementById("clearOld").addEventListener("click", async () => {
-  const old = newItems().filter(e => (e.learnedDate || "") < today);
+  const old = newItems().filter(e => (e.learnedDate || "") < today)
+    .sort((a, b) => (a.learnedDate || "") < (b.learnedDate || "") ? -1 : 1);
   if (!old.length) return;
-  if (!confirm(`오늘 이전에 들어온 표현 ${old.length}개를 학습 완료로 처리할까요?\n내일부터 복습 주기에 들어갑니다.`)) return;
-  const nr = addDays(today, INTERVALS[0]);
+  const perDay = Math.ceil(old.length / BACKLOG_SPREAD);
+  if (!confirm(
+    `지난 표현 ${old.length}개를 복습 대기로 넘길까요?\n\n` +
+    `카드를 하나씩 보지 않고 바로 복습 주기에 태우는 방식입니다.\n` +
+    `한 번에 몰리지 않게 ${BACKLOG_SPREAD}일에 나눠 배치됩니다 (하루 약 ${perDay}개).\n\n` +
+    `하나씩 보면서 공부하려면 취소하고 카드마다 「학습 완료」를 누르세요.`)) return;
   const batch = db.batch();
-  old.forEach(e => {
+  old.forEach((e, i) => {
+    const nr = addDays(today, 1 + (i % BACKLOG_SPREAD));
     e.studied = true; e.studiedAt = today; e.stage = 0; e.nextReview = nr;
     batch.set(db.collection(COL_EXPR).doc(e.id),
       { studied: true, studiedAt: today, stage: 0, nextReview: nr }, { merge: true });
   });
   newShown = 12;
   renderNew(); renderDue(); renderDist(); updateDots();
-  try { await batch.commit(); toast(`${old.length}개 정리 완료`); }
+  try { await batch.commit(); toast(`${old.length}개를 ${BACKLOG_SPREAD}일에 나눠 배치했습니다`); }
   catch (err) { console.error(err); toast("저장 실패 — 새로고침 해주세요"); }
 });
 
@@ -1928,6 +1942,20 @@ function paintVoices() {
   sel.innerHTML = list.length
     ? list.map(v => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? " selected" : ""}>${esc(v.name)}</option>`).join("")
     : `<option>사용 가능한 영어 음성 없음</option>`;
+  // 지금 쓰는 음성의 품질 등급을 그대로 보여준다.
+  // 기기가 3대(맥·아이폰·아이패드)라 어디서 기계음이 나는지 바로 알 수 있어야 한다.
+  const curEl = document.getElementById("voiceCur");
+  if (!cur) { curEl.textContent = ""; curEl.className = "voice-cur"; }
+  else {
+    const good = GOOD_VOICE_RE.test(cur.name) || /^Google/i.test(cur.name);
+    const tier = PREMIUM_RE.test(cur.name) ? "프리미엄 — 가장 자연스러움"
+      : ENHANCED_RE.test(cur.name) ? "고급 — 자연스러움"
+      : good ? "고품질"
+      : "기본(compact) — 기계음이 납니다";
+    curEl.textContent = `현재: ${cur.name} · ${tier}`;
+    curEl.className = "voice-cur " + (good ? "good" : "plain");
+  }
+
   // Premium/Enhanced/Natural 이 하나도 없으면 기계음이 날 수밖에 없다 — 받는 법을 안내한다.
   const hasGood = list.some(v => GOOD_VOICE_RE.test(v.name) || /^Google/i.test(v.name));
   document.getElementById("voiceNote").innerHTML = hasGood ? "" :

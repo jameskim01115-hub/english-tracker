@@ -911,6 +911,11 @@ function voiceScore(v) {
   else if (/en[-_]GB/i.test(v.lang)) s += 6;
   return s;
 }
+// iPadOS는 자신을 MacIntel로 보고하므로 터치 포인트로 걸러낸다.
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
 function enVoices() {
   return voices
     .filter(v => /^en[-_]/i.test(v.lang) && !NOVELTY_VOICE.test(v.name))
@@ -1956,13 +1961,17 @@ function paintVoices() {
     curEl.className = "voice-cur " + (good ? "good" : "plain");
   }
 
-  // Premium/Enhanced/Natural 이 하나도 없으면 기계음이 날 수밖에 없다 — 받는 법을 안내한다.
+  // Premium/Enhanced/Natural 이 하나도 없으면 기계음이 날 수밖에 없다.
+  // 단, iOS는 받아도 소용없다 — Safari가 다운로드한 프리미엄 음성을 웹에 노출하지 않는다.
+  // 여기서 Mac용 안내를 그대로 띄우면 아이폰에서 헛수고를 시키게 된다.
   const hasGood = list.some(v => GOOD_VOICE_RE.test(v.name) || /^Google/i.test(v.name));
-  document.getElementById("voiceNote").innerHTML = hasGood ? "" :
-    `이 기기엔 기본(compact) 음성만 있어 기계음이 납니다. <b>Apple 프리미엄 음성</b>을 받으면 크게 달라집니다.<br>
-     · <b>Mac</b> — 시스템 설정 → 손쉬운 사용 → 읽어주기 → 시스템 음성 → 음성 관리 → 영어(미국) → <b>Ava(프리미엄)</b><br>
-     · <b>iPhone·iPad</b> — 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성 → 영어 → <b>Ava(프리미엄)</b><br>
-     받은 뒤 이 페이지를 새로고침하면 위 목록에 나타납니다.`;
+  document.getElementById("voiceNote").innerHTML = hasGood ? "" : (isIOS()
+    ? `아이폰·아이패드 Safari는 <b>다운로드한 프리미엄 음성을 웹페이지에 제공하지 않습니다</b>(iOS 제한).
+       설정에서 Ava(프리미엄)를 받아도 이 목록에는 나타나지 않습니다 — 기기 자체 읽어주기 기능에서만 쓰입니다.<br>
+       여기서는 기본 음성이 최선이라, 발음은 <b>맥북에서 듣는 걸</b> 권합니다.`
+    : `이 기기엔 기본(compact) 음성만 있어 기계음이 납니다. <b>Apple 프리미엄 음성</b>을 받으면 크게 달라집니다.<br>
+       시스템 설정 → 손쉬운 사용 → 읽어주기 → 시스템 음성 → 음성 관리 → 영어(미국) → <b>Ava(프리미엄)</b><br>
+       받은 뒤 이 페이지를 새로고침하면 위 목록에 나타납니다.`);
 }
 document.getElementById("voiceSel").onchange = ev => {
   localStorage.setItem("et_voice", ev.target.value);

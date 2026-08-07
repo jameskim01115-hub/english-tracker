@@ -94,9 +94,15 @@ Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patr
 선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
 기기마다 설치된 음성이 다르므로 이름이 아니라 voiceURI로 저장한다.
 
-Premium/Enhanced/Natural이 하나도 없으면 `#voiceNote`에 다운로드 안내가 뜬다
-(Mac: 시스템 설정 → 손쉬운 사용 → 읽어주기 → 음성 관리 / iOS: 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성).
-2026-08-07 집 맥북에 Ava(프리미엄) 설치 완료 — 감지·자동 선택 확인함. 아이폰·아이패드는 기기별로 따로 받아야 한다.
+**iOS는 프리미엄 음성을 웹에 주지 않는다 (확인된 사실, 2026-08-07).**
+아이폰에서 Ava(프리미엄)를 다운로드해도 `speechSynthesis.getVoices()`에 나타나지 않는다 —
+Safari는 기본 품질 음성만 웹에 노출하고, 받은 프리미엄 음성은 VoiceOver·화면 읽어주기 전용이다.
+그래서 `#voiceNote`는 `isIOS()`로 분기해 아이폰에는 "받아도 소용없다"고 알린다.
+**이 분기를 지우고 Mac 안내를 아이폰에도 띄우지 말 것** — Patrick이 실제로 받았다가 헛수고했다.
+
+Mac은 정상이다. 2026-08-07 집 맥북에 Ava(프리미엄) 설치 → 감지·자동 선택 확인함.
+
+아이폰에서도 좋은 음성을 쓰려면 **미리 만든 오디오 파일을 재생하는 수밖에 없다** (아래 Supertonic 항목).
 
 **Supertonic 3는 검토 후 보류.** (`02_projects/video-automation/supertonic/`)
 모델 합계 398MB라 브라우저 실행 불가 — `vector_estimator.onnx` 하나가 256MB로 GitHub 파일당 100MB 제한을 넘어

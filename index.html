@@ -18,10 +18,14 @@
     --line: #262b38;
     --text: #e8eaf0;
     --sub: #8b93a7;
+    --dim: #4c556c;
     --accent: #ff5c5c;
     --gold: #f5b942;
     --green: #3ecf8e;
+    --blue: #5aa9ff;
+    --purple: #c792ea;
     --radius: 20px;
+    --nav-h: 62px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust: 100%; }
@@ -30,9 +34,11 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
     min-height: 100vh;
-    padding-bottom: 60px;
   }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 18px 16px calc(env(safe-area-inset-bottom) + 40px); }
+  .wrap {
+    max-width: 560px; margin: 0 auto;
+    padding: 18px 16px calc(env(safe-area-inset-bottom) + var(--nav-h) + 28px);
+  }
 
   /* ───── header ───── */
   header { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px 16px; }
@@ -54,12 +60,12 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 22px 20px 18px;
-    margin-bottom: 18px;
+    margin-bottom: 4px;
     position: relative;
     overflow: hidden;
   }
   .quote-card::before {
-    content: "“";
+    content: "\201C";
     position: absolute; top: -18px; left: 10px;
     font-size: 90px; color: rgba(255,92,92,0.12); font-family: Georgia, serif;
   }
@@ -70,9 +76,14 @@
   .daily-quote .ko { font-size: 12.5px; color: var(--sub); margin-top: 5px; }
 
   /* ───── section ───── */
-  .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 26px 2px 12px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 26px 2px 12px; }
   .sec-title { font-size: 15.5px; font-weight: 800; letter-spacing: -0.3px; }
-  .sec-sub { font-size: 12px; color: var(--sub); }
+  .sec-title small { font-size: 11px; color: var(--sub); font-weight: 600; margin-left: 5px; }
+  .sec-sub { font-size: 12px; color: var(--sub); flex-shrink: 0; }
+  .sec-sub button {
+    background: none; border: none; color: var(--blue); font: inherit; font-size: 12px;
+    font-weight: 700; cursor: pointer; padding: 0;
+  }
 
   /* ───── progress ───── */
   .day-progress { display: flex; align-items: center; gap: 10px; }
@@ -106,7 +117,6 @@
   .r-card[data-k="office"]   .r-icon { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
   .r-card[data-k="review"]   .r-icon { background: linear-gradient(135deg,#1b3327,#12231b); }
   .r-card[data-k="speaking"] .r-icon { background: linear-gradient(135deg,#2c1e3d,#1e1529); }
-  .r-card[data-k="think"]    .r-icon { background: linear-gradient(135deg,#3d2a1e,#291c14); }
   .r-body { flex: 1; min-width: 0; }
   .r-name { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
   .r-time { font-size: 11.5px; color: var(--sub); margin-top: 3px; }
@@ -127,7 +137,7 @@
     font-size: 12px; color: #aeb6c8; line-height: 1.4;
     padding-left: 10px; position: relative;
   }
-  .r-words .w::before { content: "·"; position: absolute; left: 1px; color: var(--gold); font-weight: 900; }
+  .r-words .w::before { content: "\00B7"; position: absolute; left: 1px; color: var(--gold); font-weight: 900; }
   .r-words .w b { color: #dfe3ee; font-weight: 700; }
 
   /* ───── all-done banner ───── */
@@ -166,59 +176,202 @@
   .cal-stat b { display: block; font-size: 17px; font-weight: 800; }
   .cal-stat span { font-size: 10.5px; color: var(--sub); }
 
-  /* ───── flashcards / review ───── */
+  /* ───── expression card (공통 규격) ───── */
   .fc {
     background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-    padding: 18px 16px; margin-bottom: 10px; cursor: pointer;
+    padding: 16px 15px; margin-bottom: 10px; cursor: pointer;
+    transition: opacity .3s, transform .3s, border-color .2s;
   }
-  .fc .src { font-size: 10.5px; font-weight: 700; letter-spacing: .4px; margin-bottom: 8px; }
-  .fc .src.wanted { color: var(--accent); }
-  .fc .src.delivered { color: #5aa9ff; }
-  .fc .src.manual { color: var(--gold); }
-  .fc .expr { font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
-  .fc .hidden-area { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
-  .fc.open .hidden-area { display: block; }
-  .fc .meaning { font-size: 13.5px; color: #c3c9d9; line-height: 1.5; }
-  .fc .ctx { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.45; }
-  .fc .tap-hint { font-size: 11px; color: #4c556c; margin-top: 10px; }
+  .fc.open { border-color: #333a4d; }
+  .fc .fc-top { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .badge {
+    font-size: 10px; font-weight: 800; letter-spacing: .2px;
+    padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .badge.wanted    { color: var(--accent); background: rgba(255,92,92,.12); }
+  .badge.delivered { color: var(--blue);   background: rgba(90,169,255,.12); }
+  .badge.manual    { color: var(--gold);   background: rgba(245,185,66,.12); }
+  .badge.slot      { color: var(--sub);    background: #232838; }
+  .badge.date      { color: var(--dim);    background: transparent; padding-left: 0; margin-left: auto; }
+  .fc .expr-row { display: flex; align-items: flex-start; gap: 10px; }
+  .fc .expr { flex: 1; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
+  .fc .expr.ko { color: #ffd98a; font-size: 17px; }
+  .fc .expr.ko.tagmode { color: #c9b6e8; font-size: 14.5px; line-height: 1.5; font-weight: 700; }
+  .prompt-l {
+    font-size: 10.5px; font-weight: 800; color: var(--dim);
+    letter-spacing: .5px; margin-bottom: 6px; text-transform: uppercase;
+  }
+  .hintrow { display: flex; align-items: center; gap: 9px; margin-top: 10px; }
+  .hint-btn {
+    background: var(--card2); border: 1px solid var(--line); color: var(--sub);
+    border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 800;
+    cursor: pointer; font-family: inherit; flex-shrink: 0;
+  }
+  .hintrow { flex-wrap: wrap; }
+  .hint-txt { font-size: 13px; color: #c3c9d9; font-weight: 700; line-height: 1.5; }
+  .hint-txt em {
+    font-style: normal; font-size: 10px; font-weight: 800; color: var(--dim);
+    background: var(--card2); border-radius: 5px; padding: 2px 6px; margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .prompt-l .wc {
+    float: right; text-transform: none; letter-spacing: 0;
+    color: var(--sub); font-weight: 700;
+  }
+  u.key {
+    text-decoration: underline; text-decoration-color: var(--gold);
+    text-decoration-thickness: 2px; text-underline-offset: 4px;
+  }
+  .blk-answer { margin-bottom: 13px; }
+  .blk-answer .expr { color: #fff; }
+
+  /* 방향 토글 */
+  .dirseg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .dirseg button {
+    background: none; border: none; color: var(--sub); font-family: inherit;
+    font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  }
+  .dirseg button.on { background: rgba(255,92,92,.16); color: var(--accent); }
+  .spk {
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+    background: var(--card2); border: 1px solid var(--line); color: var(--sub);
+    font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all .15s; font-family: inherit;
+  }
+  .spk:active, .spk.on { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
+  .spk.sm { width: 26px; height: 26px; font-size: 12px; border-radius: 8px; }
+  .fc .tap-hint { font-size: 11px; color: var(--dim); margin-top: 10px; }
   .fc.open .tap-hint { display: none; }
-  .fc-btns { display: flex; gap: 8px; margin-top: 14px; }
+  .fc .back { display: none; margin-top: 13px; padding-top: 13px; border-top: 1px dashed var(--line); }
+  .fc.open .back { display: block; }
+
+  /* 카드 뒷면 — 항상 같은 순서의 라벨 블록 */
+  .blk { margin-bottom: 13px; }
+  .blk:last-child { margin-bottom: 0; }
+  .blk-l {
+    font-size: 10.5px; font-weight: 800; color: var(--dim);
+    letter-spacing: .5px; margin-bottom: 5px; text-transform: uppercase;
+  }
+  .blk-mean { font-size: 14.5px; color: #dbe0ec; line-height: 1.5; font-weight: 600; }
+  .blk-ex {
+    font-size: 13.5px; color: #c3c9d9; line-height: 1.7;
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .blk-ex > span { flex: 1; }
+  .blk-ex b.st { color: #fff; font-weight: 800; background: rgba(245,185,66,.15); border-radius: 4px; padding: 0 3px; }
+  .blk-ex i.ar { font-style: normal; color: var(--purple); font-weight: 800; padding: 0 1px; }
+  .blk-ex i.br { font-style: normal; color: #394054; font-weight: 700; padding: 0 4px; }
+  .legend { font-size: 10.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; padding: 6px 10px; border-radius: 9px;
+    background: var(--card2); border: 1px solid var(--line); color: #b6bdcd;
+    line-height: 1.3; cursor: pointer;
+  }
+  .chip.tag { color: var(--sub); background: transparent; font-size: 11.5px; padding: 4px 9px; }
+  .chip:active { border-color: rgba(90,169,255,.4); }
+  .myline-row { display: flex; gap: 7px; align-items: center; }
+  .myline-row input {
+    flex: 1; background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 11px; color: var(--text);
+    font-size: 13px; font-family: inherit; outline: none;
+  }
+  .myline-row input::placeholder { color: var(--dim); }
+  .myline-row button.save {
+    flex-shrink: 0; background: rgba(62,207,142,.14); color: var(--green);
+    border: 1px solid rgba(62,207,142,.3); border-radius: 10px;
+    padding: 0 12px; height: 38px; font-size: 12.5px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+  }
+  .myline-saved {
+    font-size: 13.5px; color: #b7e7d0; line-height: 1.5;
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .myline-saved > span { flex: 1; }
+  .prog-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .stage-dots { display: flex; gap: 3px; }
+  .stage-dots i { width: 15px; height: 4px; border-radius: 2px; background: #2a3040; }
+  .stage-dots i.on { background: var(--green); }
+  .prog-next { font-size: 11px; color: var(--dim); }
+  .fc-btns { display: flex; gap: 7px; margin-top: 14px; }
   .fc-btns button {
-    flex: 1; padding: 11px; border-radius: 12px; border: none;
+    flex: 1; padding: 12px 4px; border-radius: 12px;
+    font-size: 12.5px; font-weight: 800; cursor: pointer; font-family: inherit;
+    border: 1px solid transparent; line-height: 1.3;
+  }
+  .fc-btns button small { display: block; font-size: 9.5px; font-weight: 600; opacity: .75; margin-top: 2px; }
+  .btn-again { background: rgba(255,92,92,.12);  color: var(--accent); border-color: rgba(255,92,92,.3); }
+  .btn-hard  { background: rgba(245,185,66,.12); color: var(--gold);   border-color: rgba(245,185,66,.3); }
+  .btn-good  { background: rgba(62,207,142,.14); color: var(--green);  border-color: rgba(62,207,142,.35); }
+  .btn-study {
+    width: 100%; margin-top: 14px; padding: 13px; border-radius: 12px;
+    background: rgba(62,207,142,.14); color: var(--green);
+    border: 1px solid rgba(62,207,142,.35);
     font-size: 13.5px; font-weight: 800; cursor: pointer; font-family: inherit;
   }
-  .btn-ok { background: rgba(62,207,142,.15); color: var(--green); border: 1px solid rgba(62,207,142,.35) !important; }
-  .btn-again { background: rgba(255,92,92,.12); color: var(--accent); border: 1px solid rgba(255,92,92,.3) !important; }
-  .stage-dots { display: flex; gap: 3px; margin-top: 10px; }
-  .stage-dots i { width: 14px; height: 4px; border-radius: 2px; background: #2a3040; }
-  .stage-dots i.on { background: var(--green); }
+  .btn-reopen {
+    width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px;
+    background: var(--card2); color: var(--sub); border: 1px solid var(--line);
+    font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+
   .empty {
     text-align: center; color: var(--sub); font-size: 13px;
     background: var(--card); border: 1px dashed var(--line);
-    border-radius: 16px; padding: 22px 16px;
+    border-radius: 16px; padding: 22px 16px; line-height: 1.6;
   }
   .empty b { color: #c3c9d9; }
+  .date-sep {
+    font-size: 11.5px; font-weight: 800; color: var(--dim);
+    margin: 16px 2px 8px; letter-spacing: .3px;
+  }
+  .date-sep:first-child { margin-top: 0; }
 
-  /* ───── expression bank ───── */
-  .bank-tools { display: flex; gap: 8px; margin-bottom: 12px; }
+  /* ───── how-it-works ───── */
+  .how { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .how summary {
+    list-style: none; cursor: pointer; padding: 14px 15px;
+    font-size: 13.5px; font-weight: 800; color: #c3c9d9;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .how summary::-webkit-details-marker { display: none; }
+  .how summary::after { content: "\25BE"; color: var(--dim); font-size: 12px; transition: transform .2s; }
+  .how[open] summary::after { transform: rotate(180deg); }
+  .how .body { padding: 0 15px 15px; }
+  .how table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .how td { padding: 6px 0; border-top: 1px solid var(--line); color: #b6bdcd; vertical-align: top; }
+  .how td:first-child { color: var(--sub); width: 78px; font-weight: 700; white-space: nowrap; }
+  .how p { font-size: 12.5px; color: var(--sub); line-height: 1.65; margin-top: 10px; }
+  .how b { color: #dbe0ec; }
+
+  /* ───── stage distribution ───── */
+  .dist { display: flex; flex-direction: column; gap: 8px; }
+  .dist-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .dist-row .lb { width: 66px; color: var(--sub); flex-shrink: 0; font-weight: 600; }
+  .dist-row .tr { flex: 1; height: 8px; background: #232838; border-radius: 99px; overflow: hidden; }
+  .dist-row .bf { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#3ecf8e,#5aa9ff); }
+  .dist-row .vn { width: 26px; text-align: right; color: #b6bdcd; font-weight: 800; flex-shrink: 0; }
+
+  /* ───── library tools ───── */
+  .bank-tools { display: flex; gap: 8px; margin-bottom: 10px; }
   .bank-tools input {
     flex: 1; background: var(--card); border: 1px solid var(--line);
     border-radius: 12px; padding: 12px 14px; color: var(--text);
     font-size: 14px; font-family: inherit; outline: none;
   }
-  .bank-tools input::placeholder { color: #4c556c; }
+  .bank-tools input::placeholder { color: var(--dim); }
   .add-btn {
     background: var(--accent); color: #fff; border: none; border-radius: 12px;
     width: 46px; font-size: 22px; font-weight: 700; cursor: pointer; flex-shrink: 0;
   }
-  .bank-item {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 13px 14px; margin-bottom: 8px;
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters button {
+    flex-shrink: 0; background: var(--card); border: 1px solid var(--line); color: var(--sub);
+    border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
   }
-  .bank-item .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .bank-item .e { font-size: 14px; font-weight: 700; line-height: 1.4; }
-  .bank-item .d { font-size: 10.5px; color: #4c556c; flex-shrink: 0; }
-  .bank-item .m { font-size: 12.5px; color: var(--sub); margin-top: 5px; line-height: 1.45; }
+  .filters button.on { background: rgba(255,92,92,.14); border-color: rgba(255,92,92,.35); color: var(--accent); }
   .more-btn {
     width: 100%; background: var(--card2); color: var(--sub); border: 1px solid var(--line);
     border-radius: 12px; padding: 11px; font-size: 13px; font-weight: 700;
@@ -227,7 +380,7 @@
 
   /* ───── modal ───── */
   .modal-bg {
-    display: none; position: fixed; inset: 0; z-index: 50;
+    display: none; position: fixed; inset: 0; z-index: 60;
     background: rgba(5,7,10,.72); backdrop-filter: blur(4px);
     align-items: flex-end; justify-content: center;
   }
@@ -251,19 +404,59 @@
   .m-save { background: var(--accent); color: #fff; }
   .m-cancel { background: var(--card2); color: var(--sub); }
 
-  /* ───── canvases ───── */
-  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
+  /* ───── bottom nav ───── */
+  nav.tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    display: flex; justify-content: center;
+    background: rgba(14,16,21,.92); backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav.tabs .inner { display: flex; width: 100%; max-width: 560px; }
+  nav.tabs button {
+    flex: 1; background: none; border: none; cursor: pointer; font-family: inherit;
+    height: var(--nav-h); color: var(--dim);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    position: relative; transition: color .2s;
+  }
+  nav.tabs button .ic { font-size: 18px; line-height: 1; }
+  nav.tabs button .lb { font-size: 10.5px; font-weight: 800; letter-spacing: -0.2px; }
+  nav.tabs button.on { color: var(--accent); }
+  nav.tabs button .dot {
+    position: absolute; top: 9px; right: 50%; margin-right: -20px;
+    min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-size: 10px; font-weight: 800;
+    display: none; align-items: center; justify-content: center; line-height: 1;
+  }
+  nav.tabs button .dot.show { display: flex; }
 
+  .panel { display: none; }
+  .panel.on { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ───── misc ───── */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
   .toast {
-    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    position: fixed; bottom: calc(env(safe-area-inset-bottom) + var(--nav-h) + 16px);
+    left: 50%; transform: translateX(-50%) translateY(20px);
     background: #232838; color: var(--text); border: 1px solid #333a4d;
     padding: 11px 20px; border-radius: 999px; font-size: 13px; font-weight: 700;
     opacity: 0; transition: all .3s; z-index: 100; pointer-events: none; white-space: nowrap;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  .loading { text-align: center; color: var(--sub); padding: 60px 0; font-size: 14px; }
-  .sync-note { text-align: center; font-size: 11px; color: #3a4152; margin-top: 30px; line-height: 1.6; }
+  .loading { text-align: center; color: var(--sub); padding: 40px 0; font-size: 14px; }
+  .sync-note { text-align: center; font-size: 11px; color: #3a4152; margin-top: 26px; line-height: 1.7; }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 13px 15px; font-size: 13.5px; font-weight: 700; color: #c3c9d9; margin-bottom: 8px;
+  }
+  .setting-row button {
+    background: var(--card2); border: 1px solid var(--line); color: var(--sub);
+    border-radius: 999px; padding: 6px 13px; font-size: 12px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+  }
+  .setting-row button.on { background: rgba(62,207,142,.14); border-color: rgba(62,207,142,.3); color: var(--green); }
 </style>
 </head>
 <body>
@@ -276,77 +469,156 @@
     <div class="streak-chip">🔥 <span id="streakN">0</span><small>일 연속</small></div>
   </header>
 
-  <div class="quote-card">
-    <div class="motto">Anything is better<br>than <em>nothing.</em></div>
-    <div class="daily-quote">
-      <div class="en" id="qEn"></div>
-      <div class="ko" id="qKo"></div>
+  <!-- ══════════ TAB: 오늘 ══════════ -->
+  <section class="panel on" id="p-today">
+    <div class="quote-card">
+      <div class="motto">Anything is better<br>than <em>nothing.</em></div>
+      <div class="daily-quote">
+        <div class="en" id="qEn"></div>
+        <div class="ko" id="qKo"></div>
+      </div>
     </div>
-  </div>
 
-  <div class="sec-head">
-    <div class="sec-title">오늘의 루틴</div>
-    <div class="sec-sub" id="todayLabel"></div>
-  </div>
-  <div class="day-progress">
-    <div class="bar"><div class="fill" id="pFill"></div></div>
-    <div class="num" id="pNum">0/6</div>
-  </div>
-  <div class="routines" id="routines"></div>
-  <div class="allDone" id="allDone">🎉 오늘 루틴 전부 완료! 달력에 동그라미 쾅.</div>
-
-  <div class="sec-head">
-    <div class="sec-title">달력</div>
-    <div class="sec-sub">동그라미 = 완주 · 점선 = 부분</div>
-  </div>
-  <div class="cal-card">
-    <div class="cal-nav">
-      <button id="calPrev">‹</button>
-      <b id="calTitle"></b>
-      <button id="calNext">›</button>
+    <div class="sec-head">
+      <div class="sec-title">오늘의 루틴</div>
+      <div class="sec-sub" id="todayLabel"></div>
     </div>
-    <div class="cal-grid" id="calGrid"></div>
+    <div class="day-progress">
+      <div class="bar"><div class="fill" id="pFill"></div></div>
+      <div class="num" id="pNum">0/5</div>
+    </div>
+    <div class="routines" id="routines"></div>
+    <div class="allDone" id="allDone">🎉 오늘 루틴 전부 완료! 달력에 동그라미 쾅.</div>
+
+    <div class="sec-head">
+      <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
+      <div class="sec-sub"><button id="clearOld">지난 것 정리</button></div>
+    </div>
+    <div id="newList"><div class="loading">불러오는 중…</div></div>
+
+    <div class="sync-note">
+      막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다
+    </div>
+  </section>
+
+  <!-- ══════════ TAB: 복습 ══════════ -->
+  <section class="panel" id="p-review">
+    <details class="how" id="howBox">
+      <summary>망각 곡선 · 복습 주기가 어떻게 도는지</summary>
+      <div class="body">
+        <table>
+          <tr><td>1단계</td><td>학습 체크 <b>다음 날</b> 첫 복습</td></tr>
+          <tr><td>2단계</td><td>3일 뒤</td></tr>
+          <tr><td>3단계</td><td>7일 뒤</td></tr>
+          <tr><td>4단계</td><td>14일 뒤</td></tr>
+          <tr><td>5단계</td><td>30일 뒤</td></tr>
+          <tr><td>6단계</td><td>60일 뒤 → 통과하면 <b>졸업</b></td></tr>
+        </table>
+        <p>
+          <b>알아</b> = 한 단계 올라가고 그만큼 간격이 벌어집니다.<br>
+          <b>애매</b> = 단계 유지, 내일 다시 나옵니다.<br>
+          <b>몰라</b> = <b>1단계로 완전 리셋</b>, 내일부터 처음부터 다시.<br><br>
+          잊기 직전에 다시 만나야 오래 남습니다. 그래서 간격이 점점 벌어지고,
+          한 번 막히면 처음으로 되돌립니다. 「배울 표현」에서 체크한 것만 이 큐에 들어옵니다 —
+          안 본 표현이 복습을 막지 않게 하기 위해서입니다.
+        </p>
+        <p>
+          <b>한→영</b>이 기본입니다. 뜻이나 상황을 먼저 보고 <b>입으로 말해본 뒤</b> 탭해서 정답과 비교하세요.
+          눈으로 알아보는 것(영→한)보다 입에서 꺼내는 훈련이 말하기에 훨씬 크게 남습니다.
+          처음 보는 표현은 「오늘」 탭에서 영→한으로 먼저 익히고 넘어옵니다.
+        </p>
+      </div>
+    </details>
+
+    <div class="sec-head">
+      <div class="sec-title">오늘 복습 <small id="dueCount"></small></div>
+      <div class="sec-sub">
+        <div class="dirseg" id="dirSeg">
+          <button data-d="ko2en">한→영</button>
+          <button data-d="en2ko">영→한</button>
+        </div>
+      </div>
+    </div>
+    <div id="dueList"><div class="loading">불러오는 중…</div></div>
+
+    <div class="sec-head">
+      <div class="sec-title">단계별 현황</div>
+      <div class="sec-sub" id="distTotal"></div>
+    </div>
+    <div class="dist" id="dist"></div>
+  </section>
+
+  <!-- ══════════ TAB: 표현 ══════════ -->
+  <section class="panel" id="p-lib">
+    <div class="sec-head" style="margin-top:6px">
+      <div class="sec-title">표현 전체</div>
+      <div class="sec-sub" id="bankCount"></div>
+    </div>
+    <div class="bank-tools">
+      <input type="search" id="bankSearch" placeholder="표현 · 뜻 · 예문 검색…">
+      <button class="add-btn" id="addBtn">+</button>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div id="bankList"></div>
+  </section>
+
+  <!-- ══════════ TAB: 기록 ══════════ -->
+  <section class="panel" id="p-stats">
+    <div class="sec-head" style="margin-top:6px">
+      <div class="sec-title">달력</div>
+      <div class="sec-sub">동그라미 = 완주 · 점선 = 부분</div>
+    </div>
+    <div class="cal-card">
+      <div class="cal-nav">
+        <button id="calPrev">‹</button>
+        <b id="calTitle"></b>
+        <button id="calNext">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-stats">
+        <div class="cal-stat"><b id="stFull">0</b><span>완주한 날</span></div>
+        <div class="cal-stat"><b id="stPart">0</b><span>부분 완료</span></div>
+        <div class="cal-stat"><b id="stRate">0%</b><span>이번 달 달성률</span></div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <div class="sec-title">누적</div>
+    </div>
     <div class="cal-stats">
-      <div class="cal-stat"><b id="stFull">0</b><span>완주한 날</span></div>
-      <div class="cal-stat"><b id="stPart">0</b><span>부분 완료</span></div>
-      <div class="cal-stat"><b id="stRate">0%</b><span>이번 달 달성률</span></div>
+      <div class="cal-stat"><b id="stTotal">0</b><span>모은 표현</span></div>
+      <div class="cal-stat"><b id="stStudied">0</b><span>학습 완료</span></div>
+      <div class="cal-stat"><b id="stGrad">0</b><span>졸업</span></div>
     </div>
-  </div>
 
-  <div class="sec-head">
-    <div class="sec-title">반복 훈련 <span style="font-size:11px;color:var(--sub);font-weight:600">Repeat, repeat, repeat</span></div>
-    <div class="sec-sub" id="dueCount"></div>
-  </div>
-  <div id="dueList"><div class="loading">불러오는 중…</div></div>
+    <div class="sec-head">
+      <div class="sec-title">설정</div>
+    </div>
+    <div class="setting-row">효과음 <button id="sndBtn">켜짐</button></div>
+    <div class="setting-row">말하기 속도 <button id="rateBtn">보통</button></div>
 
-  <div class="sec-head">
-    <div class="sec-title">오늘 배운 표현</div>
-    <div class="sec-sub">봇 자동 연동</div>
-  </div>
-  <div id="todayList"><div class="loading">불러오는 중…</div></div>
-
-  <div class="sec-head">
-    <div class="sec-title">어휘 노트 <span style="font-size:11px;color:var(--sub);font-weight:600">Vocabulary Journal</span></div>
-    <div class="sec-sub" id="bankCount"></div>
-  </div>
-  <div class="bank-tools">
-    <input type="search" id="bankSearch" placeholder="표현 검색…">
-    <button class="add-btn" id="addBtn">+</button>
-  </div>
-  <div id="bankList"></div>
-
-  <div class="sync-note">
-    막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다<br>
-    복습 주기: 1 · 3 · 7 · 14 · 30 · 60일 (망각 곡선)
-  </div>
+    <div class="sync-note">
+      동기화: 봇 → VPS 파일 → 매시 20분 Firestore<br>
+      복습 주기: 1 · 3 · 7 · 14 · 30 · 60일 (망각 곡선)
+    </div>
+  </section>
 </div>
+
+<nav class="tabs">
+  <div class="inner">
+    <button data-tab="today"  class="on"><span class="ic">☀️</span><span class="lb">오늘</span><span class="dot" id="dotNew"></span></button>
+    <button data-tab="review"><span class="ic">🔁</span><span class="lb">복습</span><span class="dot" id="dotDue"></span></button>
+    <button data-tab="lib"><span class="ic">📚</span><span class="lb">표현</span></button>
+    <button data-tab="stats"><span class="ic">📅</span><span class="lb">기록</span></button>
+  </div>
+</nav>
 
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <h3>표현 직접 추가</h3>
     <input id="mExpr" placeholder="영어 표현 (예: Keep me in the loop.)">
     <input id="mMean" placeholder="뜻 (예: 계속 상황 공유해줘)">
-    <textarea id="mCtx" rows="2" placeholder="상황/맥락 (선택)"></textarea>
+    <textarea id="mCtx" rows="2" placeholder="예문 / 어떤 상황에서 쓰는지 (선택)"></textarea>
     <div class="row">
       <button class="m-cancel" id="mCancel">취소</button>
       <button class="m-save" id="mSave">저장</button>
@@ -360,7 +632,6 @@
 <script>
 // ═══════════════ CONFIG ═══════════════
 // 이 앱 전용 Firebase 프로젝트. M Building 프로젝트(m-building-fbe46)와 절대 공유하지 않는다.
-// 값은 Firebase 콘솔 > 프로젝트 설정 > 내 앱 > SDK 설정 및 구성에서 복사.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8",
   authDomain: "english-tracker-cea9f.firebaseapp.com",
@@ -383,16 +654,18 @@ const auth = firebase.auth();
 const COL_DAYS = "english_days";
 const COL_EXPR = "english_expressions";
 
-// 6개 루틴 = Patrick의 6가지 핵심 원칙과 1:1 매핑
+// 5개 일일 루틴
 const ROUTINES = [
   { k: "podcast",  icon: "🎧", name: "유튜브 팟캐스트 1개", time: "아침 · 매일 영어 듣기" },
   { k: "words",    icon: "📬", name: "오늘의 단어 3개",     time: "오전 10시 · 단어가 아닌 문장 단위로" },
-  { k: "office",   icon: "📝", name: "막힌 표현 공부",       time: "사무실 · 어휘 노트에 쌓기" },
+  { k: "office",   icon: "📝", name: "막힌 표현 공부",       time: "사무실 · 그날 막힌 말 모으기" },
   { k: "review",   icon: "🔁", name: "복습",                time: "집 · Repeat, repeat, repeat" },
   { k: "speaking", icon: "🗣️", name: "ChatGPT 음성 대화",   time: "저녁 · 소리 내어 말하기" },
-  { k: "think",    icon: "🧠", name: "영어로 생각하기",      time: "수시로 · 오늘 일 하나를 영어로 떠올리기" },
 ];
+
+// 망각 곡선 간격(일). stage = 성공한 복습 횟수. stage N을 달성하면 INTERVALS[N]일 뒤 재등장.
 const INTERVALS = [1, 3, 7, 14, 30, 60];
+const GRADUATED = "9999-12-31";
 
 const QUOTES = [
   { en: "A little progress each day adds up to big results.", ko: "매일의 작은 진전이 모여 큰 결과가 된다." },
@@ -429,11 +702,16 @@ const QUOTES = [
 
 // ═══════════════ STATE ═══════════════
 let today = manilaDate();
-let dayData = {};          // { "YYYY-MM-DD": {tasks:{...}} }
-let expressions = [];      // all expression docs
-let calCursor = null;      // Date for calendar month
+let dayData = {};
+let expressions = [];
+let calCursor = null;
 let bankShown = 30;
-let soundOn = true;
+let newShown = 12;
+let bankFilter = "all";
+let soundOn = localStorage.getItem("et_sound") !== "0";
+let speakRate = parseFloat(localStorage.getItem("et_rate") || "0.9");
+let activeTab = "today";
+let revDir = localStorage.getItem("et_dir") || "ko2en";  // 복습 방향. 기본은 인출(한→영)
 
 // ═══════════════ HELPERS ═══════════════
 function manilaDate(offsetDays = 0) {
@@ -443,10 +721,19 @@ function manilaDate(offsetDays = 0) {
 function manilaNow() {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
 }
+// 날짜 계산은 전부 UTC 기준으로 한다. 로컬 파싱 + toISOString 조합은
+// UTC+8(마닐라)에서 하루씩 밀린다 — 예전 버전에서 복습 예정일이 하루 어긋나던 원인.
+function isoToUTC(iso) {
+  const [y, m, d] = String(iso).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
 function addDays(iso, n) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + n);
+  const d = isoToUTC(iso);
+  d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
+}
+function daysBetween(a, b) {
+  return Math.round((isoToUTC(b) - isoToUTC(a)) / 86400000);
 }
 function toast(msg) {
   const t = document.getElementById("toast");
@@ -459,7 +746,6 @@ function dayOfYear(iso) {
   const d = new Date(iso + "T00:00:00");
   return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
 }
-// stable pseudo-random from string seed
 function seedRand(seed) {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -467,6 +753,152 @@ function seedRand(seed) {
     h += h << 13; h ^= h >>> 7; h += h << 3; h ^= h >>> 17; h += h << 5;
     return ((h >>> 0) % 1000) / 1000;
   };
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function relDate(iso) {
+  if (!iso) return "";
+  if (iso === today) return "오늘";
+  if (iso === addDays(today, -1)) return "어제";
+  const n = daysBetween(iso, today);
+  if (n > 1 && n < 8) return `${n}일 전`;
+  return iso.slice(5).replace("-", "/");
+}
+
+// ═══════════════ 표현 파싱 — context 필드는 소스마다 의미가 다르다 ═══════════════
+// hermes-delivered : context = 예문 (리듬 마크업이 섞여 있을 수 있음)
+// hermes-wanted    : context = "<상황 태그>; reusable chunks: a, b, c."
+const CHUNK_RE = /reusable chunks?\s*:/i;
+function parseContext(e) {
+  const out = { example: "", tags: [], chunks: [] };
+  const ctx = (e.context || "").trim();
+  if (!ctx) return out;
+  if (CHUNK_RE.test(ctx)) {
+    const idx = ctx.search(CHUNK_RE);
+    const head = ctx.slice(0, idx).replace(/[;,\s]+$/, "");
+    const tail = ctx.slice(idx).replace(CHUNK_RE, "").replace(/\.\s*$/, "");
+    out.tags = head.split(/[\/;]/).map(s => s.trim()).filter(Boolean);
+    const sep = tail.includes(";") ? ";" : ",";
+    out.chunks = tail.split(sep).map(s => s.trim().replace(/\.$/, "")).filter(Boolean);
+  } else {
+    out.example = ctx;
+  }
+  return out;
+}
+// 리듬 마크업 렌더 — **강세**, → ↘ ↓ ↗ 억양, " / " 끊어읽기
+function hasRhythm(s) { return /\*\*|[→↘↓↗]/.test(s || ""); }
+function rhythmHtml(s) {
+  let h = esc(s);
+  h = h.replace(/\*\*(.+?)\*\*/g, '<b class="st">$1</b>');
+  h = h.replace(/\s\/\s/g, '<i class="br">|</i>');
+  h = h.replace(/([→↘↓↗])/g, '<i class="ar">$1</i>');
+  return h;
+}
+function plain(s) {
+  return String(s || "")
+    .replace(/\*\*/g, "")
+    .replace(/[→↘↓↗]/g, " ")
+    .replace(/\s+\/\s+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function isStudied(e) { return e.studied === true || (e.stage || 0) > 0; }
+function isGraduated(e) { return (e.stage || 0) >= INTERVALS.length; }
+function srcOf(e) {
+  if (e.source === "hermes-wanted") return { cls: "wanted", label: "막힌 표현" };
+  if (e.source === "hermes-delivered") return { cls: "delivered", label: "봇 배달" };
+  return { cls: "manual", label: "직접 추가" };
+}
+function slotLabel(s) {
+  return { AM: "아침", "10AM": "10시 단어", PM: "저녁" }[s] || s || "";
+}
+// 한→영 앞면에 띄울 프롬프트. 한글 뜻이 없는 「막힌 표현」은 상황 태그로 대체한다.
+function promptFor(e, p) {
+  if (e.ko) return { ok: true, label: "이 말을 영어로", text: e.ko, tag: false };
+  if (e.meaning) return { ok: true, label: "이 뜻을 영어로", text: e.meaning, tag: false };
+  if (p.tags.length) return { ok: true, label: "이 상황을 영어로", text: p.tags.join(" · "), tag: true };
+  return { ok: false };
+}
+function wordCount(s) {
+  const w = String(s || "").trim().split(/\s+/).filter(Boolean);
+  return w.length;
+}
+// 계단식 힌트. 첫 글자 골격 같은 퍼즐 대신 실제 영어 조각을 조금씩 준다.
+// 짧은 표현은 1단계로 끝나고, 긴 문장만 앞부분까지 열린다.
+function hintLevels(expr, chunks) {
+  const text = String(expr || "").trim();
+  const w = text.split(/\s+/).filter(Boolean);
+  if (!w.length) return [];
+  if (w.length <= 4) {
+    return [{ label: "시작", text: w[0] + (w.length > 1 ? " …" : "") }];
+  }
+  const r = keyRange(text, chunks);           // 밑줄과 같은 표현을 힌트로 준다
+  const chunk = r ? text.slice(r[0], r[1]) : "";
+  const half = Math.max(3, Math.ceil(w.length * 0.5));
+  return [
+    { label: chunk ? "핵심 표현" : "시작", text: chunk || (w.slice(0, 2).join(" ") + " …") },
+    { label: "앞부분", text: w.slice(0, half).join(" ") + " …" },
+  ];
+}
+// 긴 문장에서 핵심 표현 하나만 찾는다. 통문장을 그대로 맞출 필요는 없다는 표시.
+// 여러 개를 밑줄 치면 문장 전체가 덮여 의미가 없어진다 — 딱 하나만 고른다.
+// 봇이 내려주는 chunks는 대체로 문장 순서대로라, 먼저 나오는 것이 중심 표현이다.
+function keyRange(expr, chunks) {
+  const text = String(expr || "");
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 5 || !chunks || !chunks.length) return null;  // 짧으면 전체가 타깃
+  const lower = text.toLowerCase();
+  for (const raw of chunks) {
+    const c = String(raw).replace(/\s*~\s*$/, "").trim();
+    const cw = c.split(/\s+/).filter(Boolean).length;
+    if (cw < 2) continue;
+    if (cw > words.length - 2) continue;  // 문장을 거의 다 덮으면 밑줄이 무의미
+    const i = lower.indexOf(c.toLowerCase());
+    if (i < 0) continue;
+    return [i, i + c.length];
+  }
+  return null;
+}
+function underlineKey(expr, chunks) {
+  const text = String(expr || "");
+  const r = keyRange(text, chunks);
+  if (!r) return esc(text);
+  return esc(text.slice(0, r[0])) + '<u class="key">' + esc(text.slice(r[0], r[1])) + "</u>"
+    + esc(text.slice(r[1]));
+}
+
+// ═══════════════ TTS ═══════════════
+let voices = [];
+function loadVoices() { try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; } }
+if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function pickVoice() {
+  const en = voices.filter(v => /^en[-_]/i.test(v.lang));
+  if (!en.length) return null;
+  for (const p of ["Google US English", "Samantha", "Alex", "Karen", "Daniel"]) {
+    const f = en.find(v => v.name.indexOf(p) >= 0);
+    if (f) return f;
+  }
+  return en.find(v => /en[-_]US/i.test(v.lang)) || en[0];
+}
+function speak(text, btn) {
+  const t = plain(text);
+  if (!t) return;
+  if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = "en-US";
+    u.rate = speakRate;
+    const v = pickVoice();
+    if (v) u.voice = v;
+    if (btn) {
+      btn.classList.add("on");
+      u.onend = u.onerror = () => btn.classList.remove("on");
+    }
+    speechSynthesis.speak(u);
+  } catch (e) { toast("음성 재생 실패"); }
 }
 
 // ═══════════════ SOUND & HAPTIC ═══════════════
@@ -491,12 +923,11 @@ function crackSound() {
 }
 function haptic(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
-// ═══════════════ FX: SHATTER & CONFETTI ═══════════════
+// ═══════════════ FX ═══════════════
 const fx = document.getElementById("fx");
 const fctx = fx.getContext("2d");
 let particles = [];
 let fxRunning = false;
-
 function sizeFx() {
   fx.width = innerWidth * devicePixelRatio;
   fx.height = innerHeight * devicePixelRatio;
@@ -504,7 +935,6 @@ function sizeFx() {
 }
 sizeFx();
 addEventListener("resize", sizeFx);
-
 function shatter(el) {
   const r = el.getBoundingClientRect();
   const colors = ["#ff5c5c", "#f5b942", "#3ecf8e", "#5aa9ff", "#e8eaf0"];
@@ -515,13 +945,9 @@ function shatter(el) {
       x: px, y: py,
       vx: (px - (r.left + r.width / 2)) * 0.09 + (Math.random() - 0.5) * 5,
       vy: (py - (r.top + r.height / 2)) * 0.09 - Math.random() * 7 - 2,
-      size: 3 + Math.random() * 9,
-      rot: Math.random() * Math.PI,
-      vr: (Math.random() - 0.5) * 0.35,
-      color: colors[i % colors.length],
-      life: 1,
-      decay: 0.014 + Math.random() * 0.012,
-      tri: Math.random() > 0.4,
+      size: 3 + Math.random() * 9, rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.35, color: colors[i % colors.length],
+      life: 1, decay: 0.014 + Math.random() * 0.012, tri: Math.random() > 0.4,
     });
   }
   runFx();
@@ -530,17 +956,11 @@ function confetti() {
   const colors = ["#ff5c5c", "#f5b942", "#3ecf8e", "#5aa9ff", "#c792ea", "#fff"];
   for (let i = 0; i < 140; i++) {
     particles.push({
-      x: Math.random() * innerWidth,
-      y: -20 - Math.random() * innerHeight * 0.4,
-      vx: (Math.random() - 0.5) * 3,
-      vy: 2.5 + Math.random() * 4,
-      size: 4 + Math.random() * 7,
-      rot: Math.random() * Math.PI,
-      vr: (Math.random() - 0.5) * 0.3,
-      color: colors[i % colors.length],
-      life: 1,
-      decay: 0.004 + Math.random() * 0.005,
-      tri: Math.random() > 0.5,
+      x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.4,
+      vx: (Math.random() - 0.5) * 3, vy: 2.5 + Math.random() * 4,
+      size: 4 + Math.random() * 7, rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3, color: colors[i % colors.length],
+      life: 1, decay: 0.004 + Math.random() * 0.005, tri: Math.random() > 0.5,
     });
   }
   runFx();
@@ -584,13 +1004,28 @@ async function loadExpressions() {
 }
 async function saveDay(date) {
   const d = dayData[date] || { tasks: {} };
-  const count = ROUTINES.filter(r => d.tasks[r.k]).length;
-  d.completedCount = count;
+  d.completedCount = ROUTINES.filter(r => d.tasks[r.k]).length;
   d.total = ROUTINES.length;
   await db.collection(COL_DAYS).doc(date).set({
     ...d, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 }
+function saveExpr(id, patch) {
+  return db.collection(COL_EXPR).doc(id).set(patch, { merge: true })
+    .catch(err => { console.error(err); toast("저장 실패 — 연결을 확인해주세요"); });
+}
+
+// ═══════════════ TABS ═══════════════
+function setTab(name) {
+  activeTab = name;
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + name));
+  document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  if (name === "stats") renderCalendar();
+}
+document.querySelectorAll("nav.tabs button").forEach(b => {
+  b.addEventListener("click", () => setTab(b.dataset.tab));
+});
 
 // ═══════════════ RENDER: HEADER & QUOTE ═══════════════
 function renderHeader() {
@@ -626,8 +1061,8 @@ function renderRoutines() {
     card.innerHTML = `
       <div class="r-icon">${r.icon}</div>
       <div class="r-body">
-        <div class="r-name">${r.name}</div>
-        <div class="r-time">${r.time}</div>
+        <div class="r-name">${esc(r.name)}</div>
+        <div class="r-time">${esc(r.time)}</div>
         ${wordsHtml}
       </div>
       <div class="r-check">✓</div>`;
@@ -657,8 +1092,7 @@ async function toggleRoutine(key, card) {
   card.classList.add("done");
   setTimeout(() => { renderRoutines(); renderCalendar(); renderStreak(); }, 350);
 
-  const count = ROUTINES.filter(r => d.tasks[r.k]).length;
-  if (count === ROUTINES.length) {
+  if (ROUTINES.filter(r => d.tasks[r.k]).length === ROUTINES.length) {
     setTimeout(() => {
       confetti();
       haptic([80, 60, 120]);
@@ -681,8 +1115,8 @@ function dayStatus(iso) {
   const d = dayData[iso];
   if (!d || !d.tasks) return 0;
   const n = ROUTINES.filter(r => d.tasks[r.k]).length;
-  if (n >= ROUTINES.length) return 2; // full
-  if (n >= 1) return 1;               // partial
+  if (n >= ROUTINES.length) return 2;
+  if (n >= 1) return 1;
   return 0;
 }
 function renderStreak() {
@@ -694,7 +1128,6 @@ function renderStreak() {
 
 // ═══════════════ RENDER: CALENDAR ═══════════════
 function circlePath(cx, cy, rx, ry, rand) {
-  // hand-drawn wobbly ellipse
   const pts = [];
   const n = 14;
   for (let i = 0; i <= n; i++) {
@@ -718,8 +1151,7 @@ function renderCalendar() {
   grid.innerHTML = ["일", "월", "화", "수", "목", "금", "토"]
     .map(d => `<div class="cal-dow">${d}</div>`).join("");
 
-  const first = new Date(y, m, 1);
-  const startDow = first.getDay();
+  const startDow = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   let full = 0, part = 0;
 
@@ -728,7 +1160,6 @@ function renderCalendar() {
     const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const st = dayStatus(iso);
     if (st === 2) full++; else if (st === 1) part++;
-    const isToday = iso === today;
     let mark = "";
     if (st > 0) {
       const rand = seedRand(iso);
@@ -740,128 +1171,413 @@ function renderCalendar() {
         transform="rotate(${(rand() * 20 - 10).toFixed(0)} 50 50)"/></svg>`;
     }
     grid.insertAdjacentHTML("beforeend",
-      `<div class="cal-cell${isToday ? " today" : ""}"><span class="d">${day}</span>${mark}</div>`);
+      `<div class="cal-cell${iso === today ? " today" : ""}"><span class="d">${day}</span>${mark}</div>`);
   }
   document.getElementById("stFull").textContent = full;
   document.getElementById("stPart").textContent = part;
   const now = manilaNow();
   const elapsed = (y === now.getFullYear() && m === now.getMonth()) ? now.getDate() : daysInMonth;
   document.getElementById("stRate").textContent = Math.round((full + part * 0.5) / elapsed * 100) + "%";
+
+  document.getElementById("stTotal").textContent = expressions.length;
+  document.getElementById("stStudied").textContent = expressions.filter(isStudied).length;
+  document.getElementById("stGrad").textContent = expressions.filter(isGraduated).length;
 }
 document.getElementById("calPrev").onclick = () => { calCursor.setMonth(calCursor.getMonth() - 1); renderCalendar(); };
 document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCursor.getMonth() + 1); renderCalendar(); };
 
-// ═══════════════ RENDER: REVIEW (SPACED REPETITION) ═══════════════
-function esc(s) {
-  return String(s || "").replace(/[&<>"']/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// ═══════════════ 표현 카드 — 모든 화면이 같은 규격을 쓴다 ═══════════════
+// 뒷면 블록 순서 고정: 뜻 → 예문(리듬) → 이럴 때 → 덩어리 → 내 문장 → 진도 → 액션
+// 데이터가 없는 블록만 빠지고, 순서와 라벨은 절대 바뀌지 않는다.
+function exprCard(e, mode, dir) {
+  const p = parseContext(e);
+  const src = srcOf(e);
+  const stage = e.stage || 0;
+  const card = document.createElement("div");
+  card.className = "fc";
+  card.dataset.id = e.id;
+
+  // 한→영은 프롬프트로 쓸 한글(또는 상황)이 있을 때만. 없으면 영→한으로 내려간다.
+  const pr = promptFor(e, p);
+  const recall = dir === "ko2en" && pr.ok;
+
+  const slot = slotLabel(e.slot);
+  let html = `
+    <div class="fc-top">
+      <span class="badge ${src.cls}">${src.label}</span>
+      ${slot ? `<span class="badge slot">${esc(slot)}</span>` : ""}
+      <span class="badge date">${esc(relDate(e.learnedDate))}</span>
+    </div>`;
+
+  if (recall) {
+    html += `
+      <div class="prompt-l">${esc(pr.label)}<span class="wc">${wordCount(e.expression)}단어</span></div>
+      <div class="expr ko${pr.tag ? " tagmode" : ""}">${esc(pr.text)}</div>
+      <div class="hintrow"><button class="hint-btn">힌트</button><span class="hint-txt"></span></div>
+      <div class="tap-hint">입으로 먼저 말해보고 → 탭해서 정답 비교</div>
+      <div class="back">
+        <div class="blk blk-answer"><div class="blk-l">정답</div>
+          <div class="expr-row">
+            <div class="expr">${underlineKey(e.expression, p.chunks)}</div>
+            <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
+          </div>
+          ${keyRange(e.expression, p.chunks) ? `<div class="legend">밑줄이 핵심입니다. 이것만 그대로 나왔으면 「알아」 — 나머지 어순은 달라도 됩니다.</div>` : ""}
+        </div>`;
+  } else {
+    html += `
+      <div class="expr-row">
+        <div class="expr">${underlineKey(e.expression, p.chunks)}</div>
+        <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
+      </div>
+      <div class="tap-hint">${mode === "review"
+        ? "탭해서 뜻 확인 → 소리 내어 3번 말하기"
+        : "탭해서 자세히 보기"}</div>
+      <div class="back">`;
+  }
+
+  // 1. 뜻 (한→영이면 이미 앞면에 썼으므로 생략)
+  if (e.meaning && !(recall && !pr.tag)) {
+    html += `<div class="blk"><div class="blk-l">뜻</div>
+      <div class="blk-mean">${esc(e.meaning)}</div></div>`;
+  }
+  // 2. 예문 (리듬 마크업 렌더)
+  if (p.example) {
+    const rhythm = hasRhythm(p.example);
+    html += `<div class="blk"><div class="blk-l">예문${rhythm ? " · 리듬" : ""}</div>
+      <div class="blk-ex"><span>${rhythmHtml(p.example)}</span>
+      <button class="spk sm" data-say="${esc(p.example)}" title="듣기">🔊</button></div>
+      ${rhythm ? `<div class="legend">굵게 = 강세 · <i style="font-style:normal;color:#394054">|</i> = 끊어 읽기 · → 유지 · ↘↓ 내려서 · ↗ 올려서</div>` : ""}
+      </div>`;
+  }
+  // 3. 이럴 때 (한→영에서 상황을 프롬프트로 썼으면 생략)
+  if (p.tags.length && !(recall && pr.tag)) {
+    html += `<div class="blk"><div class="blk-l">이럴 때</div>
+      <div class="chips">${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join("")}</div></div>`;
+  }
+  // 4. 덩어리 (통째로 외울 조각 — 탭하면 들린다)
+  if (p.chunks.length) {
+    html += `<div class="blk"><div class="blk-l">덩어리로 외우기</div>
+      <div class="chips">${p.chunks.map(c =>
+        `<span class="chip" data-say="${esc(c)}">${esc(c)}</span>`).join("")}</div></div>`;
+  }
+  // 5. 내 문장 — 모든 카드에 항상 있는 블록
+  html += `<div class="blk"><div class="blk-l">내 문장</div>`;
+  if (e.myLine) {
+    html += `<div class="myline-saved"><span>${esc(e.myLine)}</span>
+      <button class="spk sm" data-say="${esc(e.myLine)}" title="듣기">🔊</button></div>
+      <div class="legend" style="cursor:pointer" data-edit="1">고쳐 쓰기</div>`;
+  } else {
+    html += `<div class="myline-row">
+      <input class="ml-in" placeholder="이 표현으로 내 상황 문장 하나">
+      <button class="save">저장</button></div>`;
+  }
+  html += `</div>`;
+
+  // 6. 진도
+  const dots = INTERVALS.map((_, i) => `<i class="${i < stage ? "on" : ""}"></i>`).join("");
+  let nextTxt;
+  if (!isStudied(e)) nextTxt = "아직 복습 시작 전";
+  else if (isGraduated(e)) nextTxt = "졸업 🏆";
+  else {
+    const d = daysBetween(today, e.nextReview || today);
+    nextTxt = d <= 0 ? "오늘 복습" : `${d}일 뒤 (${e.nextReview})`;
+  }
+  html += `<div class="blk"><div class="blk-l">진도</div>
+    <div class="prog-row"><div class="stage-dots">${dots}</div>
+    <div class="prog-next">${esc(nextTxt)}</div></div></div>`;
+
+  // 7. 액션
+  if (mode === "review") {
+    html += `<div class="fc-btns">
+      <button class="btn-again">몰라<small>1단계로</small></button>
+      <button class="btn-hard">애매<small>내일 다시</small></button>
+      <button class="btn-good">알아<small>다음 단계</small></button>
+    </div>`;
+  } else if (mode === "new") {
+    html += `<button class="btn-study">✓ 학습 완료 — 복습 주기에 넣기</button>`;
+  } else if (isGraduated(e)) {
+    html += `<button class="btn-reopen">↺ 복습 큐에 다시 넣기</button>`;
+  }
+
+  html += `</div>`;
+  card.innerHTML = html;
+
+  // ── events ──
+  card.addEventListener("click", ev => {
+    if (ev.target.closest("button") || ev.target.closest("[data-say]") ||
+        ev.target.closest("input") || ev.target.closest("[data-edit]")) return;
+    card.classList.toggle("open");
+  });
+  card.querySelectorAll("[data-say]").forEach(el => {
+    el.addEventListener("click", ev => { ev.stopPropagation(); speak(el.dataset.say, el); });
+  });
+  const hintBtn = card.querySelector(".hint-btn");
+  if (hintBtn) {
+    const levels = hintLevels(e.expression, p.chunks);
+    let lv = 0;
+    hintBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (lv >= levels.length) return;
+      const txt = card.querySelector(".hint-txt");
+      txt.innerHTML = `<em>${esc(levels[lv].label)}</em> ${esc(levels[lv].text)}`;
+      lv++;
+      if (lv >= levels.length) hintBtn.style.display = "none";
+      else hintBtn.textContent = "힌트 더";
+    });
+  }
+  const mlIn = card.querySelector(".ml-in");
+  if (mlIn) {
+    const doSave = async () => {
+      const v = mlIn.value.trim();
+      if (!v) { toast("문장을 입력해주세요"); return; }
+      e.myLine = v;
+      await saveExpr(e.id, { myLine: v });
+      toast("내 문장 저장 완료");
+      rerenderActive();
+    };
+    card.querySelector(".myline-row .save").addEventListener("click", ev => { ev.stopPropagation(); doSave(); });
+    mlIn.addEventListener("keydown", ev => { if (ev.key === "Enter") doSave(); });
+  }
+  const editEl = card.querySelector("[data-edit]");
+  if (editEl) {
+    editEl.addEventListener("click", async ev => {
+      ev.stopPropagation();
+      const v = prompt("내 문장 고치기", e.myLine || "");
+      if (v === null) return;
+      e.myLine = v.trim();
+      await saveExpr(e.id, { myLine: e.myLine });
+      rerenderActive();
+    });
+  }
+  const btnStudy = card.querySelector(".btn-study");
+  if (btnStudy) btnStudy.addEventListener("click", ev => { ev.stopPropagation(); markStudied(e, card); });
+  const btnReopen = card.querySelector(".btn-reopen");
+  if (btnReopen) btnReopen.addEventListener("click", async ev => {
+    ev.stopPropagation();
+    e.stage = 0; e.nextReview = addDays(today, 1);
+    await saveExpr(e.id, { stage: 0, nextReview: e.nextReview });
+    toast("내일부터 다시 복습합니다");
+    rerenderActive();
+  });
+  ["again", "hard", "good"].forEach(k => {
+    const b = card.querySelector(".btn-" + k);
+    if (b) b.addEventListener("click", ev => { ev.stopPropagation(); grade(e, k, card); });
+  });
+  return card;
 }
-function srcLabel(e) {
-  if (e.source === "hermes-wanted") return `<div class="src wanted">막힌 표현 · ${esc(e.learnedDate)}</div>`;
-  if (e.source === "hermes-delivered") return `<div class="src delivered">봇 배달 · ${esc(e.learnedDate)}</div>`;
-  return `<div class="src manual">직접 추가 · ${esc(e.learnedDate)}</div>`;
+
+function fadeOut(card, after) {
+  card.style.opacity = "0";
+  card.style.transform = "translateX(40px)";
+  setTimeout(after, 280);
+}
+
+// ═══════════════ 배울 표현 (아직 학습 체크 안 한 것) ═══════════════
+function newItems() {
+  return expressions
+    .filter(e => !isStudied(e))
+    .sort((a, b) => (a.learnedDate || "") < (b.learnedDate || "") ? 1 : -1);
+}
+async function markStudied(e, card) {
+  e.studied = true;
+  e.studiedAt = today;
+  e.stage = 0;
+  e.nextReview = addDays(today, INTERVALS[0]);
+  crackSound(); haptic(40);
+  if (card) fadeOut(card, () => { renderNew(); renderDue(); renderDist(); updateDots(); });
+  else { renderNew(); renderDue(); renderDist(); updateDots(); }
+  toast("내일 첫 복습에서 만납니다");
+  await saveExpr(e.id, { studied: true, studiedAt: today, stage: 0, nextReview: e.nextReview });
+}
+function renderNew() {
+  const items = newItems();
+  const box = document.getElementById("newList");
+  if (!items.length) {
+    box.innerHTML = `<div class="empty"><b>배울 표현을 전부 처리했습니다.</b><br>봇이 새로 보내면 여기에 나타납니다.</div>`;
+    document.getElementById("clearOld").style.display = "none";
+    return;
+  }
+  document.getElementById("clearOld").style.display =
+    items.some(e => (e.learnedDate || "") < today) ? "" : "none";
+  box.innerHTML = "";
+  let lastDate = null;
+  for (const e of items.slice(0, newShown)) {
+    if (e.learnedDate !== lastDate) {
+      lastDate = e.learnedDate;
+      const c = items.filter(x => x.learnedDate === lastDate).length;
+      box.insertAdjacentHTML("beforeend",
+        `<div class="date-sep">${esc(relDate(lastDate))} · ${c}개</div>`);
+    }
+    box.appendChild(exprCard(e, "new", "en2ko"));
+  }
+  if (items.length > newShown) {
+    const b = document.createElement("button");
+    b.className = "more-btn";
+    b.textContent = `더 보기 (${items.length - newShown}개 남음)`;
+    b.onclick = () => { newShown += 12; renderNew(); };
+    box.appendChild(b);
+  }
+}
+document.getElementById("clearOld").addEventListener("click", async () => {
+  const old = newItems().filter(e => (e.learnedDate || "") < today);
+  if (!old.length) return;
+  if (!confirm(`오늘 이전에 들어온 표현 ${old.length}개를 학습 완료로 처리할까요?\n내일부터 복습 주기에 들어갑니다.`)) return;
+  const nr = addDays(today, INTERVALS[0]);
+  const batch = db.batch();
+  old.forEach(e => {
+    e.studied = true; e.studiedAt = today; e.stage = 0; e.nextReview = nr;
+    batch.set(db.collection(COL_EXPR).doc(e.id),
+      { studied: true, studiedAt: today, stage: 0, nextReview: nr }, { merge: true });
+  });
+  newShown = 12;
+  renderNew(); renderDue(); renderDist(); updateDots();
+  try { await batch.commit(); toast(`${old.length}개 정리 완료`); }
+  catch (err) { console.error(err); toast("저장 실패 — 새로고침 해주세요"); }
+});
+
+// ═══════════════ 복습 큐 ═══════════════
+function dueItems() {
+  return expressions
+    .filter(e => isStudied(e) && !isGraduated(e) && e.nextReview && e.nextReview <= today)
+    .sort((a, b) => (a.nextReview < b.nextReview ? -1 : 1));
 }
 function renderDue() {
-  const due = expressions
-    .filter(e => e.nextReview && e.nextReview <= today && (e.stage || 0) < INTERVALS.length)
-    .sort((a, b) => (a.nextReview < b.nextReview ? -1 : 1))
-    .slice(0, 20);
+  const due = dueItems();
   const box = document.getElementById("dueList");
   document.getElementById("dueCount").textContent = due.length ? `${due.length}개 대기 중` : "";
   if (!due.length) {
-    box.innerHTML = `<div class="empty"><b>오늘 복습할 표현이 없습니다.</b><br>깨끗하게 끝!</div>`;
+    const n = newItems().length;
+    box.innerHTML = `<div class="empty"><b>오늘 복습할 표현이 없습니다.</b><br>` +
+      (n ? `「오늘」 탭에 배울 표현 ${n}개가 기다립니다.` : `깨끗하게 끝!`) + `</div>`;
     return;
   }
   box.innerHTML = "";
-  for (const e of due) {
-    const stage = e.stage || 0;
-    const dots = INTERVALS.map((_, i) => `<i class="${i < stage ? "on" : ""}"></i>`).join("");
-    const card = document.createElement("div");
-    card.className = "fc";
-    card.innerHTML = `
-      ${srcLabel(e)}
-      <div class="expr">${esc(e.expression)}</div>
-      <div class="tap-hint">탭해서 뜻 확인 → 소리 내어 3번 말하기</div>
-      <div class="hidden-area">
-        <div class="meaning">${esc(e.meaning || "—")}</div>
-        ${e.context ? `<div class="ctx">${esc(e.context)}</div>` : ""}
-        <div class="stage-dots">${dots}</div>
-        <div class="fc-btns">
-          <button class="btn-again">🤔 가물가물</button>
-          <button class="btn-ok">✅ 기억남</button>
-        </div>
-      </div>`;
-    card.addEventListener("click", ev => {
-      if (ev.target.tagName === "BUTTON") return;
-      card.classList.toggle("open");
-    });
-    card.querySelector(".btn-ok").onclick = () => gradeExpression(e, true, card);
-    card.querySelector(".btn-again").onclick = () => gradeExpression(e, false, card);
-    box.appendChild(card);
+  due.slice(0, 20).forEach(e => box.appendChild(exprCard(e, "review", revDir)));
+  if (due.length > 20) {
+    box.insertAdjacentHTML("beforeend",
+      `<div class="empty" style="margin-top:4px">나머지 ${due.length - 20}개는 위를 처리하면 이어서 나옵니다.</div>`);
   }
 }
-async function gradeExpression(e, ok, card) {
+async function grade(e, kind, card) {
   let stage = e.stage || 0;
-  let nextReview;
-  if (ok) {
+  let next;
+  if (kind === "good") {
     stage = Math.min(stage + 1, INTERVALS.length);
-    nextReview = stage >= INTERVALS.length ? "9999-12-31" : addDays(today, INTERVALS[stage]);
+    next = stage >= INTERVALS.length ? GRADUATED : addDays(today, INTERVALS[stage]);
+  } else if (kind === "hard") {
+    next = addDays(today, 1);
   } else {
-    stage = Math.max(0, stage - 1);
-    nextReview = addDays(today, 1);
+    stage = 0;
+    next = addDays(today, 1);
   }
-  e.stage = stage; e.nextReview = nextReview;
-  card.style.transition = "all .3s"; card.style.opacity = "0"; card.style.transform = "translateX(40px)";
-  setTimeout(() => renderDue(), 300);
-  if (ok && stage >= INTERVALS.length) toast("🏆 완전 습득! 이 표현은 졸업했습니다");
-  else toast(ok ? `다음 복습: ${nextReview}` : "내일 다시 만나요");
-  await db.collection(COL_EXPR).doc(e.id).set({ stage, nextReview }, { merge: true });
+  e.stage = stage; e.nextReview = next;
+  haptic(kind === "good" ? 40 : 25);
+  fadeOut(card, () => { renderDue(); renderDist(); updateDots(); });
+  if (kind === "good" && stage >= INTERVALS.length) toast("🏆 완전 습득! 이 표현은 졸업했습니다");
+  else if (kind === "good") toast(`${INTERVALS[stage]}일 뒤 다시 (${next})`);
+  else if (kind === "hard") toast("단계 유지 · 내일 다시");
+  else toast("1단계로 리셋 · 내일 처음부터");
+  await saveExpr(e.id, { stage, nextReview: next });
 }
 
-// ═══════════════ RENDER: TODAY LEARNED ═══════════════
-function renderToday() {
-  const items = expressions.filter(e => e.learnedDate === today && e.source !== "manual");
-  const box = document.getElementById("todayList");
-  if (!items.length) {
-    box.innerHTML = `<div class="empty">아직 오늘 동기화된 표현이 없습니다.<br><b>봇</b>이 보내주면 자동으로 나타납니다.</div>`;
-    return;
-  }
-  box.innerHTML = items.map(e => `
-    <div class="bank-item">
-      <div class="top"><div class="e">${esc(e.expression)}</div>
-      <div class="d">${e.source === "hermes-wanted" ? "🔴 막힌 표현" : (e.slot === "10AM" ? "📬 10시 단어" : "🔵 표현")}</div></div>
-      <div class="m">${esc(e.meaning || e.context || "")}</div>
+// ═══════════════ 단계별 현황 ═══════════════
+function renderDist() {
+  const rows = [
+    ["미학습", expressions.filter(e => !isStudied(e)).length],
+    ["1단계", expressions.filter(e => isStudied(e) && (e.stage || 0) === 0).length],
+    ["2단계", expressions.filter(e => (e.stage || 0) === 1).length],
+    ["3단계", expressions.filter(e => (e.stage || 0) === 2).length],
+    ["4단계", expressions.filter(e => (e.stage || 0) === 3).length],
+    ["5단계", expressions.filter(e => (e.stage || 0) === 4).length],
+    ["6단계", expressions.filter(e => (e.stage || 0) === 5).length],
+    ["졸업", expressions.filter(isGraduated).length],
+  ];
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  document.getElementById("distTotal").textContent = `총 ${expressions.length}개`;
+  document.getElementById("dist").innerHTML = rows.map(([lb, n]) => `
+    <div class="dist-row">
+      <div class="lb">${lb}</div>
+      <div class="tr"><div class="bf" style="width:${(n / max * 100).toFixed(1)}%"></div></div>
+      <div class="vn">${n}</div>
     </div>`).join("");
 }
 
-// ═══════════════ RENDER: BANK ═══════════════
+// ═══════════════ 표현 전체 (라이브러리) ═══════════════
+const FILTERS = [
+  { k: "all",       label: "전체" },
+  { k: "wanted",    label: "막힌 표현" },
+  { k: "delivered", label: "봇 배달" },
+  { k: "manual",    label: "직접 추가" },
+  { k: "new",       label: "미학습" },
+  { k: "grad",      label: "졸업" },
+];
+function renderFilters() {
+  document.getElementById("filters").innerHTML = FILTERS.map(f =>
+    `<button data-f="${f.k}" class="${bankFilter === f.k ? "on" : ""}">${f.label}</button>`).join("");
+  document.querySelectorAll("#filters button").forEach(b => {
+    b.onclick = () => { bankFilter = b.dataset.f; bankShown = 30; renderFilters(); renderBank(); };
+  });
+}
 function renderBank() {
   const q = document.getElementById("bankSearch").value.trim().toLowerCase();
   let items = expressions;
+  if (bankFilter === "wanted") items = items.filter(e => e.source === "hermes-wanted");
+  else if (bankFilter === "delivered") items = items.filter(e => e.source === "hermes-delivered");
+  else if (bankFilter === "manual") items = items.filter(e => e.source === "manual");
+  else if (bankFilter === "new") items = items.filter(e => !isStudied(e));
+  else if (bankFilter === "grad") items = items.filter(isGraduated);
   if (q) items = items.filter(e =>
     (e.expression || "").toLowerCase().includes(q) ||
     (e.meaning || "").toLowerCase().includes(q) ||
-    (e.context || "").toLowerCase().includes(q));
-  document.getElementById("bankCount").textContent = `총 ${expressions.length}개`;
+    (e.context || "").toLowerCase().includes(q) ||
+    (e.myLine || "").toLowerCase().includes(q));
+
+  document.getElementById("bankCount").textContent = `${items.length} / ${expressions.length}개`;
   const box = document.getElementById("bankList");
-  const shown = items.slice(0, bankShown);
-  if (!shown.length) {
-    box.innerHTML = `<div class="empty">표현이 없습니다.</div>`;
+  box.innerHTML = "";
+  if (!items.length) {
+    box.innerHTML = `<div class="empty">해당하는 표현이 없습니다.</div>`;
     return;
   }
-  box.innerHTML = shown.map(e => `
-    <div class="bank-item">
-      <div class="top"><div class="e">${esc(e.expression)}</div><div class="d">${esc(e.learnedDate || "")}</div></div>
-      <div class="m">${esc(e.meaning || e.context || "")}</div>
-    </div>`).join("");
+  items.slice(0, bankShown).forEach(e => box.appendChild(exprCard(e, "browse", "en2ko")));
   if (items.length > bankShown) {
-    box.insertAdjacentHTML("beforeend",
-      `<button class="more-btn" onclick="bankShown+=30;renderBank()">더 보기 (${items.length - bankShown}개 남음)</button>`);
+    const b = document.createElement("button");
+    b.className = "more-btn";
+    b.textContent = `더 보기 (${items.length - bankShown}개 남음)`;
+    b.onclick = () => { bankShown += 30; renderBank(); };
+    box.appendChild(b);
   }
 }
 document.getElementById("bankSearch").addEventListener("input", () => { bankShown = 30; renderBank(); });
 
-// ═══════════════ MANUAL ADD ═══════════════
+// ═══════════════ 탭 배지 ═══════════════
+function updateDots() {
+  const n = newItems().length, d = dueItems().length;
+  const dn = document.getElementById("dotNew"), dd = document.getElementById("dotDue");
+  dn.textContent = n > 99 ? "99+" : n; dn.classList.toggle("show", n > 0);
+  dd.textContent = d > 99 ? "99+" : d; dd.classList.toggle("show", d > 0);
+}
+function rerenderActive() {
+  renderNew(); renderDue(); renderDist(); renderBank(); updateDots();
+}
+
+// ═══════════════ 복습 방향 토글 ═══════════════
+function paintDir() {
+  document.querySelectorAll("#dirSeg button").forEach(b =>
+    b.classList.toggle("on", b.dataset.d === revDir));
+}
+document.querySelectorAll("#dirSeg button").forEach(b => {
+  b.addEventListener("click", () => {
+    revDir = b.dataset.d;
+    localStorage.setItem("et_dir", revDir);
+    paintDir();
+    renderDue();
+    toast(revDir === "ko2en" ? "한→영 · 입으로 꺼내기" : "영→한 · 눈으로 익히기");
+  });
+});
+paintDir();
+
+// ═══════════════ 직접 추가 ═══════════════
 const modalBg = document.getElementById("modalBg");
 document.getElementById("addBtn").onclick = () => { modalBg.classList.add("show"); document.getElementById("mExpr").focus(); };
 document.getElementById("mCancel").onclick = () => modalBg.classList.remove("show");
@@ -873,17 +1589,41 @@ document.getElementById("mSave").onclick = async () => {
   if (!expr) { toast("표현을 입력해주세요"); return; }
   const doc = {
     expression: expr, meaning: mean, context: ctx,
-    source: "manual", learnedDate: today,
-    stage: 0, nextReview: addDays(today, 1),
+    source: "manual", slot: "", learnedDate: today,
+    studied: true, studiedAt: today,
+    stage: 0, nextReview: addDays(today, INTERVALS[0]),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
   };
-  const ref = await db.collection(COL_EXPR).add(doc);
-  expressions.unshift({ id: ref.id, ...doc });
-  ["mExpr", "mMean", "mCtx"].forEach(id => document.getElementById(id).value = "");
-  modalBg.classList.remove("show");
-  toast("저장 완료 — 내일부터 복습에 나옵니다");
-  renderBank(); renderDue();
+  try {
+    const ref = await db.collection(COL_EXPR).add(doc);
+    expressions.unshift({ id: ref.id, ...doc });
+    ["mExpr", "mMean", "mCtx"].forEach(id => document.getElementById(id).value = "");
+    modalBg.classList.remove("show");
+    toast("저장 완료 — 내일부터 복습에 나옵니다");
+    rerenderActive();
+  } catch (err) { console.error(err); toast("저장 실패 — 연결을 확인해주세요"); }
 };
+
+// ═══════════════ 설정 ═══════════════
+const sndBtn = document.getElementById("sndBtn");
+function paintSnd() { sndBtn.textContent = soundOn ? "켜짐" : "꺼짐"; sndBtn.classList.toggle("on", soundOn); }
+sndBtn.onclick = () => { soundOn = !soundOn; localStorage.setItem("et_sound", soundOn ? "1" : "0"); paintSnd(); };
+paintSnd();
+
+const RATES = [[0.7, "느리게"], [0.9, "보통"], [1.1, "빠르게"]];
+const rateBtn = document.getElementById("rateBtn");
+function paintRate() {
+  const r = RATES.find(x => Math.abs(x[0] - speakRate) < 0.01) || RATES[1];
+  rateBtn.textContent = r[1];
+}
+rateBtn.onclick = () => {
+  const i = RATES.findIndex(x => Math.abs(x[0] - speakRate) < 0.01);
+  speakRate = RATES[(i + 1) % RATES.length][0];
+  localStorage.setItem("et_rate", String(speakRate));
+  paintRate();
+  speak("This is how fast I will speak.", rateBtn);
+};
+paintRate();
 
 // ═══════════════ INIT ═══════════════
 async function init() {
@@ -897,18 +1637,17 @@ async function init() {
   renderRoutines();
   renderStreak();
   renderCalendar();
+  renderFilters();
+  renderNew();
   renderDue();
-  renderToday();
+  renderDist();
   renderBank();
+  updateDots();
 }
+
 // ═══════════════ AUTH ═══════════════
 // 화면에 로그인은 없다. 앱이 열릴 때 익명 계정으로 조용히 로그인한다.
-// 목적은 Patrick을 막는 게 아니라, 유출된 apiKey를 긁어가는 자동 스캐너가
-// 인증 없이 Firestore를 읽고 지우는 것을 막는 것이다.
-auth.onAuthStateChanged(user => {
-  if (user) init();
-});
-
+auth.onAuthStateChanged(user => { if (user) init(); });
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
   .then(() => auth.signInAnonymously())
   .catch(err => {
@@ -916,10 +1655,10 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     toast("연결에 실패했습니다 — 새로고침 해주세요");
   });
 
-// refresh date if app stays open across midnight
+// 자정을 넘겨도 켜져 있으면 날짜 갱신
 setInterval(() => {
   const t = manilaDate();
-  if (t !== today && auth.currentUser) { today = t; init(); }
+  if (t !== today && auth.currentUser) { today = t; newShown = 12; init(); }
 }, 60000);
 </script>
 </body>

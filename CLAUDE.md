@@ -75,11 +75,25 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 - **힌트**: 첫 글자 골격(`L__ m_ …`) 방식은 Patrick이 거부했다. 실제 영어 조각을 단계로 준다 —
   ① 핵심 표현(=밑줄과 동일) ② 문장 앞 절반. 4단어 이하는 1단계뿐.
 - **「내 문장」 입력을 다시 넣지 말 것.** 한 번 넣었다가 Patrick이 부담된다고 해서 뺐다 (표현마다 작문은 시간이 너무 걸린다).
-- **TTS**: Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. 속도는 `localStorage.et_rate`.
-  Supertonic 3(`02_projects/video-automation/supertonic/`)로 바꾸는 안은 검토 후 보류했다 —
-  모델이 398MB라 브라우저 실행이 불가하고(`vector_estimator.onnx` 256MB > GitHub 파일 100MB 제한),
-  이 앱은 영어만 읽는데 iOS 기본 영어 음성이 이미 충분하다. Supertonic의 강점인 한국어는 여기서 쓸 일이 없다.
-  굳이 한다면 VPS에서 미리 mp3를 만들어 저장소에 커밋하는 방식뿐이다.
+## TTS
+
+Web Speech API(브라우저·OS 내장). 표현·예문·덩어리에 🔊. Patrick 기기는 맥북·아이폰·아이패드 전부 Apple.
+
+**음성 선택 규칙 (중요).** `voiceScore()`가 Premium > Enhanced > Natural > Google > 기타 순으로 점수를 매긴다.
+`Samantha`·`Alex`를 우선하도록 짰던 초기 버전이 기계음의 원인이었다 — **이 둘은 구형 compact 음성이다.
+다시 이름으로 하드코딩하지 말 것.** `NOVELTY_VOICE`로 Zarvox·Bahh·Grandma 같은 장난 음성은 목록에서 제외한다.
+
+설정에 음성 선택기(`#voiceSel`)가 있고 선택은 `localStorage.et_voice`(voiceURI)에 저장된다.
+기기마다 설치된 음성이 다르므로 이름이 아니라 voiceURI로 저장한다.
+
+Premium/Enhanced/Natural이 하나도 없으면 `#voiceNote`에 다운로드 안내가 뜬다
+(Mac: 시스템 설정 → 손쉬운 사용 → 읽어주기 → 음성 관리 / iOS: 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성).
+2026-08-07 기준 집 맥북에는 프리미엄 음성이 하나도 설치돼 있지 않았다.
+
+**Supertonic 3는 검토 후 보류.** (`02_projects/video-automation/supertonic/`)
+모델 합계 398MB라 브라우저 실행 불가 — `vector_estimator.onnx` 하나가 256MB로 GitHub 파일당 100MB 제한을 넘어
+Pages에 올릴 수조차 없다. 게다가 이 앱은 영어만 읽는데 Supertonic의 강점은 한국어다.
+굳이 한다면 VPS에서 미리 mp3를 만들어 저장소에 커밋하는 방식뿐이다.
 
 ## 게임 탭
 

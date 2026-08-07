@@ -473,6 +473,21 @@
     cursor: pointer; font-family: inherit;
   }
   .setting-row button.on { background: rgba(62,207,142,.14); border-color: rgba(62,207,142,.3); color: var(--green); }
+  .setting-row select {
+    flex: 1; min-width: 0; margin-left: 10px;
+    background: var(--card2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 9px; padding: 7px 9px; font-size: 12.5px; font-weight: 700;
+    font-family: inherit; outline: none; -webkit-appearance: none; appearance: none;
+    text-overflow: ellipsis;
+  }
+  .setting-row #voiceTest { margin-left: 8px; }
+  .voice-note {
+    font-size: 11.5px; color: var(--sub); line-height: 1.65;
+    background: rgba(245,185,66,.06); border: 1px solid rgba(245,185,66,.18);
+    border-radius: 12px; padding: 11px 13px; margin: -2px 0 8px;
+  }
+  .voice-note b { color: #dbe0ec; }
+  .voice-note:empty { display: none; }
 </style>
 </head>
 <body>
@@ -534,6 +549,12 @@
     </div>
     <div class="setting-row">효과음 <button id="sndBtn">켜짐</button></div>
     <div class="setting-row">말하기 속도 <button id="rateBtn">보통</button></div>
+    <div class="setting-row">
+      <span style="flex-shrink:0">영어 음성</span>
+      <select id="voiceSel"></select>
+      <button class="spk sm" id="voiceTest" title="들어보기">🔊</button>
+    </div>
+    <div class="voice-note" id="voiceNote"></div>
 
     <div class="sync-note">
       막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다<br>
@@ -855,16 +876,44 @@ function underlineKey(expr, chunks) {
 
 // ═══════════════ TTS ═══════════════
 let voices = [];
-function loadVoices() { try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; } }
+function loadVoices() {
+  try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+  if (document.getElementById("voiceSel")) paintVoices();
+}
 if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+
+// macOS/iOS의 장난 음성들. 목록에서 아예 뺀다.
+const NOVELTY_VOICE = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Eddy|Flo|Fred|Good News|Grandma|Grandpa|Hysterical|Jester|Junior|Kathy|Organ|Pipe Organ|Princess|Ralph|Reed|Rocko|Sandy|Shelley|Superstar|Trinoids|Whisper|Wobble|Zarvox)\b/i;
+
+// Samantha·Alex 같은 구형 compact 음성은 기계음이 난다.
+// Apple Premium/Enhanced, Google, Microsoft Natural 계열을 우선한다.
+function voiceScore(v) {
+  const n = v.name;
+  let s = 0;
+  if (/premium/i.test(n)) s += 100;
+  else if (/enhanced/i.test(n)) s += 70;
+  if (/natural/i.test(n)) s += 60;
+  if (/Google US English/i.test(n)) s += 45;
+  else if (/^Google/i.test(n)) s += 25;
+  if (/\b(Ava|Zoe|Evan|Nathan|Joelle|Noelle|Serena|Allison|Susan|Tom|Nicky|Aaron)\b/i.test(n)) s += 30;
+  if (/en[-_]US/i.test(v.lang)) s += 15;
+  else if (/en[-_]GB/i.test(v.lang)) s += 6;
+  return s;
+}
+function enVoices() {
+  return voices
+    .filter(v => /^en[-_]/i.test(v.lang) && !NOVELTY_VOICE.test(v.name))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
 function pickVoice() {
-  const en = voices.filter(v => /^en[-_]/i.test(v.lang));
-  if (!en.length) return null;
-  for (const p of ["Google US English", "Samantha", "Alex", "Karen", "Daniel"]) {
-    const f = en.find(v => v.name.indexOf(p) >= 0);
+  const list = enVoices();
+  if (!list.length) return null;
+  const saved = localStorage.getItem("et_voice");
+  if (saved) {
+    const f = list.find(v => v.voiceURI === saved);
     if (f) return f;
   }
-  return en.find(v => /en[-_]US/i.test(v.lang)) || en[0];
+  return list[0];
 }
 function speak(text, btn) {
   const t = plain(text);
@@ -1849,6 +1898,7 @@ function paintSnd() { sndBtn.textContent = soundOn ? "켜짐" : "꺼짐"; sndBtn
 sndBtn.onclick = () => { soundOn = !soundOn; localStorage.setItem("et_sound", soundOn ? "1" : "0"); paintSnd(); };
 paintSnd();
 
+const VOICE_SAMPLE = "Let me know a day before if there's a viewing schedule.";
 const RATES = [[0.7, "느리게"], [0.9, "보통"], [1.1, "빠르게"]];
 const rateBtn = document.getElementById("rateBtn");
 function paintRate() {
@@ -1860,9 +1910,32 @@ rateBtn.onclick = () => {
   speakRate = RATES[(i + 1) % RATES.length][0];
   localStorage.setItem("et_rate", String(speakRate));
   paintRate();
-  speak("This is how fast I will speak.", rateBtn);
+  speak(VOICE_SAMPLE, rateBtn);
 };
 paintRate();
+
+function paintVoices() {
+  const sel = document.getElementById("voiceSel");
+  if (!sel) return;
+  const list = enVoices();
+  const cur = pickVoice();
+  sel.innerHTML = list.length
+    ? list.map(v => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? " selected" : ""}>${esc(v.name)}</option>`).join("")
+    : `<option>사용 가능한 영어 음성 없음</option>`;
+  // Premium/Enhanced/Natural 이 하나도 없으면 기계음이 날 수밖에 없다 — 받는 법을 안내한다.
+  const hasGood = list.some(v => /premium|enhanced|natural/i.test(v.name) || /^Google/i.test(v.name));
+  document.getElementById("voiceNote").innerHTML = hasGood ? "" :
+    `이 기기엔 기본(compact) 음성만 있어 기계음이 납니다. <b>Apple 프리미엄 음성</b>을 받으면 크게 달라집니다.<br>
+     · <b>Mac</b> — 시스템 설정 → 손쉬운 사용 → 읽어주기 → 시스템 음성 → 음성 관리 → 영어(미국) → <b>Ava(프리미엄)</b><br>
+     · <b>iPhone·iPad</b> — 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성 → 영어 → <b>Ava(프리미엄)</b><br>
+     받은 뒤 이 페이지를 새로고침하면 위 목록에 나타납니다.`;
+}
+document.getElementById("voiceSel").onchange = ev => {
+  localStorage.setItem("et_voice", ev.target.value);
+  speak(VOICE_SAMPLE, null);
+};
+document.getElementById("voiceTest").onclick = ev => speak(VOICE_SAMPLE, ev.currentTarget);
+paintVoices();
 
 // ═══════════════ INIT ═══════════════
 async function init() {

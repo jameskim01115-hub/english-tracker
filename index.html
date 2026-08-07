@@ -60,7 +60,7 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 22px 20px 18px;
-    margin-bottom: 4px;
+    margin: 24px 0 4px;
     position: relative;
     overflow: hidden;
   }
@@ -92,53 +92,35 @@
     background: linear-gradient(90deg, #ff5c5c, #f5b942); transition: width .5s cubic-bezier(.2,.8,.2,1); }
   .day-progress .num { font-size: 13px; font-weight: 800; color: var(--gold); min-width: 30px; text-align: right; }
 
-  /* ───── routine cards ───── */
-  .routines { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-  .r-card {
-    position: relative;
-    display: flex; align-items: center; gap: 14px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 16px 16px;
-    cursor: pointer;
-    user-select: none; -webkit-user-select: none;
-    transition: transform .12s ease, opacity .3s, border-color .3s;
-    overflow: visible;
+  /* ───── habit strip (컴팩트) ───── */
+  .routines { display: flex; gap: 7px; margin-top: 12px; }
+  .r-item {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
   }
-  .r-card:active { transform: scale(0.97); }
-  .r-icon {
-    width: 46px; height: 46px; border-radius: 14px;
+  .r-dot {
+    position: relative; width: 100%; aspect-ratio: 1;
+    border-radius: 17px; background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-size: 21px;
+    transition: transform .12s ease, background .25s, border-color .25s;
+  }
+  .r-item:active .r-dot { transform: scale(0.92); }
+  .r-item[data-k="podcast"]  .r-dot { background: linear-gradient(135deg,#3b2a17,#2a1d10); }
+  .r-item[data-k="words"]    .r-dot { background: linear-gradient(135deg,#17303b,#102028); }
+  .r-item[data-k="office"]   .r-dot { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
+  .r-item[data-k="review"]   .r-dot { background: linear-gradient(135deg,#1b3327,#12231b); }
+  .r-item[data-k="speaking"] .r-dot { background: linear-gradient(135deg,#2c1e3d,#1e1529); }
+  .r-lb { font-size: 10px; font-weight: 700; color: var(--sub); text-align: center; line-height: 1.25; }
+  .r-item.done .r-dot { border-color: rgba(62,207,142,.5); filter: grayscale(.5); opacity: .62; }
+  .r-item.done .r-dot::after {
+    content: "✓"; position: absolute; top: -4px; right: -4px;
+    width: 19px; height: 19px; border-radius: 999px;
+    background: var(--green); color: #08130d;
+    font-size: 11px; font-weight: 900;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
+    border: 2px solid var(--bg); filter: none;
   }
-  .r-card[data-k="podcast"]  .r-icon { background: linear-gradient(135deg,#3b2a17,#2a1d10); }
-  .r-card[data-k="words"]    .r-icon { background: linear-gradient(135deg,#17303b,#102028); }
-  .r-card[data-k="office"]   .r-icon { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
-  .r-card[data-k="review"]   .r-icon { background: linear-gradient(135deg,#1b3327,#12231b); }
-  .r-card[data-k="speaking"] .r-icon { background: linear-gradient(135deg,#2c1e3d,#1e1529); }
-  .r-body { flex: 1; min-width: 0; }
-  .r-name { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
-  .r-time { font-size: 11.5px; color: var(--sub); margin-top: 3px; }
-  .r-check {
-    width: 30px; height: 30px; border-radius: 999px;
-    border: 2px solid #333a4d;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; color: transparent;
-    transition: all .25s; flex-shrink: 0;
-  }
-  .r-card.done { border-color: rgba(62,207,142,0.35); }
-  .r-card.done .r-name { text-decoration: line-through; text-decoration-color: rgba(232,234,240,.4); opacity: .55; }
-  .r-card.done .r-time { opacity: .5; }
-  .r-card.done .r-icon { filter: grayscale(.6); opacity: .6; }
-  .r-card.done .r-check { background: var(--green); border-color: var(--green); color: #08130d; }
-  .r-words { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-  .r-words .w {
-    font-size: 12px; color: #aeb6c8; line-height: 1.4;
-    padding-left: 10px; position: relative;
-  }
-  .r-words .w::before { content: "\00B7"; position: absolute; left: 1px; color: var(--gold); font-weight: 900; }
-  .r-words .w b { color: #dfe3ee; font-weight: 700; }
+  .r-item.done .r-lb { color: var(--green); }
 
   /* ───── all-done banner ───── */
   .allDone {
@@ -327,23 +309,6 @@
   }
   .date-sep:first-child { margin-top: 0; }
 
-  /* ───── how-it-works ───── */
-  .how { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-  .how summary {
-    list-style: none; cursor: pointer; padding: 14px 15px;
-    font-size: 13.5px; font-weight: 800; color: #c3c9d9;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .how summary::-webkit-details-marker { display: none; }
-  .how summary::after { content: "\25BE"; color: var(--dim); font-size: 12px; transition: transform .2s; }
-  .how[open] summary::after { transform: rotate(180deg); }
-  .how .body { padding: 0 15px 15px; }
-  .how table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .how td { padding: 6px 0; border-top: 1px solid var(--line); color: #b6bdcd; vertical-align: top; }
-  .how td:first-child { color: var(--sub); width: 78px; font-weight: 700; white-space: nowrap; }
-  .how p { font-size: 12.5px; color: var(--sub); line-height: 1.65; margin-top: 10px; }
-  .how b { color: #dbe0ec; }
-
   /* ───── stage distribution ───── */
   .dist { display: flex; flex-direction: column; gap: 8px; }
   .dist-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
@@ -351,6 +316,86 @@
   .dist-row .tr { flex: 1; height: 8px; background: #232838; border-radius: 99px; overflow: hidden; }
   .dist-row .bf { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#3ecf8e,#5aa9ff); }
   .dist-row .vn { width: 26px; text-align: right; color: #b6bdcd; font-weight: 800; flex-shrink: 0; }
+
+  /* ───── game ───── */
+  .g-hero {
+    background: linear-gradient(160deg, #241a33 0%, #171a22 100%);
+    border: 1px solid #35284a; border-radius: var(--radius);
+    padding: 26px 20px; text-align: center; margin-top: 6px;
+  }
+  .g-hero h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.4px; }
+  .g-hero p { font-size: 13px; color: var(--sub); line-height: 1.65; margin-top: 10px; }
+  .g-hero .best { font-size: 12px; color: var(--gold); font-weight: 800; margin-top: 12px; }
+  .g-go {
+    width: 100%; margin-top: 18px; padding: 15px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #ff5c5c, #c792ea); color: #fff;
+    font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+  }
+  .g-go:disabled { background: var(--card2); color: var(--dim); cursor: default; }
+  .g-weak { margin-top: 18px; }
+  .g-weak .row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 7px;
+  }
+  .g-weak .row .e { flex: 1; font-size: 13px; font-weight: 700; line-height: 1.4; }
+  .g-weak .row .x { font-size: 11px; font-weight: 800; color: var(--accent); flex-shrink: 0; }
+
+  .g-bar { display: flex; align-items: center; gap: 10px; margin: 6px 0 16px; }
+  .g-bar .tr { flex: 1; height: 6px; background: #232838; border-radius: 99px; overflow: hidden; }
+  .g-bar .bf { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#c792ea,#ff5c5c); transition: width .3s; }
+  .g-bar .n { font-size: 12px; font-weight: 800; color: var(--sub); }
+  .g-bar .combo { font-size: 12px; font-weight: 800; color: var(--gold); }
+
+  .g-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 16px; }
+  .g-kind { font-size: 10.5px; font-weight: 800; color: var(--dim); letter-spacing: .5px; text-transform: uppercase; }
+  .g-prompt { font-size: 19px; font-weight: 800; line-height: 1.45; margin-top: 9px; letter-spacing: -0.3px; }
+  .g-prompt.ko { color: #ffd98a; }
+  .g-prompt.sm { font-size: 15px; line-height: 1.6; font-weight: 700; color: #dbe0ec; }
+  .g-prompt .blank { color: var(--purple); letter-spacing: 1px; }
+  .g-prompt b.st { color:#fff; background: rgba(245,185,66,.15); border-radius:4px; padding:0 3px; }
+  .g-listen {
+    width: 84px; height: 84px; border-radius: 999px; margin: 6px auto 0; display: flex;
+    align-items: center; justify-content: center; font-size: 32px; cursor: pointer;
+    background: rgba(199,146,234,.14); border: 1px solid rgba(199,146,234,.4); color: var(--purple);
+  }
+  .g-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+  .g-opt {
+    text-align: left; background: var(--card2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 13px; padding: 14px 15px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; line-height: 1.45; transition: all .18s;
+  }
+  .g-opt.right { background: rgba(62,207,142,.16); border-color: var(--green); color: var(--green); }
+  .g-opt.wrong { background: rgba(255,92,92,.14); border-color: var(--accent); color: var(--accent); }
+  .g-opt:disabled { cursor: default; }
+
+  .g-slot {
+    min-height: 58px; border: 1px dashed var(--line); border-radius: 13px;
+    padding: 9px; margin-top: 16px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+  }
+  .g-pool { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .tok {
+    background: var(--card2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .tok.used { opacity: .25; pointer-events: none; }
+  .tok.in { background: rgba(199,146,234,.14); border-color: rgba(199,146,234,.4); }
+  .g-slot.right { border-color: var(--green); border-style: solid; }
+  .g-slot.wrong { border-color: var(--accent); border-style: solid; }
+
+  .g-feed { margin-top: 16px; }
+  .g-feed .verdict { font-size: 15px; font-weight: 800; }
+  .g-feed .verdict.ok { color: var(--green); }
+  .g-feed .verdict.no { color: var(--accent); }
+  .g-feed .ans { font-size: 14px; font-weight: 700; color: #fff; margin-top: 8px; line-height: 1.45; }
+  .g-feed .sub { font-size: 12.5px; color: var(--sub); margin-top: 5px; line-height: 1.5; }
+  .g-next {
+    width: 100%; margin-top: 16px; padding: 14px; border-radius: 13px; border: none;
+    background: var(--accent); color: #fff; font-size: 14.5px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+  }
+  .g-score { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+  .g-score small { font-size: 18px; color: var(--sub); font-weight: 700; }
 
   /* ───── library tools ───── */
   .bank-tools { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -471,103 +516,6 @@
 
   <!-- ══════════ TAB: 오늘 ══════════ -->
   <section class="panel on" id="p-today">
-    <div class="quote-card">
-      <div class="motto">Anything is better<br>than <em>nothing.</em></div>
-      <div class="daily-quote">
-        <div class="en" id="qEn"></div>
-        <div class="ko" id="qKo"></div>
-      </div>
-    </div>
-
-    <div class="sec-head">
-      <div class="sec-title">오늘의 루틴</div>
-      <div class="sec-sub" id="todayLabel"></div>
-    </div>
-    <div class="day-progress">
-      <div class="bar"><div class="fill" id="pFill"></div></div>
-      <div class="num" id="pNum">0/5</div>
-    </div>
-    <div class="routines" id="routines"></div>
-    <div class="allDone" id="allDone">🎉 오늘 루틴 전부 완료! 달력에 동그라미 쾅.</div>
-
-    <div class="sec-head">
-      <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
-      <div class="sec-sub"><button id="clearOld">지난 것 정리</button></div>
-    </div>
-    <div id="newList"><div class="loading">불러오는 중…</div></div>
-
-    <div class="sync-note">
-      막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다
-    </div>
-  </section>
-
-  <!-- ══════════ TAB: 복습 ══════════ -->
-  <section class="panel" id="p-review">
-    <details class="how" id="howBox">
-      <summary>망각 곡선 · 복습 주기가 어떻게 도는지</summary>
-      <div class="body">
-        <table>
-          <tr><td>1단계</td><td>학습 체크 <b>다음 날</b> 첫 복습</td></tr>
-          <tr><td>2단계</td><td>3일 뒤</td></tr>
-          <tr><td>3단계</td><td>7일 뒤</td></tr>
-          <tr><td>4단계</td><td>14일 뒤</td></tr>
-          <tr><td>5단계</td><td>30일 뒤</td></tr>
-          <tr><td>6단계</td><td>60일 뒤 → 통과하면 <b>졸업</b></td></tr>
-        </table>
-        <p>
-          <b>알아</b> = 한 단계 올라가고 그만큼 간격이 벌어집니다.<br>
-          <b>애매</b> = 단계 유지, 내일 다시 나옵니다.<br>
-          <b>몰라</b> = <b>1단계로 완전 리셋</b>, 내일부터 처음부터 다시.<br><br>
-          잊기 직전에 다시 만나야 오래 남습니다. 그래서 간격이 점점 벌어지고,
-          한 번 막히면 처음으로 되돌립니다. 「배울 표현」에서 체크한 것만 이 큐에 들어옵니다 —
-          안 본 표현이 복습을 막지 않게 하기 위해서입니다.
-        </p>
-        <p>
-          <b>한→영</b>이 기본입니다. 뜻이나 상황을 먼저 보고 <b>입으로 말해본 뒤</b> 탭해서 정답과 비교하세요.
-          눈으로 알아보는 것(영→한)보다 입에서 꺼내는 훈련이 말하기에 훨씬 크게 남습니다.
-          처음 보는 표현은 「오늘」 탭에서 영→한으로 먼저 익히고 넘어옵니다.
-        </p>
-      </div>
-    </details>
-
-    <div class="sec-head">
-      <div class="sec-title">오늘 복습 <small id="dueCount"></small></div>
-      <div class="sec-sub">
-        <div class="dirseg" id="dirSeg">
-          <button data-d="ko2en">한→영</button>
-          <button data-d="en2ko">영→한</button>
-        </div>
-      </div>
-    </div>
-    <div id="dueList"><div class="loading">불러오는 중…</div></div>
-
-    <div class="sec-head">
-      <div class="sec-title">단계별 현황</div>
-      <div class="sec-sub" id="distTotal"></div>
-    </div>
-    <div class="dist" id="dist"></div>
-  </section>
-
-  <!-- ══════════ TAB: 표현 ══════════ -->
-  <section class="panel" id="p-lib">
-    <div class="sec-head" style="margin-top:6px">
-      <div class="sec-title">표현 전체</div>
-      <div class="sec-sub" id="bankCount"></div>
-    </div>
-    <div class="bank-tools">
-      <input type="search" id="bankSearch" placeholder="표현 · 뜻 · 예문 검색…">
-      <button class="add-btn" id="addBtn">+</button>
-    </div>
-    <div class="filters" id="filters"></div>
-    <div id="bankList"></div>
-  </section>
-
-  <!-- ══════════ TAB: 기록 ══════════ -->
-  <section class="panel" id="p-stats">
-    <div class="sec-head" style="margin-top:6px">
-      <div class="sec-title">달력</div>
-      <div class="sec-sub">동그라미 = 완주 · 점선 = 부분</div>
-    </div>
     <div class="cal-card">
       <div class="cal-nav">
         <button id="calPrev">‹</button>
@@ -581,6 +529,31 @@
         <div class="cal-stat"><b id="stRate">0%</b><span>이번 달 달성률</span></div>
       </div>
     </div>
+
+    <div class="sec-head">
+      <div class="sec-title">오늘의 습관</div>
+      <div class="sec-sub" id="todayLabel"></div>
+    </div>
+    <div class="day-progress">
+      <div class="bar"><div class="fill" id="pFill"></div></div>
+      <div class="num" id="pNum">0/5</div>
+    </div>
+    <div class="routines" id="routines"></div>
+    <div class="allDone" id="allDone">🎉 오늘 습관 전부 완료! 달력에 동그라미 쾅.</div>
+
+    <div class="quote-card">
+      <div class="motto">Anything is better<br>than <em>nothing.</em></div>
+      <div class="daily-quote">
+        <div class="en" id="qEn"></div>
+        <div class="ko" id="qKo"></div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
+      <div class="sec-sub"><button id="clearOld">지난 것 정리</button></div>
+    </div>
+    <div id="newList"><div class="loading">불러오는 중…</div></div>
 
     <div class="sec-head">
       <div class="sec-title">누적</div>
@@ -598,18 +571,58 @@
     <div class="setting-row">말하기 속도 <button id="rateBtn">보통</button></div>
 
     <div class="sync-note">
-      동기화: 봇 → VPS 파일 → 매시 20분 Firestore<br>
-      복습 주기: 1 · 3 · 7 · 14 · 30 · 60일 (망각 곡선)
+      막힌 표현 → @PatrickHermesAI_bot 에 보내면 자동으로 여기에 쌓입니다<br>
+      동기화: 봇 → VPS 파일 → 매시 20분 Firestore
     </div>
   </section>
+
+  <!-- ══════════ TAB: 복습 ══════════ -->
+  <section class="panel" id="p-review">
+    <div class="sec-head" style="margin-top:6px">
+      <div class="sec-title">오늘 복습 <small id="dueCount"></small></div>
+      <div class="sec-sub">
+        <div class="dirseg" id="dirSeg">
+          <button data-d="ko2en">한→영</button>
+          <button data-d="en2ko">영→한</button>
+        </div>
+      </div>
+    </div>
+    <div id="dueList"><div class="loading">불러오는 중…</div></div>
+
+    <div class="sec-head">
+      <div class="sec-title">단계별 현황</div>
+      <div class="sec-sub" id="distTotal"></div>
+    </div>
+    <div class="dist" id="dist"></div>
+  </section>
+
+  <!-- ══════════ TAB: 게임 ══════════ -->
+  <section class="panel" id="p-game">
+    <div id="gameBox"></div>
+  </section>
+
+  <!-- ══════════ TAB: 표현 ══════════ -->
+  <section class="panel" id="p-lib">
+    <div class="sec-head" style="margin-top:6px">
+      <div class="sec-title">표현 전체</div>
+      <div class="sec-sub" id="bankCount"></div>
+    </div>
+    <div class="bank-tools">
+      <input type="search" id="bankSearch" placeholder="표현 · 뜻 · 예문 검색…">
+      <button class="add-btn" id="addBtn">+</button>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div id="bankList"></div>
+  </section>
+
 </div>
 
 <nav class="tabs">
   <div class="inner">
     <button data-tab="today"  class="on"><span class="ic">☀️</span><span class="lb">오늘</span><span class="dot" id="dotNew"></span></button>
     <button data-tab="review"><span class="ic">🔁</span><span class="lb">복습</span><span class="dot" id="dotDue"></span></button>
+    <button data-tab="game"><span class="ic">🎮</span><span class="lb">게임</span></button>
     <button data-tab="lib"><span class="ic">📚</span><span class="lb">표현</span></button>
-    <button data-tab="stats"><span class="ic">📅</span><span class="lb">기록</span></button>
   </div>
 </nav>
 
@@ -656,11 +669,11 @@ const COL_EXPR = "english_expressions";
 
 // 5개 일일 루틴
 const ROUTINES = [
-  { k: "podcast",  icon: "🎧", name: "유튜브 팟캐스트 1개", time: "아침 · 매일 영어 듣기" },
-  { k: "words",    icon: "📬", name: "오늘의 단어 3개",     time: "오전 10시 · 단어가 아닌 문장 단위로" },
-  { k: "office",   icon: "📝", name: "막힌 표현 공부",       time: "사무실 · 그날 막힌 말 모으기" },
-  { k: "review",   icon: "🔁", name: "복습",                time: "집 · Repeat, repeat, repeat" },
-  { k: "speaking", icon: "🗣️", name: "ChatGPT 음성 대화",   time: "저녁 · 소리 내어 말하기" },
+  { k: "podcast",  icon: "🎧", short: "팟캐스트",  name: "유튜브 팟캐스트 1개" },
+  { k: "words",    icon: "📬", short: "단어 3개",  name: "오늘의 단어 3개" },
+  { k: "office",   icon: "📝", short: "막힌 표현", name: "막힌 표현 공부" },
+  { k: "review",   icon: "🔁", short: "복습",      name: "복습" },
+  { k: "speaking", icon: "🗣️", short: "말하기",   name: "ChatGPT 음성 대화" },
 ];
 
 // 망각 곡선 간격(일). stage = 성공한 복습 횟수. stage N을 달성하면 INTERVALS[N]일 뒤 재등장.
@@ -792,6 +805,8 @@ function hasRhythm(s) { return /\*\*|[→↘↓↗]/.test(s || ""); }
 function rhythmHtml(s) {
   let h = esc(s);
   h = h.replace(/\*\*(.+?)\*\*/g, '<b class="st">$1</b>');
+  // 봇이 "→ / " 로도 "→/" 로도 보낸다. 화살표에 붙은 슬래시는 끊어 읽기 표시다.
+  h = h.replace(/([→↘↓↗])\s*\/\s*/g, '<i class="ar">$1</i><i class="br">|</i>');
   h = h.replace(/\s\/\s/g, '<i class="br">|</i>');
   h = h.replace(/([→↘↓↗])/g, '<i class="ar">$1</i>');
   return h;
@@ -1021,7 +1036,7 @@ function setTab(name) {
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + name));
   document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
   scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
-  if (name === "stats") renderCalendar();
+  if (name === "game" && !game) renderGameStart();
 }
 document.querySelectorAll("nav.tabs button").forEach(b => {
   b.addEventListener("click", () => setTab(b.dataset.tab));
@@ -1045,29 +1060,16 @@ function todayTasks() { return (dayData[today] && dayData[today].tasks) || {}; }
 function renderRoutines() {
   const box = document.getElementById("routines");
   const tasks = todayTasks();
-  const todayWords = expressions.filter(e =>
-    e.source === "hermes-delivered" && e.learnedDate === today && e.slot === "10AM");
   box.innerHTML = "";
   for (const r of ROUTINES) {
     const done = !!tasks[r.k];
-    const card = document.createElement("div");
-    card.className = "r-card" + (done ? " done" : "");
-    card.dataset.k = r.k;
-    let wordsHtml = "";
-    if (r.k === "words" && todayWords.length) {
-      wordsHtml = `<div class="r-words">` + todayWords.slice(0, 3).map(w =>
-        `<div class="w"><b>${esc(w.expression)}</b> — ${esc(w.meaning || "")}</div>`).join("") + `</div>`;
-    }
-    card.innerHTML = `
-      <div class="r-icon">${r.icon}</div>
-      <div class="r-body">
-        <div class="r-name">${esc(r.name)}</div>
-        <div class="r-time">${esc(r.time)}</div>
-        ${wordsHtml}
-      </div>
-      <div class="r-check">✓</div>`;
-    card.addEventListener("click", () => toggleRoutine(r.k, card));
-    box.appendChild(card);
+    const item = document.createElement("div");
+    item.className = "r-item" + (done ? " done" : "");
+    item.dataset.k = r.k;
+    item.title = r.name;
+    item.innerHTML = `<div class="r-dot">${r.icon}</div><div class="r-lb">${esc(r.short)}</div>`;
+    item.addEventListener("click", () => toggleRoutine(r.k, item.querySelector(".r-dot")));
+    box.appendChild(item);
   }
   updateProgress();
 }
@@ -1089,7 +1091,7 @@ async function toggleRoutine(key, card) {
   shatter(card);
   crackSound();
   haptic(60);
-  card.classList.add("done");
+  card.parentElement.classList.add("done");
   setTimeout(() => { renderRoutines(); renderCalendar(); renderStreak(); }, 350);
 
   if (ROUTINES.filter(r => d.tasks[r.k]).length === ROUTINES.length) {
@@ -1500,6 +1502,311 @@ function renderDist() {
       <div class="tr"><div class="bf" style="width:${(n / max * 100).toFixed(1)}%"></div></div>
       <div class="vn">${n}</div>
     </div>`).join("");
+}
+
+// ═══════════════ 게임 ═══════════════
+// 출제는 「쌓인 것 + 잘 못 외우는 것」에 가중치를 준다.
+// 게임 정답은 복습 일정을 앞당기지 않는다 — 게임으로 SRS를 우회하면 간격이 망가진다.
+// 대신 틀리면 wrong 카운트를 올리고 내일 복습으로 당겨온다.
+const GAME_LEN = 10;
+let game = null;
+
+function weightOf(e) {
+  if (isGraduated(e)) return 0.2;
+  const wrong = e.wrong || 0;
+  const stage = Math.min(e.stage || 0, 5);
+  let w = (1 + wrong * 3) * ((6 - stage) / 6 + 0.3);
+  if (!isStudied(e)) w *= 2.5;
+  return w;
+}
+function playable(e) {
+  const p = parseContext(e);
+  return !!(e.meaning || orderTextOf(e, p));
+}
+function orderTextOf(e, p) {
+  const full = String(e.expression || "").trim();
+  const wc = wordCount(full);
+  if (wc >= 2 && wc <= 8) return full;
+  const r = keyRange(full, p.chunks);
+  if (r) {
+    const t = full.slice(r[0], r[1]);
+    if (wordCount(t) >= 2 && wordCount(t) <= 8) return t;
+  }
+  return null;
+}
+function shuffle(a) {
+  const x = a.slice();
+  for (let i = x.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [x[i], x[j]] = [x[j], x[i]];
+  }
+  return x;
+}
+function pickWeighted(pool, n) {
+  const rest = pool.slice();
+  const out = [];
+  while (out.length < n && rest.length) {
+    const total = rest.reduce((s, e) => s + weightOf(e), 0);
+    let r = Math.random() * total;
+    let idx = rest.length - 1;
+    for (let i = 0; i < rest.length; i++) { r -= weightOf(rest[i]); if (r <= 0) { idx = i; break; } }
+    out.push(rest.splice(idx, 1)[0]);
+  }
+  return out;
+}
+
+function buildRound(e, pool) {
+  const p = parseContext(e);
+  const kinds = [];
+  if (e.meaning) kinds.push("meaning", "expr");
+  if (e.meaning && "speechSynthesis" in window) kinds.push("listen");
+  const ex = plain(p.example);
+  const hasCloze = ex && ex.toLowerCase().indexOf(String(e.expression).toLowerCase()) >= 0;
+  if (hasCloze) kinds.push("cloze");
+  const ord = orderTextOf(e, p);
+  if (ord) kinds.push("order", "order");   // 조립은 어순 훈련이라 비중을 두 배로
+  if (!kinds.length) return null;
+  const kind = kinds[Math.floor(Math.random() * kinds.length)];
+
+  if (kind === "order") {
+    return { kind, e, answer: ord, tokens: shuffle(ord.split(/\s+/).filter(Boolean)) };
+  }
+  // 4지선다 — 오답 보기는 같은 종류의 다른 표현에서 뽑는다.
+  // 길이가 비슷한 것으로 좁힌다. 길이만 봐도 답이 보이면 문제가 안 된다.
+  const needMeaning = kind === "meaning";
+  const textOf = x => needMeaning ? x.meaning : x.expression;
+  const target = wordCount(textOf(e));
+  const cands = pool.filter(x =>
+    x.id !== e.id && textOf(x) && textOf(x) !== textOf(e));
+  const near = cands
+    .slice()
+    .sort((a, b) => Math.abs(wordCount(textOf(a)) - target) - Math.abs(wordCount(textOf(b)) - target))
+    .slice(0, Math.max(6, Math.ceil(cands.length * 0.4)));
+  const others = shuffle(near).slice(0, 3);
+  if (others.length < 3) return null;
+  const options = shuffle([e, ...others]).map(x => ({
+    id: x.id,
+    text: needMeaning ? x.meaning : x.expression,
+    ok: x.id === e.id,
+  }));
+  let prompt = "";
+  if (kind === "meaning") prompt = e.expression;
+  else if (kind === "expr") prompt = e.meaning;
+  else if (kind === "listen") prompt = "";
+  else if (kind === "cloze") {
+    const i = ex.toLowerCase().indexOf(String(e.expression).toLowerCase());
+    prompt = esc(ex.slice(0, i)) + '<span class="blank">______</span>'
+      + esc(ex.slice(i + e.expression.length));
+  }
+  return { kind, e, options, prompt };
+}
+
+const KIND_LABEL = {
+  meaning: "뜻 고르기", expr: "영어로 고르기", listen: "듣고 고르기",
+  cloze: "빈칸 채우기", order: "문장 조립",
+};
+
+function gamePool() { return expressions.filter(playable); }
+
+function renderGameStart() {
+  const pool = gamePool();
+  const best = parseInt(localStorage.getItem("et_best") || "0", 10);
+  const weak = expressions.filter(e => (e.wrong || 0) > 0)
+    .sort((a, b) => (b.wrong || 0) - (a.wrong || 0)).slice(0, 5);
+  const box = document.getElementById("gameBox");
+  box.innerHTML = `
+    <div class="g-hero">
+      <h2>🎮 표현 게임</h2>
+      <p>${GAME_LEN}문항. 뜻 고르기 · 영어 고르기 · 듣고 고르기 ·<br>빈칸 채우기 · 문장 조립이 섞여 나옵니다.<br>
+      <b style="color:#c3c9d9">아직 안 외운 것</b>과 <b style="color:#c3c9d9">전에 틀린 것</b>이 먼저 나옵니다.</p>
+      ${best ? `<div class="best">최고 기록 ${best} / ${GAME_LEN}</div>` : ""}
+      <button class="g-go" id="gGo"${pool.length < 4 ? " disabled" : ""}>
+        ${pool.length < 4 ? "표현이 더 쌓여야 시작할 수 있습니다" : "시작하기"}</button>
+    </div>
+    ${weak.length ? `<div class="sec-head"><div class="sec-title">잘 안 외워지는 표현</div>
+      <div class="sec-sub">게임에서 틀린 횟수</div></div>
+      <div class="g-weak">${weak.map(e => `<div class="row">
+        <div class="e">${esc(e.expression)}</div><div class="x">${e.wrong}회</div></div>`).join("")}</div>` : ""}`;
+  const go = document.getElementById("gGo");
+  if (go && !go.disabled) go.onclick = startGame;
+}
+
+function startGame() {
+  const pool = gamePool();
+  const picks = pickWeighted(pool, Math.min(GAME_LEN, pool.length));
+  const rounds = picks.map(e => buildRound(e, pool)).filter(Boolean);
+  if (!rounds.length) { toast("출제할 표현이 부족합니다"); return; }
+  game = { rounds, i: 0, score: 0, combo: 0, bestCombo: 0, misses: [], results: new Map() };
+  renderRound();
+}
+
+function gameBarHtml() {
+  const pct = (game.i / game.rounds.length * 100).toFixed(1);
+  return `<div class="g-bar">
+    <div class="tr"><div class="bf" style="width:${pct}%"></div></div>
+    <div class="n">${game.i + 1}/${game.rounds.length}</div>
+    ${game.combo >= 2 ? `<div class="combo">🔥${game.combo}</div>` : ""}
+  </div>`;
+}
+
+function renderRound() {
+  const r = game.rounds[game.i];
+  const box = document.getElementById("gameBox");
+  let body = "";
+  if (r.kind === "listen") {
+    body = `<div class="g-listen" id="gPlay">🔊</div>`;
+  } else if (r.kind === "cloze") {
+    body = `<div class="g-prompt sm">${r.prompt}</div>`;
+  } else {
+    body = `<div class="g-prompt${r.kind === "expr" ? " ko" : ""}">${esc(r.prompt || "")}</div>`;
+  }
+
+  if (r.kind === "order") {
+    body = `<div class="g-prompt${r.e.meaning ? " ko" : " sm"}">${esc(r.e.meaning || parseContext(r.e).tags.join(" · ") || "단어를 순서대로")}</div>
+      <div class="g-slot" id="gSlot"></div>
+      <div class="g-pool" id="gPool">${r.tokens.map((t, i) =>
+        `<button class="tok" data-i="${i}">${esc(t)}</button>`).join("")}</div>`;
+  }
+
+  box.innerHTML = `${gameBarHtml()}
+    <div class="g-card">
+      <div class="g-kind">${KIND_LABEL[r.kind]}</div>
+      ${body}
+      ${r.options ? `<div class="g-opts">${r.options.map((o, i) =>
+        `<button class="g-opt" data-i="${i}">${esc(o.text)}</button>`).join("")}</div>` : ""}
+      <div id="gFeed"></div>
+    </div>`;
+
+  if (r.kind === "listen") {
+    const play = () => speak(r.e.expression, null);
+    document.getElementById("gPlay").onclick = play;
+    setTimeout(play, 250);
+  }
+  if (r.options) {
+    box.querySelectorAll(".g-opt").forEach(b => {
+      b.onclick = () => answerChoice(parseInt(b.dataset.i, 10));
+    });
+  }
+  if (r.kind === "order") setupOrder(r);
+}
+
+function setupOrder(r) {
+  const slot = document.getElementById("gSlot");
+  const pool = document.getElementById("gPool");
+  const chosen = [];
+  const paint = () => {
+    slot.innerHTML = chosen.map((ci, pos) =>
+      `<button class="tok in" data-pos="${pos}">${esc(r.tokens[ci])}</button>`).join("");
+    pool.querySelectorAll(".tok").forEach(t =>
+      t.classList.toggle("used", chosen.indexOf(parseInt(t.dataset.i, 10)) >= 0));
+    slot.querySelectorAll(".tok").forEach(t => {
+      t.onclick = () => { chosen.splice(parseInt(t.dataset.pos, 10), 1); paint(); };
+    });
+    if (chosen.length === r.tokens.length) {
+      const built = chosen.map(ci => r.tokens[ci]).join(" ");
+      const ok = built.toLowerCase() === r.answer.toLowerCase();
+      slot.classList.add(ok ? "right" : "wrong");
+      pool.querySelectorAll(".tok").forEach(t => t.disabled = true);
+      slot.querySelectorAll(".tok").forEach(t => t.onclick = null);
+      finishRound(ok);
+    }
+  };
+  pool.querySelectorAll(".tok").forEach(t => {
+    t.onclick = () => { chosen.push(parseInt(t.dataset.i, 10)); paint(); };
+  });
+  paint();
+}
+
+function answerChoice(idx) {
+  const r = game.rounds[game.i];
+  const btns = [...document.querySelectorAll(".g-opt")];
+  btns.forEach((b, i) => {
+    b.disabled = true;
+    if (r.options[i].ok) b.classList.add("right");
+    else if (i === idx) b.classList.add("wrong");
+  });
+  finishRound(r.options[idx].ok);
+}
+
+function finishRound(ok) {
+  const r = game.rounds[game.i];
+  const e = r.e;
+  if (ok) {
+    game.score++; game.combo++;
+    game.bestCombo = Math.max(game.bestCombo, game.combo);
+    crackSound(); haptic(30);
+  } else {
+    game.combo = 0;
+    game.misses.push(e);
+    haptic([40, 40, 40]);
+  }
+  // 같은 표현이 두 번 나와도 한 번이라도 틀렸으면 오답으로 남긴다
+  if (!ok || !game.results.has(e.id)) game.results.set(e.id, ok);
+
+  const p = parseContext(e);
+  const last = game.i === game.rounds.length - 1;
+  document.getElementById("gFeed").innerHTML = `
+    <div class="g-feed">
+      <div class="verdict ${ok ? "ok" : "no"}">${ok ? "정답" : "오답"}</div>
+      <div class="ans">${esc(e.expression)}</div>
+      <div class="sub">${esc(e.meaning || p.tags.join(" · ") || "")}</div>
+      ${p.example ? `<div class="sub">${rhythmHtml(p.example)}</div>` : ""}
+      <button class="g-next" id="gNext">${last ? "결과 보기" : "다음 문제"}</button>
+    </div>`;
+  if (!ok) speak(e.expression, null);
+  document.getElementById("gNext").onclick = () => {
+    game.i++;
+    if (game.i >= game.rounds.length) endGame();
+    else renderRound();
+  };
+}
+
+async function endGame() {
+  const total = game.rounds.length;
+  const best = parseInt(localStorage.getItem("et_best") || "0", 10);
+  const isBest = game.score > best;
+  if (isBest) localStorage.setItem("et_best", String(game.score));
+
+  // 기록 반영 — 오답만 스케줄을 당긴다. 정답은 SRS를 건드리지 않는다.
+  const batch = db.batch();
+  let writes = 0;
+  game.results.forEach((ok, id) => {
+    const e = expressions.find(x => x.id === id);
+    if (!e) return;
+    const patch = {};
+    if (ok) { e.right = (e.right || 0) + 1; patch.right = e.right; }
+    else {
+      e.wrong = (e.wrong || 0) + 1; patch.wrong = e.wrong;
+      if (isStudied(e) && !isGraduated(e) && (!e.nextReview || e.nextReview > today)) {
+        e.nextReview = addDays(today, 1);
+        patch.nextReview = e.nextReview;
+      }
+    }
+    batch.set(db.collection(COL_EXPR).doc(id), patch, { merge: true });
+    writes++;
+  });
+
+  const missed = game.misses;
+  document.getElementById("gameBox").innerHTML = `
+    <div class="g-hero">
+      <div class="g-score">${game.score}<small> / ${total}</small></div>
+      <p>최고 콤보 🔥${game.bestCombo}${isBest ? " · <b style=\"color:#f5b942\">신기록</b>" : ""}</p>
+      <button class="g-go" id="gAgain">다시 하기</button>
+    </div>
+    ${missed.length ? `<div class="sec-head"><div class="sec-title">틀린 표현</div>
+      <div class="sec-sub">다음 게임에 더 자주 나옵니다</div></div>
+      <div class="g-weak">${missed.map(e => `<div class="row">
+        <div class="e">${esc(e.expression)}<br>
+        <span style="font-size:11.5px;color:var(--sub);font-weight:600">${esc(e.meaning || "")}</span></div>
+        </div>`).join("")}</div>`
+      : `<div class="empty" style="margin-top:14px"><b>전부 맞혔습니다.</b></div>`}`;
+  document.getElementById("gAgain").onclick = startGame;
+  game = null;
+  renderDue(); renderDist(); updateDots();
+  if (writes) {
+    try { await batch.commit(); }
+    catch (err) { console.error(err); toast("게임 기록 저장 실패"); }
+  }
 }
 
 // ═══════════════ 표현 전체 (라이브러리) ═══════════════

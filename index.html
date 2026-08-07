@@ -241,24 +241,6 @@
   }
   .chip.tag { color: var(--sub); background: transparent; font-size: 11.5px; padding: 4px 9px; }
   .chip:active { border-color: rgba(90,169,255,.4); }
-  .myline-row { display: flex; gap: 7px; align-items: center; }
-  .myline-row input {
-    flex: 1; background: var(--card2); border: 1px solid var(--line);
-    border-radius: 10px; padding: 10px 11px; color: var(--text);
-    font-size: 13px; font-family: inherit; outline: none;
-  }
-  .myline-row input::placeholder { color: var(--dim); }
-  .myline-row button.save {
-    flex-shrink: 0; background: rgba(62,207,142,.14); color: var(--green);
-    border: 1px solid rgba(62,207,142,.3); border-radius: 10px;
-    padding: 0 12px; height: 38px; font-size: 12.5px; font-weight: 800;
-    cursor: pointer; font-family: inherit;
-  }
-  .myline-saved {
-    font-size: 13.5px; color: #b7e7d0; line-height: 1.5;
-    display: flex; align-items: flex-start; gap: 9px;
-  }
-  .myline-saved > span { flex: 1; }
   .prog-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .stage-dots { display: flex; gap: 3px; }
   .stage-dots i { width: 15px; height: 4px; border-radius: 2px; background: #2a3040; }
@@ -1199,7 +1181,7 @@ function exprCard(e, mode, dir) {
         <div class="expr">${underlineKey(e.expression, p.chunks)}</div>
         <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
       </div>
-      <div class="tap-hint">${mode === "review"
+      <div class="tap-hint">${mode === "review" || mode === "practice"
         ? "탭해서 뜻 확인 → 소리 내어 3번 말하기"
         : "탭해서 자세히 보기"}</div>
       <div class="back">`;
@@ -1230,20 +1212,7 @@ function exprCard(e, mode, dir) {
       <div class="chips">${p.chunks.map(c =>
         `<span class="chip" data-say="${esc(c)}">${esc(c)}</span>`).join("")}</div></div>`;
   }
-  // 5. 내 문장 — 모든 카드에 항상 있는 블록
-  html += `<div class="blk"><div class="blk-l">내 문장</div>`;
-  if (e.myLine) {
-    html += `<div class="myline-saved"><span>${esc(e.myLine)}</span>
-      <button class="spk sm" data-say="${esc(e.myLine)}" title="듣기">🔊</button></div>
-      <div class="legend" style="cursor:pointer" data-edit="1">고쳐 쓰기</div>`;
-  } else {
-    html += `<div class="myline-row">
-      <input class="ml-in" placeholder="이 표현으로 내 상황 문장 하나">
-      <button class="save">저장</button></div>`;
-  }
-  html += `</div>`;
-
-  // 6. 진도
+  // 5. 진도
   const dots = INTERVALS.map((_, i) => `<i class="${i < stage ? "on" : ""}"></i>`).join("");
   let nextTxt;
   if (!isStudied(e)) nextTxt = "아직 복습 시작 전";
@@ -1256,7 +1225,7 @@ function exprCard(e, mode, dir) {
     <div class="prog-row"><div class="stage-dots">${dots}</div>
     <div class="prog-next">${esc(nextTxt)}</div></div></div>`;
 
-  // 7. 액션
+  // 6. 액션
   if (mode === "review") {
     html += `<div class="fc-btns">
       <button class="btn-again">몰라<small>1단계로</small></button>
@@ -1265,6 +1234,8 @@ function exprCard(e, mode, dir) {
     </div>`;
   } else if (mode === "new") {
     html += `<button class="btn-study">✓ 학습 완료 — 복습 주기에 넣기</button>`;
+  } else if (mode === "practice") {
+    /* 연습 모드는 액션 없음 — 기록을 건드리지 않는다 */
   } else if (isGraduated(e)) {
     html += `<button class="btn-reopen">↺ 복습 큐에 다시 넣기</button>`;
   }
@@ -1275,7 +1246,7 @@ function exprCard(e, mode, dir) {
   // ── events ──
   card.addEventListener("click", ev => {
     if (ev.target.closest("button") || ev.target.closest("[data-say]") ||
-        ev.target.closest("input") || ev.target.closest("[data-edit]")) return;
+        ev.target.closest("input")) return;
     card.classList.toggle("open");
   });
   card.querySelectorAll("[data-say]").forEach(el => {
@@ -1293,30 +1264,6 @@ function exprCard(e, mode, dir) {
       lv++;
       if (lv >= levels.length) hintBtn.style.display = "none";
       else hintBtn.textContent = "힌트 더";
-    });
-  }
-  const mlIn = card.querySelector(".ml-in");
-  if (mlIn) {
-    const doSave = async () => {
-      const v = mlIn.value.trim();
-      if (!v) { toast("문장을 입력해주세요"); return; }
-      e.myLine = v;
-      await saveExpr(e.id, { myLine: v });
-      toast("내 문장 저장 완료");
-      rerenderActive();
-    };
-    card.querySelector(".myline-row .save").addEventListener("click", ev => { ev.stopPropagation(); doSave(); });
-    mlIn.addEventListener("keydown", ev => { if (ev.key === "Enter") doSave(); });
-  }
-  const editEl = card.querySelector("[data-edit]");
-  if (editEl) {
-    editEl.addEventListener("click", async ev => {
-      ev.stopPropagation();
-      const v = prompt("내 문장 고치기", e.myLine || "");
-      if (v === null) return;
-      e.myLine = v.trim();
-      await saveExpr(e.id, { myLine: e.myLine });
-      rerenderActive();
     });
   }
   const btnStudy = card.querySelector(".btn-study");
@@ -1418,7 +1365,10 @@ function renderDue() {
   if (!due.length) {
     const n = newItems().length;
     box.innerHTML = `<div class="empty"><b>오늘 복습할 표현이 없습니다.</b><br>` +
-      (n ? `「오늘」 탭에 배울 표현 ${n}개가 기다립니다.` : `깨끗하게 끝!`) + `</div>`;
+      (n ? `「오늘」 탭에 배울 표현 ${n}개가 기다립니다.` : `깨끗하게 끝!`) + `</div>
+      <button class="more-btn" id="practiceBtn" style="margin-top:10px">
+        그래도 연습하기 — 표현 20개 (기록에 영향 없음)</button>`;
+    document.getElementById("practiceBtn").onclick = renderPractice;
     return;
   }
   box.innerHTML = "";
@@ -1428,6 +1378,21 @@ function renderDue() {
       `<div class="empty" style="margin-top:4px">나머지 ${due.length - 20}개는 위를 처리하면 이어서 나옵니다.</div>`);
   }
 }
+// 복습 큐가 비었을 때의 자유 연습. 카드만 넘겨보고 복습 일정은 건드리지 않는다.
+function renderPractice() {
+  const items = pickWeighted(expressions.filter(e => promptFor(e, parseContext(e)).ok), 20);
+  const box = document.getElementById("dueList");
+  box.innerHTML = `<div class="empty" style="margin-bottom:10px">
+    연습 모드 — 단계·복습일은 바뀌지 않습니다.</div>`;
+  items.forEach(e => box.appendChild(exprCard(e, "practice", revDir)));
+  const back = document.createElement("button");
+  back.className = "more-btn";
+  back.textContent = "연습 끝내기";
+  back.onclick = renderDue;
+  box.appendChild(back);
+  toast(revDir === "ko2en" ? "한→영 연습 시작" : "영→한 연습 시작");
+}
+
 async function grade(e, kind, card) {
   let stage = e.stage || 0;
   let next;
@@ -1804,8 +1769,7 @@ function renderBank() {
   if (q) items = items.filter(e =>
     (e.expression || "").toLowerCase().includes(q) ||
     (e.meaning || "").toLowerCase().includes(q) ||
-    (e.context || "").toLowerCase().includes(q) ||
-    (e.myLine || "").toLowerCase().includes(q));
+    (e.context || "").toLowerCase().includes(q));
 
   document.getElementById("bankCount").textContent = `${items.length} / ${expressions.length}개`;
   const box = document.getElementById("bankList");

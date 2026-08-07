@@ -53,15 +53,22 @@ Patrick 혼자 쓰는 개인 도구라 주소로 들어가면 바로 열린다. 
 | Firebase Admin SDK (서비스 계정) | 규칙을 우회하므로 프로젝트 설정만 교체하면 됨 |
 | REST + apiKey | 익명 로그인을 추가해야 함. 아니면 규칙에서 거부됨 |
 
-## 신규 프로젝트 설정 절차
+## 분리 완료 (2026-08-07)
 
-1. Firebase 콘솔에서 새 프로젝트 생성 (M Building 프로젝트와 별개)
-2. Firestore Database 생성 — **프로덕션 모드**로 시작
-3. Authentication → **익명** 사용 설정 (이메일/비밀번호는 필요 없음)
-4. 프로젝트 설정 → 웹 앱 등록 → SDK 구성값을 `index.html`의 `FIREBASE_CONFIG`에 입력
-5. `node migrate.mjs ./backup` 실행
-6. `firestore.rules` 내용을 콘솔 Rules 탭에 붙여넣고 게시
-7. Hermes 봇의 Firestore 설정을 신규 프로젝트로 교체
+전용 프로젝트 **`english-tracker-cea9f`** 로 이전 완료. M Building 프로젝트와 더 이상 아무것도 공유하지 않는다.
+
+- Firestore 생성(프로덕션 모드) · 익명 인증 사용 설정 · 규칙 게시 완료
+- 데이터 47건 이전 완료 (표현 46 + 기록 1)
+- 인증 없는 외부 접근 차단 확인, 앱 정상 동작 확인
+- 라이브 HTML에서 구 M Building apiKey 0건 확인
+
+**남은 작업: Hermes 봇 재연결.** 봇은 아직 구 프로젝트(`m-building-fbe46`)의
+`english_expressions`에 쓰고 있다. 봇 설정을 `english-tracker-cea9f`로 바꾸기 전까지
+새 표현이 이 앱에 올라오지 않는다. 앱은 멀쩡해 보이고 표현만 조용히 끊기는 형태라
+눈치채기 어렵다. 봇 연동 코드 위치는 아직 확인되지 않았다.
+
+그 작업이 끝나면 M Building 규칙(`02_projects/m-building/firestore.rules`)의
+english_* 임시 개방 두 줄도 삭제할 것.
 
 ## 배포
 

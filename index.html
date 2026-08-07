@@ -321,7 +321,7 @@
 
   <div class="sec-head">
     <div class="sec-title">오늘 배운 표현</div>
-    <div class="sec-sub">낭만파 봇 자동 연동</div>
+    <div class="sec-sub">Hermes 봇 자동 연동</div>
   </div>
   <div id="todayList"><div class="loading">불러오는 중…</div></div>
 
@@ -336,7 +336,7 @@
   <div id="bankList"></div>
 
   <div class="sync-note">
-    막힌 표현 → 낭만파 봇(@PatrickHermes_bot)에 보내면 자동으로 여기에 쌓입니다<br>
+    막힌 표현 → Hermes 봇에 보내면 자동으로 여기에 쌓입니다<br>
     복습 주기: 1 · 3 · 7 · 14 · 30 · 60일 (망각 곡선)
   </div>
 </div>
@@ -351,42 +351,6 @@
       <button class="m-cancel" id="mCancel">취소</button>
       <button class="m-save" id="mSave">저장</button>
     </div>
-  </div>
-</div>
-
-<style>
-  #gate {
-    position: fixed; inset: 0; z-index: 999; background: var(--bg);
-    display: none; align-items: center; justify-content: center; padding: 24px;
-  }
-  #gate.on { display: flex; }
-  #gate .box {
-    width: 100%; max-width: 320px; background: var(--card);
-    border: 1px solid var(--line); border-radius: 18px; padding: 26px 22px;
-  }
-  #gate h2 { margin: 0 0 4px; font-size: 19px; }
-  #gate h2 span { color: var(--accent); }
-  #gate p { margin: 0 0 18px; font-size: 13px; color: var(--sub); line-height: 1.5; }
-  #gate input {
-    width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 12px 13px;
-    background: var(--card2); border: 1px solid var(--line); border-radius: 11px;
-    color: var(--text); font-size: 15px;
-  }
-  #gate button {
-    width: 100%; padding: 12px; border: 0; border-radius: 11px;
-    background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
-  }
-  #gate button[disabled] { opacity: .55; cursor: default; }
-  #gate .err { margin: 10px 0 0; font-size: 13px; color: var(--accent); min-height: 18px; }
-</style>
-<div id="gate">
-  <div class="box">
-    <h2>English <span>Tracker</span></h2>
-    <p>이 기기에서 처음 한 번만 로그인하면 됩니다.</p>
-    <input id="gEmail" type="email" placeholder="이메일" autocomplete="username">
-    <input id="gPass" type="password" placeholder="비밀번호" autocomplete="current-password">
-    <button id="gBtn">로그인</button>
-    <p class="err" id="gErr"></p>
   </div>
 </div>
 
@@ -794,7 +758,7 @@ function esc(s) {
 }
 function srcLabel(e) {
   if (e.source === "hermes-wanted") return `<div class="src wanted">막힌 표현 · ${esc(e.learnedDate)}</div>`;
-  if (e.source === "hermes-delivered") return `<div class="src delivered">낭만파 배달 · ${esc(e.learnedDate)}</div>`;
+  if (e.source === "hermes-delivered") return `<div class="src delivered">Hermes 배달 · ${esc(e.learnedDate)}</div>`;
   return `<div class="src manual">직접 추가 · ${esc(e.learnedDate)}</div>`;
 }
 function renderDue() {
@@ -859,7 +823,7 @@ function renderToday() {
   const items = expressions.filter(e => e.learnedDate === today && e.source !== "manual");
   const box = document.getElementById("todayList");
   if (!items.length) {
-    box.innerHTML = `<div class="empty">아직 오늘 동기화된 표현이 없습니다.<br><b>낭만파 봇</b>이 보내주면 자동으로 나타납니다.</div>`;
+    box.innerHTML = `<div class="empty">아직 오늘 동기화된 표현이 없습니다.<br><b>Hermes 봇</b>이 보내주면 자동으로 나타납니다.</div>`;
     return;
   }
   box.innerHTML = items.map(e => `
@@ -937,52 +901,20 @@ async function init() {
   renderToday();
   renderBank();
 }
-// ═══════════════ AUTH GATE ═══════════════
-// Firestore 규칙이 로그인한 사용자에게만 열려 있으므로, 인증 전에는 init()을 부르지 않는다.
-const gate = document.getElementById("gate");
-const gBtn = document.getElementById("gBtn");
-const gErr = document.getElementById("gErr");
-
-const AUTH_ERRORS = {
-  "auth/invalid-email": "이메일 형식이 올바르지 않습니다.",
-  "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다.",
-  "auth/wrong-password": "이메일 또는 비밀번호가 올바르지 않습니다.",
-  "auth/user-not-found": "등록되지 않은 계정입니다.",
-  "auth/too-many-requests": "시도가 너무 많습니다. 잠시 후 다시 시도하세요.",
-  "auth/network-request-failed": "네트워크 연결을 확인해주세요.",
-};
-
-async function signIn() {
-  const email = document.getElementById("gEmail").value.trim();
-  const pass = document.getElementById("gPass").value;
-  if (!email || !pass) { gErr.textContent = "이메일과 비밀번호를 입력하세요."; return; }
-  gBtn.disabled = true;
-  gErr.textContent = "";
-  try {
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    await auth.signInWithEmailAndPassword(email, pass);
-  } catch (err) {
-    gErr.textContent = AUTH_ERRORS[err.code] || "로그인에 실패했습니다.";
-    console.error(err);
-  } finally {
-    gBtn.disabled = false;
-  }
-}
-
-gBtn.addEventListener("click", signIn);
-document.getElementById("gPass").addEventListener("keydown", e => {
-  if (e.key === "Enter") signIn();
-});
-
+// ═══════════════ AUTH ═══════════════
+// 화면에 로그인은 없다. 앱이 열릴 때 익명 계정으로 조용히 로그인한다.
+// 목적은 Patrick을 막는 게 아니라, 유출된 apiKey를 긁어가는 자동 스캐너가
+// 인증 없이 Firestore를 읽고 지우는 것을 막는 것이다.
 auth.onAuthStateChanged(user => {
-  if (user) {
-    gate.classList.remove("on");
-    document.getElementById("gPass").value = "";
-    init();
-  } else {
-    gate.classList.add("on");
-  }
+  if (user) init();
 });
+
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => auth.signInAnonymously())
+  .catch(err => {
+    console.error(err);
+    toast("연결에 실패했습니다 — 새로고침 해주세요");
+  });
 
 // refresh date if app stays open across midnight
 setInterval(() => {

@@ -1,28 +1,30 @@
 rules_version = '2';
 
 // English Tracker 전용 규칙.
-// Patrick 계정 한 개만 읽고 쓸 수 있다. 그 외에는 전부 거부한다.
 //
-// __PATRICK_UID__ 는 Firebase 콘솔 > Authentication > Users 목록의
-// "사용자 UID" 값으로 교체한다. 교체 전에는 아무도 접근할 수 없다.
+// 이 앱은 Patrick 혼자 쓰는 개인 도구라 화면에 로그인이 없다.
+// 대신 앱이 열릴 때 익명 계정으로 조용히 로그인하고, 규칙은 그 익명 세션만 통과시킨다.
 //
-// UID로 고정하는 이유: apiKey는 공개 값이라 누구나 가져갈 수 있고,
-// Email/Password 제공업체는 기본적으로 외부인의 회원가입을 허용한다.
-// 따라서 "로그인한 사람"이 아니라 "이 UID"로 좁혀야 실제로 잠긴다.
+// 이 규칙이 막는 것: 유출된 apiKey를 긁어 인증 없이 Firestore를 훑고 지우는 자동 스캐너.
+//   실제로 이번 사건의 구 프로젝트는 이 방어선이 없어 외부에서 읽기·쓰기가 전부 가능했다.
+// 이 규칙이 막지 못하는 것: 앱 소스를 읽고 직접 익명 로그인을 흉내내는 사람.
+//   영어 학습 기록이라 그 수준까지는 감수한다. 민감한 데이터를 여기 넣지 말 것.
+//
+// 컬렉션도 두 개로 못박는다. 나중에 다른 데이터가 실수로 섞여 들어와도 규칙이 거부한다.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isPatrick() {
-      return request.auth != null && request.auth.uid == "__PATRICK_UID__";
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     match /english_days/{day} {
-      allow read, write: if isPatrick();
+      allow read, write: if isSignedIn();
     }
 
     match /english_expressions/{expression} {
-      allow read, write: if isPatrick();
+      allow read, write: if isSignedIn();
     }
 
     match /{document=**} {

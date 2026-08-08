@@ -54,15 +54,6 @@
   }
   .streak-chip small { font-weight: 600; font-size: 11px; color: #a98d5f; }
 
-  /* ───── quote — 매일 바뀌는 한 줄 ───── */
-  .quote-line {
-    margin: 20px 0 2px; padding: 11px 14px 11px 15px;
-    border-left: 2px solid var(--accent);
-    background: linear-gradient(90deg, rgba(255,92,92,.07), transparent 70%);
-    border-radius: 0 12px 12px 0;
-    font-size: 13.5px; font-weight: 600; font-style: italic;
-    color: #c6ccdb; line-height: 1.5;
-  }
 
   /* ───── section ───── */
   .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 26px 2px 12px; }
@@ -142,6 +133,12 @@
     border-radius: 999px; background: rgba(255,255,255,0.07);
   }
   .cal-cell svg { position: absolute; width: 27px; height: 27px; z-index: 2; pointer-events: none; }
+  .cal-toggle {
+    width: 100%; margin-top: 8px; padding: 7px; border-radius: 9px;
+    background: none; border: none; color: var(--dim);
+    font-size: 11.5px; font-weight: 800; cursor: pointer; font-family: inherit;
+  }
+  .cal-toggle:active { color: var(--sub); }
   .cal-stats { display: flex; gap: 6px; margin-top: 9px; }
   .cal-stat { flex: 1; background: var(--card2); border-radius: 10px; padding: 7px 4px; text-align: center; }
   .cal-stat b { display: block; font-size: 15px; font-weight: 800; }
@@ -246,6 +243,10 @@
   .chip.tag { color: var(--sub); background: transparent; font-size: 11.5px; padding: 4px 9px; }
   .chip:active { border-color: rgba(90,169,255,.4); }
   /* 회화 교정 카드 */
+  /* 49단어짜리 문장이 카드 하나로 화면을 다 먹는 걸 막는다. 열면 전체가 보인다. */
+  .fc:not(.open) .expr {
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
   .fc .expr.ko.q { color: #cfe4ff; font-size: 16px; line-height: 1.45; }
   .prompt-sub { font-size: 12.5px; color: var(--sub); margin-top: 5px; line-height: 1.5; }
   .blk-wrong {
@@ -571,6 +572,7 @@
         <div class="cal-stat"><b id="stPart">0</b><span>부분 완료</span></div>
         <div class="cal-stat"><b id="stRate">0%</b><span>이번 달 달성률</span></div>
       </div>
+      <button class="cal-toggle" id="calToggle">이번 달 전체 보기 ▾</button>
     </div>
 
     <div class="sec-head">
@@ -583,8 +585,6 @@
     </div>
     <div class="routines" id="routines"></div>
     <div class="allDone" id="allDone">🎉 오늘 습관 전부 완료! 달력에 동그라미 쾅.</div>
-
-    <div class="quote-line" id="qEn"></div>
 
     <div class="sec-head">
       <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
@@ -736,7 +736,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-08-06";
+const BUILD = "2026-08-08-08";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -761,58 +761,15 @@ const ROUTINES = [
 const INTERVALS = [1, 3, 7, 14, 30, 60];
 const GRADUATED = "9999-12-31";
 
-// 한 줄짜리 영어 동기부여 문장. dayOfYear로 매일 바뀐다.
-// 화면에 한두 줄로 들어가도록 짧게 유지할 것.
-const QUOTES = [
-  "Anything is better than nothing.",
-  "Small steps every day.",
-  "Progress, not perfection.",
-  "Discipline beats motivation.",
-  "Repetition is the mother of learning.",
-  "Fluency is built one sentence at a time.",
-  "Every expert was once a beginner.",
-  "Show up. That's 80% of it.",
-  "Your future self will thank you.",
-  "Ten minutes today beats one hour someday.",
-  "Speak badly today, speak well tomorrow.",
-  "Fall seven times, stand up eight.",
-  "The secret of getting ahead is getting started.",
-  "Little by little, a little becomes a lot.",
-  "What gets tracked gets done.",
-  "Consistency is the key to success.",
-  "One day or day one. You decide.",
-  "It always seems impossible until it's done.",
-  "Streaks are built on days you didn't feel like it.",
-  "Your English grows in the minutes nobody sees.",
-  "The more you use it, the more it becomes yours.",
-  "Today's expression is next month's fluent sentence.",
-  "Winners are just losers who never quit.",
-  "Don't fear mistakes. Fear not trying.",
-  "A little progress each day adds up.",
-  "You are one podcast away from a better ear.",
-  "Say it out loud. That's where it sticks.",
-  "Done is better than perfect.",
-  "Slow is smooth. Smooth is fast.",
-  "Confidence comes after the reps, not before.",
-  "You don't find time. You make it.",
-  "The words you use are the words you keep.",
-  "Practice until it feels boring. Then it's yours.",
-  "One more sentence. That's the whole trick.",
-  "Nobody remembers your accent. They remember your point.",
-  "Learn it the way you'll say it.",
-  "Rough English today beats silent English forever.",
-  "The best time to start was yesterday. The next best is now.",
-  "Talk more, translate less.",
-  "Momentum is built, not found.",
-];
 
 // ═══════════════ STATE ═══════════════
 let today = manilaDate();
 let dayData = {};
 let expressions = [];
 let calCursor = null;
+let calExpanded = false;   // 기본은 이번 주 한 줄만 — 첫 화면을 짧게 유지한다
 let bankShown = 30;
-let newShown = 12;
+let newShown = 5;    // 첫 화면을 짧게. 「더 보기」로 늘린다
 let bankFilter = "all";
 // 말하기 속도는 고정한다. Supertonic 기본은 1.05, 중립값은 1.0인데
 // Patrick이 1.0도 빠르다고 해서 0.9로 내렸다 (같은 문장 3.50s → 3.89s).
@@ -850,10 +807,6 @@ function toast(msg) {
   t.classList.add("show");
   clearTimeout(t._h);
   t._h = setTimeout(() => t.classList.remove("show"), 2200);
-}
-function dayOfYear(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
 }
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
@@ -1241,7 +1194,6 @@ function renderHeader() {
   document.getElementById("hDate").textContent =
     `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${dows[now.getDay()]}) · Manila`;
   document.getElementById("todayLabel").textContent = today;
-  document.getElementById("qEn").textContent = QUOTES[dayOfYear(today) % QUOTES.length];
 }
 
 // ═══════════════ RENDER: ROUTINES ═══════════════
@@ -1320,45 +1272,76 @@ function renderStreak() {
 }
 
 // ═══════════════ RENDER: CALENDAR ═══════════════
+// 기본은 이번 주 한 줄만. 첫 화면이 달력으로 꽉 차면 정작 할 일이 안 보인다.
+// 탭하면 그 달 전체가 펼쳐진다.
+function calCellHtml(y, m, day) {
+  const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const st = dayStatus(iso);
+  let mark = "";
+  if (st > 0) {
+    // 정원. 완주는 실선, 부분 완료는 균일한 점선.
+    const color = st === 2 ? "#ff5c5c" : "#f5b942";
+    const dash = st === 2 ? "" : ` stroke-dasharray="3.6 4.4"`;
+    mark = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" fill="none"
+      stroke="${color}" stroke-width="${st === 2 ? 5 : 4}" stroke-linecap="round"${dash}
+      opacity="${st === 2 ? 0.95 : 0.8}"/></svg>`;
+  }
+  return `<div class="cal-cell${iso === today ? " today" : ""}"><span class="d">${day}</span>${mark}</div>`;
+}
+
 function renderCalendar() {
   if (!calCursor) { const n = manilaNow(); calCursor = new Date(n.getFullYear(), n.getMonth(), 1); }
   const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  const now = manilaNow();
+  const isThisMonth = y === now.getFullYear() && m === now.getMonth();
+
   document.getElementById("calTitle").textContent = `${y}년 ${m + 1}월`;
+  document.querySelector(".cal-nav").style.visibility = calExpanded ? "" : "hidden";
+  document.getElementById("calToggle").textContent =
+    calExpanded ? "접기 ▴" : "이번 달 전체 보기 ▾";
+
   const grid = document.getElementById("calGrid");
   grid.innerHTML = ["일", "월", "화", "수", "목", "금", "토"]
     .map(d => `<div class="cal-dow">${d}</div>`).join("");
 
   const startDow = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  let full = 0, part = 0;
 
-  for (let i = 0; i < startDow; i++) grid.insertAdjacentHTML("beforeend", `<div class="cal-cell other"></div>`);
+  // 통계는 접혀 있어도 그 달 전체 기준으로 낸다
+  let full = 0, part = 0;
   for (let day = 1; day <= daysInMonth; day++) {
-    const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const st = dayStatus(iso);
+    const st = dayStatus(`${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
     if (st === 2) full++; else if (st === 1) part++;
-    let mark = "";
-    if (st > 0) {
-      // 정원. 완주는 실선, 부분 완료는 균일한 점선.
-      const color = st === 2 ? "#ff5c5c" : "#f5b942";
-      const dash = st === 2 ? "" : ` stroke-dasharray="3.6 4.4"`;
-      mark = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" fill="none"
-        stroke="${color}" stroke-width="${st === 2 ? 5 : 4}" stroke-linecap="round"${dash}
-        opacity="${st === 2 ? 0.95 : 0.8}"/></svg>`;
-    }
-    grid.insertAdjacentHTML("beforeend",
-      `<div class="cal-cell${iso === today ? " today" : ""}"><span class="d">${day}</span>${mark}</div>`);
   }
+
+  if (calExpanded) {
+    for (let i = 0; i < startDow; i++) grid.insertAdjacentHTML("beforeend", `<div class="cal-cell other"></div>`);
+    for (let day = 1; day <= daysInMonth; day++) grid.insertAdjacentHTML("beforeend", calCellHtml(y, m, day));
+  } else {
+    // 오늘이 든 주 한 줄. 다른 달을 보고 있으면 그 달 1일이 든 주.
+    const anchor = isThisMonth ? now.getDate() : 1;
+    const weekStart = anchor - new Date(y, m, anchor).getDay();   // 일요일 기준
+    for (let i = 0; i < 7; i++) {
+      const day = weekStart + i;
+      grid.insertAdjacentHTML("beforeend",
+        (day < 1 || day > daysInMonth) ? `<div class="cal-cell other"></div>` : calCellHtml(y, m, day));
+    }
+  }
+
   document.getElementById("stFull").textContent = full;
   document.getElementById("stPart").textContent = part;
-  const now = manilaNow();
-  const elapsed = (y === now.getFullYear() && m === now.getMonth()) ? now.getDate() : daysInMonth;
+  const elapsed = isThisMonth ? now.getDate() : daysInMonth;
   document.getElementById("stRate").textContent = Math.round((full + part * 0.5) / elapsed * 100) + "%";
 
   document.getElementById("stTotal").textContent = expressions.length;
   document.getElementById("stStudied").textContent = expressions.filter(isStudied).length;
   document.getElementById("stGrad").textContent = expressions.filter(isGraduated).length;
 }
+document.getElementById("calToggle").onclick = () => {
+  calExpanded = !calExpanded;
+  if (!calExpanded) { const n = manilaNow(); calCursor = new Date(n.getFullYear(), n.getMonth(), 1); }
+  renderCalendar();
+};
 document.getElementById("calPrev").onclick = () => { calCursor.setMonth(calCursor.getMonth() - 1); renderCalendar(); };
 document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCursor.getMonth() + 1); renderCalendar(); };
 
@@ -1589,7 +1572,7 @@ function renderNew() {
     const b = document.createElement("button");
     b.className = "more-btn";
     b.textContent = `더 보기 (${items.length - newShown}개 남음)`;
-    b.onclick = () => { newShown += 12; renderNew(); };
+    b.onclick = () => { newShown += 10; renderNew(); };
     box.appendChild(b);
   }
 }
@@ -1614,7 +1597,7 @@ document.getElementById("clearOld").addEventListener("click", async () => {
     batch.set(db.collection(COL_EXPR).doc(e.id),
       { studied: true, studiedAt: today, stage: 0, nextReview: nr }, { merge: true });
   });
-  newShown = 12;
+  newShown = 5;
   renderNew(); renderDue(); renderDist(); updateDots();
   try { await batch.commit(); toast(`${old.length}개를 ${BACKLOG_SPREAD}일에 나눠 배치했습니다`); }
   catch (err) { console.error(err); toast("저장 실패 — 새로고침 해주세요"); }
@@ -2398,7 +2381,7 @@ document.addEventListener("visibilitychange", () => {
 // 자정을 넘겨도 켜져 있으면 날짜 갱신
 setInterval(() => {
   const t = manilaDate();
-  if (t !== today && auth.currentUser) { today = t; newShown = 12; init(); }
+  if (t !== today && auth.currentUser) { today = t; newShown = 5; init(); }
 }, 60000);
 </script>
 </body>

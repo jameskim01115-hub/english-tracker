@@ -36,7 +36,7 @@ BACKFILL_DAYS = 7  # only sync items learned within this window
 # 값은 index.html 의 TTS_SPEED / 기본 음성과 반드시 일치해야 한다 — 다르면 캐시가 안 맞는다.
 TTS_URL = "http://127.0.0.1:8080/tts"
 TTS_VOICES = ["F2", "M1"]   # Patrick이 고른 두 목소리. 둘 다 미리 만들어 두면 앱에서 바꿔도 안 기다린다
-TTS_SPEED = "1.0"
+TTS_SPEED = "0.9"
 
 FIRESTORE_URL = (
     "https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/%s"

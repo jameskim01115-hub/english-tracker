@@ -24,10 +24,12 @@ Traefik + Let's Encrypt가 인증서를 자동 발급한다. `*.srv1722311.hstgr
 ## 앱과 반드시 맞춰야 하는 값
 
 `index.html`의 `TTS_SPEED`, 기본 음성(`DEFAULT_SRV_VOICE`)과
-`hermes-sync.py`의 `TTS_VOICE`/`TTS_SPEED`가 **같아야 한다.** 다르면 캐시 키가 어긋나
+`hermes-sync.py`의 `TTS_VOICES`/`TTS_SPEED`가 **같아야 한다.** 다르면 캐시 키가 어긋나
 미리 만들어둔 음성을 못 쓰고 매번 새로 생성한다.
 
-현재: 기본 음성 `F2`, 미리 생성 `F2`+`M1`, 속도 `1.0`. (Patrick이 고른 두 목소리)
+현재: 기본 음성 `F2`, 미리 생성 `F2`+`M1`, 속도 **`0.9`**.
+속도는 1.05(Supertonic 기본) → 1.0 → 0.9로 두 번 내렸다. Patrick이 1.0도 빠르다고 함.
+같은 문장 기준 3.50s(1.0) → 3.89s(0.9).
 
 ## 캐시
 
@@ -70,7 +72,7 @@ Firestore의 표현·예문 음성을 한꺼번에 만들어 둔다. 컨테이�
 
 ```bash
 ssh hermes "docker cp /root/tts/prewarm.py english-tts:/tmp/ && \
-            docker exec english-tts python /tmp/prewarm.py F2,M1 1.0"
+            docker exec english-tts python /tmp/prewarm.py F2,M1 0.9"
 ```
 
 속도나 기본 음성을 바꾸면 캐시가 전부 무효가 되므로 다시 돌릴 것.

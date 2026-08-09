@@ -754,7 +754,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-09-08";
+const BUILD = "2026-08-09-09";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -898,8 +898,29 @@ function rhythmHtml(s) {
   return h;
 }
 
-function plain(s) {
+// 철자로 읽어야 하는 약어. 여기 없는 대문자는 전부 「피크 강세」 표시로 본다.
+// 표기만으로는 `**UNWIND**`(영어 단어)와 `**CUSA**`(약어)를 구분할 수 없어서 목록이 필요하다 —
+// 둘 다 화면에서는 똑같이 피크로 강조된다. 약어가 새로 나오면 여기에 추가할 것.
+// AQUALINK 처럼 단어로 읽는 회사명은 넣지 않는다.
+const SPELL_OUT = /^(CUSA|CRBC|CRLC|OR|BIR|VAT|SSS|AEP|LOI|NTE|PO|STF|DPR|BFP|NTC|FSIC)$/;
+
+// TTS 는 대문자 덩어리를 약어로 보고 철자를 읽는다 — `UNWIND` 가 「유엔윈드」로 나왔다.
+// 우리 표기에서 대문자는 강세 표시일 뿐이므로 소문자로 되돌려 보낸다. 화면 표시는 그대로 둔다.
+function unstressCaps(s) {
   return String(s || "")
+    // 볼드 안 대문자 = 피크 강세. 여러 단어 피크(`**SAME HERE**`)가 있어 공백을 허용한다.
+    // 앞뒤에 글자가 붙어 있으면 단어 조각이다 — `de**POS**it` 의 POS 는 약어가 아니다.
+    .replace(/(\w*)\*\*(.+?)\*\*(\w*)/g, (m, pre, inner, post) =>
+      /^[A-Z][A-Z' ]*$/.test(inner) && !(!pre && !post && SPELL_OUT.test(inner))
+        ? `${pre}**${inner.toLowerCase()}**${post}` : m)
+    // 볼드 밖 대문자도 약어가 아니면 단어로 읽어야 한다 — AQUALINK 같은 회사명이 그렇다.
+    // 볼드 유무로 갈리면 같은 이름이 카드마다 다르게 읽힌다. SPELL_OUT 만이 유일한 기준이다.
+    .replace(/[A-Za-z']*[A-Z]{2,}[A-Za-z']*/g,
+      w => SPELL_OUT.test(w) ? w : w.toLowerCase());
+}
+
+function plain(s) {
+  return unstressCaps(s)
     .replace(/\*\*/g, "")
     .replace(/[→↘↓↗]/g, " ")
     .replace(/\s+\/\s+/g, " ")

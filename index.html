@@ -228,11 +228,16 @@
   }
   .blk-ex > span { flex: 1; }
   /* 리듬 표기는 예문·정답·게임 피드백 어디에 나오든 같게 보여야 한다 — 선택자를 좁히지 말 것 */
-  b.st { color: #fff; font-weight: 800; background: rgba(245,185,66,.22); border-radius: 4px; padding: 0 4px; }
+  b.st { color: #fff; font-weight: 800; }
+  b.st.peak {
+    background: rgba(245,185,66,.26); border-radius: 4px; padding: 0 5px;
+    letter-spacing: .3px;
+  }
   i.ar { font-style: normal; color: var(--purple); font-weight: 800; padding: 0 2px; }
   i.br { font-style: normal; color: #4a5268; font-weight: 700; padding: 0 5px; }
   /* 리듬이 들어간 정답은 강세가 눈에 띄도록 본문 굵기를 낮춘다 */
-  .fc .expr.rh { font-weight: 700; line-height: 1.6; }
+  /* 정답 전체가 굵으면 강세가 묻힌다. 본문은 보통, 강세만 굵게. */
+  .fc .expr.rh { font-weight: 400; line-height: 1.65; color: #d6dbe8; }
   .legend { font-size: 10.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
@@ -743,7 +748,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-09-03";
+const BUILD = "2026-08-09-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -862,18 +867,31 @@ function hasRhythm(s) { return /\*\*|[→↘↓↗]/.test(s || ""); }
 function capsToStress(s) {
   const t = String(s || "");
   if (t.indexOf("**") >= 0) return t;
-  return t.replace(/[\w']*[A-Z]{2,}[\w']*/g, w =>
-    "**" + (/^[A-Z']+$/.test(w) ? w.charAt(0) + w.slice(1).toLowerCase() : w.toLowerCase()) + "**");
+  // 대문자 덩어리는 피크 강세다. 대소문자를 바꾸지 않는다 —
+  // 「대문자 볼드 = 문장의 피크」가 Patrick 표기 규칙이라 그대로 살려야 한다.
+  return t.replace(/[A-Za-z']*[A-Z]{2,}[A-Za-z']*/g, w => {
+    const m = w.match(/^([a-z']*)([A-Z][A-Z']*)([a-z']*)$/);
+    return m ? `${m[1]}**${m[2]}**${m[3]}` : `**${w}**`;   // reVIEW → re**VIEW**
+  });
 }
+
 function rhythmHtml(s) {
   let h = esc(capsToStress(s));
-  h = h.replace(/\*\*(.+?)\*\*/g, '<b class="st">$1</b>');
-  // 봇이 "→ / " 로도 "→/" 로도 보낸다. 화살표에 붙은 슬래시는 끊어 읽기 표시다.
-  h = h.replace(/([→↘↓↗])\s*\/\s*/g, '<i class="ar">$1</i><i class="br">|</i>');
-  h = h.replace(/\s\/\s/g, '<i class="br">|</i>');
-  h = h.replace(/([→↘↓↗])/g, '<i class="ar">$1</i>');
+  // **소문자** = 일반 강세, **대문자** = 문장의 피크. Patrick 표기 규칙이다.
+  h = h.replace(/\*\*(.+?)\*\*/g, (m, inner) =>
+    /[A-Z]{2,}/.test(inner) && inner === inner.toUpperCase()
+      ? `<b class="st peak">${inner}</b>`
+      : `<b class="st">${inner}</b>`);
+  // 화살표와 끊어 읽기를 한 번에 바꾼다. 여러 번 치환하면 이미 넣은 태그를
+  // 다시 잡아서 중첩되거나 자리표시자가 남는다 — 실제로 겪었다.
+  h = h.replace(/([→↘↓↗])(\s*\/\s*)?|(\s\/\s)/g, (m, arrow, slash, lone) => {
+    if (arrow) return `<i class="ar">${arrow}</i>` + (slash ? ' <i class="br">|</i> ' : '');
+    if (lone) return ' <i class="br">|</i> ';
+    return m;
+  });
   return h;
 }
+
 function plain(s) {
   return String(s || "")
     .replace(/\*\*/g, "")
@@ -1676,10 +1694,62 @@ function dueItems() {
     .filter(e => isStudied(e) && !isGraduated(e) && e.nextReview && e.nextReview <= today)
     .sort((a, b) => (a.nextReview < b.nextReview ? -1 : 1));
 }
+
+// ═══════════════ 하루 복습량 상한 ═══════════════
+// 간격이 1·3·7·14·30·60 이라 특정 날짜에 몰리는 일이 생긴다.
+// 하루 DAILY_CAP 을 넘으면 초과분을 앞으로 밀어 고르게 편다 (오래된 것부터 남긴다).
+// 이미 예약된 날의 부하도 세서, 밀어낸 것이 또 다른 날에 몰리지 않게 한다.
+const DAILY_CAP = 20;
+
+function planRebalance() {
+  const due = dueItems();
+  if (due.length <= DAILY_CAP) return [];
+
+  // 오늘 이후 날짜별 예약 수
+  const load = {};
+  expressions
+    .filter(e => isStudied(e) && !isGraduated(e) && e.nextReview && e.nextReview > today)
+    .forEach(e => { load[e.nextReview] = (load[e.nextReview] || 0) + 1; });
+
+  const moves = [];
+  for (const e of due.slice(DAILY_CAP)) {
+    let d = today, guard = 0;
+    do { d = addDays(d, 1); guard++; } while ((load[d] || 0) >= DAILY_CAP && guard < 400);
+    load[d] = (load[d] || 0) + 1;
+    moves.push({ e, to: d });
+  }
+  return moves;
+}
+
+// 하루 한 번만 돈다. 매번 돌리면 오늘 복습을 하는 도중에 큐가 흔들린다.
+async function balanceReviews() {
+  if (!ready || !auth.currentUser) return;
+  if (localStorage.getItem("et_balanced") === today) return;
+  const moves = planRebalance();
+  localStorage.setItem("et_balanced", today);
+  if (!moves.length) return;
+
+  const batch = db.batch();
+  moves.forEach(({ e, to }) => {
+    e.nextReview = to;
+    batch.set(db.collection(COL_EXPR).doc(e.id), { nextReview: to }, { merge: true });
+  });
+  try {
+    await batch.commit();
+    const last = moves[moves.length - 1].to;
+    toast(`복습 ${moves.length}건을 ${last}까지 나눠 배치했습니다`);
+    renderDue(); updateDots(); saveCache();
+  } catch (err) {
+    console.error(err);
+    localStorage.removeItem("et_balanced");   // 실패했으면 다음 기회에 다시
+  }
+}
 function renderDue() {
   const due = dueItems();
   const box = document.getElementById("dueList");
-  document.getElementById("dueCount").textContent = due.length ? `${due.length}개 대기 중` : "";
+  document.getElementById("dueCount").textContent = !due.length ? ""
+    : due.length > DAILY_CAP ? `${due.length}개 중 오늘 ${DAILY_CAP}개`
+    : `${due.length}개 대기 중`;
   if (!due.length) {
     const n = newItems().length;
     box.innerHTML = `<div class="empty"><b>오늘 복습할 표현이 없습니다.</b><br>` +
@@ -1690,10 +1760,10 @@ function renderDue() {
     return;
   }
   box.innerHTML = "";
-  due.slice(0, 20).forEach(e => box.appendChild(exprCard(e, "review", revDir)));
-  if (due.length > 20) {
+  due.slice(0, DAILY_CAP).forEach(e => box.appendChild(exprCard(e, "review", revDir)));
+  if (due.length > DAILY_CAP) {
     box.insertAdjacentHTML("beforeend",
-      `<div class="empty" style="margin-top:4px">나머지 ${due.length - 20}개는 위를 처리하면 이어서 나옵니다.</div>`);
+      `<div class="empty" style="margin-top:4px">나머지 ${due.length - DAILY_CAP}개는 다음 날로 나눠 배치됩니다.</div>`);
   }
 }
 // 복습 큐가 비었을 때의 자유 연습. 카드만 넘겨보고 복습 일정은 건드리지 않는다.
@@ -2458,6 +2528,7 @@ async function init() {
   }
   renderAll();
   markSyncing(false);
+  balanceReviews();          // 하루 상한을 넘으면 초과분을 앞으로 분산
   // 인증이 늦게 끝났는데 이미 「표현」 탭에 있으면 그때 전체를 채운다
   if (ready && activeTab === "lib") ensureAllLoaded();
 }

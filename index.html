@@ -309,6 +309,12 @@
     border: 1px solid rgba(62,207,142,.35);
     font-size: 13.5px; font-weight: 800; cursor: pointer; font-family: inherit;
   }
+  .btn-del {
+    width: 100%; margin-top: 8px; padding: 10px; border-radius: 12px;
+    background: none; color: #7a5560; border: 1px solid #3a2830;
+    font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .btn-del:active { background: rgba(255,92,92,.1); color: var(--accent); border-color: rgba(255,92,92,.35); }
   .btn-reopen {
     width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px;
     background: var(--card2); color: var(--sub); border: 1px solid var(--line);
@@ -736,7 +742,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-08-10";
+const BUILD = "2026-08-09-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1508,8 +1514,9 @@ function exprCard(e, mode, dir) {
     html += `<button class="btn-study">✓ 학습 완료 — 복습 주기에 넣기</button>`;
   } else if (mode === "practice") {
     /* 연습 모드는 액션 없음 — 기록을 건드리지 않는다 */
-  } else if (isGraduated(e)) {
-    html += `<button class="btn-reopen">↺ 복습 큐에 다시 넣기</button>`;
+  } else if (mode === "browse") {
+    html += (isGraduated(e) ? `<button class="btn-reopen">↺ 복습 큐에 다시 넣기</button>` : "")
+      + `<button class="btn-del">표현 삭제</button>`;
   }
 
   html += `</div>`;
@@ -1546,6 +1553,24 @@ function exprCard(e, mode, dir) {
   }
   const btnStudy = card.querySelector(".btn-study");
   if (btnStudy) btnStudy.addEventListener("click", ev => { ev.stopPropagation(); markStudied(e, card); });
+  const btnDel = card.querySelector(".btn-del");
+  if (btnDel) btnDel.addEventListener("click", async ev => {
+    ev.stopPropagation();
+    if (!canWrite()) return;
+    if (!confirm(`이 표현을 삭제할까요?\n\n${e.expression}\n\n복습 기록도 함께 사라집니다. 되돌릴 수 없습니다.`)) return;
+    const keep = expressions;
+    expressions = expressions.filter(x => x.id !== e.id);
+    fadeOut(card, () => { rerenderActive(); renderCalendar(); });
+    try {
+      await db.collection(COL_EXPR).doc(e.id).delete();
+      toast("삭제했습니다");
+    } catch (err) {
+      console.error(err);
+      expressions = keep;               // 실패하면 화면을 되돌린다
+      rerenderActive();
+      toast("삭제 실패 — 연결을 확인해주세요");
+    }
+  });
   const btnReopen = card.querySelector(".btn-reopen");
   if (btnReopen) btnReopen.addEventListener("click", async ev => {
     ev.stopPropagation();

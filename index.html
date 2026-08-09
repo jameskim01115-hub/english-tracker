@@ -742,7 +742,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-09-01";
+const BUILD = "2026-08-09-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2114,19 +2114,30 @@ document.getElementById("bankSearch").addEventListener("input", () => { bankShow
 // 「표현」 탭은 전체 목록·누적·단계별 현황을 보여주므로 그때만 전부 읽는다.
 // 평소 화면(오늘·복습)은 필요한 것만 들고 있어서 표현이 몇만 개가 돼도 느려지지 않는다.
 let allLoading = false;
+// 화면을 가리지 않는다. 이미 들고 있는 것으로 목록을 먼저 보여주고,
+// 나머지는 뒤에서 채운다. Firestore get() 은 타임아웃이 없어서 회선이 나쁘면
+// 무한정 매달린다 — 그래서 직접 시간을 끊는다.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} 시간 초과`)), ms)),
+  ]);
+}
+
 async function ensureAllLoaded() {
   if (allLoaded || allLoading || !ready) return;
   allLoading = true;
-  const box = document.getElementById("bankList");
-  if (!expressions.length) box.innerHTML = `<div class="loading">전체 목록 불러오는 중…</div>`;
+  markSyncing(true);
   try {
-    await loadAllExpressions();
+    await withTimeout(loadAllExpressions(), 15000, "전체 목록");
     renderBank(); renderDist(); renderCalendar();
   } catch (err) {
     console.error(err);
-    toast("전체 목록을 불러오지 못했습니다");
+    // 실패해도 코어 데이터로 목록은 이미 보이고 있다. 다시 시도할 수단만 준다.
+    toast("전체 목록을 못 받았습니다 — 표현 탭을 다시 열면 재시도합니다");
   }
   allLoading = false;
+  markSyncing(false);
 }
 
 // ═══════════════ 탭 배지 ═══════════════
@@ -2412,18 +2423,40 @@ function bootFromCache() {
 }
 bootFromCache();
 
+// 로딩이 길어지면 "불러오는 중…"만 계속 도는 대신 상황을 알려준다.
+function showSlow() {
+  document.querySelectorAll(".loading").forEach(el => {
+    el.innerHTML = `연결이 느립니다…<br><span style="font-size:12px;color:var(--dim)">`
+      + `잠시 후에도 그대로면 새로고침해 주세요</span>`;
+  });
+}
+
 async function init() {
   renderHeader();
+  const slowTimer = setTimeout(showSlow, 8000);
   try {
-    await Promise.all([loadDays(), loadExpressions()]);
+    await withTimeout(Promise.all([loadDays(), loadExpressions()]), 20000, "데이터 로드");
     ready = true;
     saveCache();
   } catch (err) {
-    toast("데이터 로드 실패 — 새로고침 해주세요");
     console.error(err);
+    toast("데이터를 못 받았습니다 — 새로고침 해주세요");
+  }
+  clearTimeout(slowTimer);
+  // 로드에 실패했고 캐시도 없으면 빈 화면 대신 실패를 알린다.
+  // 안 그러면 renderAll 이 "전부 처리했습니다"를 띄워 다 끝난 것처럼 보인다.
+  if (!ready && !expressions.length) {
+    const msg = `<div class="empty"><b>데이터를 불러오지 못했습니다.</b><br>`
+      + `연결을 확인한 뒤 새로고침해 주세요.</div>`;
+    document.getElementById("newList").innerHTML = msg;
+    document.getElementById("dueList").innerHTML = msg;
+    markSyncing(false);
+    return;
   }
   renderAll();
   markSyncing(false);
+  // 인증이 늦게 끝났는데 이미 「표현」 탭에 있으면 그때 전체를 채운다
+  if (ready && activeTab === "lib") ensureAllLoaded();
 }
 
 // ═══════════════ AUTH ═══════════════

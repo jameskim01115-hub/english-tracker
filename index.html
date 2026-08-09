@@ -754,7 +754,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-09-07";
+const BUILD = "2026-08-09-08";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2347,6 +2347,58 @@ function parseReviewNote(text) {
   }
   return { date, items };
 }
+
+// ── 붙여넣을 때 굵은 글씨를 ** 로 되살린다 ──
+// ChatGPT·Upnote 화면에서 복사하면 클립보드에 서식(HTML)과 평문이 둘 다 담긴다.
+// textarea 는 평문만 받으므로 ** 가 사라지고 강세 표시가 통째로 날아간다.
+// HTML 쪽을 읽어 <b>/<strong>/font-weight 를 ** 로 복원하면 어떻게 복사하든 안전하다.
+const BLOCK_TAG = /^(P|DIV|LI|TR|H[1-6]|PRE|BLOCKQUOTE|SECTION|ARTICLE)$/;
+function htmlToMarked(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  let out = "";
+  const walk = (node, bold) => {
+    if (node.nodeType === 3) {
+      const raw = node.nodeValue.replace(/\u00a0/g, " ");
+      if (!raw) return;
+      // 앞뒤 공백은 ** 밖에 둬야 마크다운이 깨지지 않는다
+      out += bold && raw.trim()
+        ? raw.replace(/^(\s*)([\s\S]*?)(\s*)$/, (m, a, b, c) => `${a}**${b}**${c}`)
+        : raw;
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    if (tag === "BR") { out += "\n"; return; }
+    if (tag === "STYLE" || tag === "SCRIPT") return;
+    const st = node.getAttribute("style") || "";
+    const w = /font-weight\s*:\s*(bold|[1-9]00)/i.exec(st);
+    const isBold = bold || tag === "B" || tag === "STRONG"
+      || (w && (w[1].toLowerCase() === "bold" || parseInt(w[1], 10) >= 600));
+    const block = BLOCK_TAG.test(tag);
+    if (block && out && !out.endsWith("\n")) out += "\n";
+    node.childNodes.forEach(c => walk(c, isBold));
+    if (block && !out.endsWith("\n")) out += "\n";
+  };
+  doc.body.childNodes.forEach(n => walk(n, false));
+  return out
+    .replace(/\*\*(\s*)\*\*/g, "$1")   // 붙어 있는 볼드 구간 합치기
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+document.getElementById("impText").addEventListener("paste", ev => {
+  const html = ev.clipboardData && ev.clipboardData.getData("text/html");
+  if (!html) return;                      // 평문 붙여넣기는 기본 동작 그대로
+  const marked = htmlToMarked(html);
+  if (!marked || marked.indexOf("**") < 0) return;   // 살릴 볼드가 없으면 손대지 않는다
+  ev.preventDefault();
+  const el = ev.target;
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.slice(0, s) + marked + el.value.slice(e);
+  el.selectionStart = el.selectionEnd = s + marked.length;
+  toast("굵은 글씨를 강세 표시로 복원했습니다");
+});
 
 let impParsed = [];
 const impBg = document.getElementById("impBg");

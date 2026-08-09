@@ -593,15 +593,6 @@
     <div id="newList"><div class="loading">불러오는 중…</div></div>
 
     <div class="sec-head">
-      <div class="sec-title">누적</div>
-    </div>
-    <div class="cal-stats">
-      <div class="cal-stat"><b id="stTotal">0</b><span>모은 표현</span></div>
-      <div class="cal-stat"><b id="stStudied">0</b><span>학습 완료</span></div>
-      <div class="cal-stat"><b id="stGrad">0</b><span>졸업</span></div>
-    </div>
-
-    <div class="sec-head">
       <div class="sec-title">설정</div>
     </div>
     <div class="setting-row">
@@ -630,12 +621,6 @@
       </div>
     </div>
     <div id="dueList"><div class="loading">불러오는 중…</div></div>
-
-    <div class="sec-head">
-      <div class="sec-title">단계별 현황</div>
-      <div class="sec-sub" id="distTotal"></div>
-    </div>
-    <div class="dist" id="dist"></div>
   </section>
 
   <!-- ══════════ TAB: 게임 ══════════ -->
@@ -657,6 +642,21 @@
       💬 회화 복습 노트 가져오기</button>
     <div class="filters" id="filters"></div>
     <div id="bankList"></div>
+
+    <div class="sec-head">
+      <div class="sec-title">누적</div>
+      <div class="sec-sub" id="distTotal"></div>
+    </div>
+    <div class="cal-stats">
+      <div class="cal-stat"><b id="stTotal">0</b><span>모은 표현</span></div>
+      <div class="cal-stat"><b id="stStudied">0</b><span>학습 완료</span></div>
+      <div class="cal-stat"><b id="stGrad">0</b><span>졸업</span></div>
+    </div>
+
+    <div class="sec-head">
+      <div class="sec-title">단계별 현황</div>
+    </div>
+    <div class="dist" id="dist"></div>
   </section>
 
 </div>
@@ -736,7 +736,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-08-08";
+const BUILD = "2026-08-08-10";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1157,10 +1157,44 @@ async function loadDays() {
   dayData = {};
   snap.forEach(doc => { dayData[doc.id] = doc.data(); });
 }
+// ═══════════════ 무엇을 불러올 것인가 ═══════════════
+// 예전엔 열 때마다 전부(limit 500) 읽었다. 하루 14건씩 쌓이므로 한 달이면 상한에 닿고,
+// 그때부터 오래된 표현이 **에러 없이 조용히** 화면에서 사라진다. 읽기 횟수도 같이 는다.
+//
+// 그래서 평소엔 「지금 필요한 것」만 읽는다. 졸업한 표현(nextReview = 9999-12-31)은
+// 자동으로 빠진다 — 삭제하지 않아도 앱이 느려지지 않는 이유다.
+// 전체 목록은 「표현」 탭을 열 때 한 번만 따로 읽는다.
+const HORIZON_DAYS = 7;    // 며칠 앞 복습까지 미리 들고 올지
+const RECENT_LIMIT = 120;  // 최근 표현 보유량
+let allLoaded = false;
+
+function mergeDocs(...snaps) {
+  const byId = new Map();
+  for (const snap of snaps) snap.forEach(d => byId.set(d.id, { id: d.id, ...d.data() }));
+  return [...byId.values()].sort((a, b) => (a.learnedDate || "") < (b.learnedDate || "") ? 1 : -1);
+}
+
 async function loadExpressions() {
-  const snap = await db.collection(COL_EXPR).orderBy("learnedDate", "desc").limit(500).get();
-  expressions = [];
-  snap.forEach(doc => expressions.push({ id: doc.id, ...doc.data() }));
+  // ① 복습 대기 + 임박 + 미학습(동기화가 nextReview 를 과거로 넣어둔다)
+  //    졸업은 nextReview 가 9999 라 이 조건에서 빠진다.
+  // ② 최근 것 — 오늘·이번 주 화면용
+  // 둘 다 단일 필드 정렬이라 복합 색인이 필요 없다 (콘솔 작업 불필요).
+  const [dueSnap, recentSnap] = await Promise.all([
+    db.collection(COL_EXPR).where("nextReview", "<=", addDays(today, HORIZON_DAYS))
+      .orderBy("nextReview").limit(400).get(),
+    db.collection(COL_EXPR).orderBy("learnedDate", "desc").limit(RECENT_LIMIT).get(),
+  ]);
+  expressions = mergeDocs(dueSnap, recentSnap);
+  allLoaded = false;
+}
+
+// 「표현」 탭 전용. 세션당 한 번만 전체를 읽는다.
+async function loadAllExpressions() {
+  if (allLoaded) return;
+  const snap = await db.collection(COL_EXPR).orderBy("learnedDate", "desc").get();
+  expressions = mergeDocs(snap);
+  allLoaded = true;
+  saveCache();
 }
 async function saveDay(date) {
   const d = dayData[date] || { tasks: {} };
@@ -1182,6 +1216,7 @@ function setTab(name) {
   document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
   scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   if (name === "game" && !game) renderGameStart();
+  if (name === "lib") ensureAllLoaded();
 }
 document.querySelectorAll("nav.tabs button").forEach(b => {
   b.addEventListener("click", () => setTab(b.dataset.tab));
@@ -1333,9 +1368,13 @@ function renderCalendar() {
   const elapsed = isThisMonth ? now.getDate() : daysInMonth;
   document.getElementById("stRate").textContent = Math.round((full + part * 0.5) / elapsed * 100) + "%";
 
-  document.getElementById("stTotal").textContent = expressions.length;
-  document.getElementById("stStudied").textContent = expressions.filter(isStudied).length;
-  document.getElementById("stGrad").textContent = expressions.filter(isGraduated).length;
+  // 누적은 전체를 읽은 뒤에만 정확하다. 그전엔 「표현」 탭에서 확인하도록 안내한다.
+  const tot = document.getElementById("stTotal");
+  if (tot) {
+    tot.textContent = allLoaded ? expressions.length : "—";
+    document.getElementById("stStudied").textContent = allLoaded ? expressions.filter(isStudied).length : "—";
+    document.getElementById("stGrad").textContent = allLoaded ? expressions.filter(isGraduated).length : "—";
+  }
 }
 document.getElementById("calToggle").onclick = () => {
   calExpanded = !calExpanded;
@@ -2046,6 +2085,24 @@ function renderBank() {
   }
 }
 document.getElementById("bankSearch").addEventListener("input", () => { bankShown = 30; renderBank(); });
+
+// 「표현」 탭은 전체 목록·누적·단계별 현황을 보여주므로 그때만 전부 읽는다.
+// 평소 화면(오늘·복습)은 필요한 것만 들고 있어서 표현이 몇만 개가 돼도 느려지지 않는다.
+let allLoading = false;
+async function ensureAllLoaded() {
+  if (allLoaded || allLoading || !ready) return;
+  allLoading = true;
+  const box = document.getElementById("bankList");
+  if (!expressions.length) box.innerHTML = `<div class="loading">전체 목록 불러오는 중…</div>`;
+  try {
+    await loadAllExpressions();
+    renderBank(); renderDist(); renderCalendar();
+  } catch (err) {
+    console.error(err);
+    toast("전체 목록을 불러오지 못했습니다");
+  }
+  allLoading = false;
+}
 
 // ═══════════════ 탭 배지 ═══════════════
 function updateDots() {

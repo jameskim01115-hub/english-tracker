@@ -947,12 +947,16 @@ function slotLabel(s) {
 }
 // 한→영 앞면에 띄울 프롬프트. 한글 뜻이 없는 「막힌 표현」은 상황 태그로 대체한다.
 function promptFor(e, p) {
-  // 회화 교정은 질문이 프롬프트다 — 실제 대화처럼 질문을 보고 답을 만들어야 한다.
+  // 한→영은 "정답의 한국어"를 보여준다. 회화 교정도 마찬가지다.
+  // 질문만 보여주면 무슨 문장을 말해야 하는지 알 수 없어 인출이 성립하지 않는다 —
+  // 아무 대답이나 만들 수 있는데 정답은 특정 문장 하나다 (2026-08-10 Patrick 지적).
+  // 질문은 카드를 펼쳤을 때 정답 바로 위에 나온다.
+  if (e.ko) return { ok: true, label: "이 말을 영어로", text: e.ko, tag: false };
+  // ko 가 없는 옛 회화 교정 카드만 질문으로 폴백한다.
   if (isReview(e) && (e.question || e.questionKo)) {
     return { ok: true, label: "이 질문에 영어로 답하기", text: e.question || e.questionKo,
              sub: e.question ? e.questionKo : "", tag: false, q: true };
   }
-  if (e.ko) return { ok: true, label: "이 말을 영어로", text: e.ko, tag: false };
   if (e.meaning) return { ok: true, label: "이 뜻을 영어로", text: e.meaning, tag: false };
   if (p.tags.length) return { ok: true, label: "이 상황을 영어로", text: p.tags.join(" · "), tag: true };
   return { ok: false };
@@ -1488,6 +1492,14 @@ function exprCard(e, mode, dir) {
       <span class="badge date">${esc(relDate(e.learnedDate))}</span>
     </div>`;
 
+  // 질문 블록 — 한→영이면 정답 바로 위, 영→한이면 뒷면 첫 블록.
+  // 영어 질문이 없는 카드(questionKo 가 상황 설명인 경우)는 라벨을 「상황」으로 바꾼다.
+  const qBlock = isReview(e) && (e.question || e.questionKo)
+    ? `<div class="blk"><div class="blk-l">${e.question ? "질문" : "상황"}</div>
+        <div class="blk-mean">${esc(e.question || e.questionKo)}</div>
+        ${e.question && e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}</div>`
+    : "";
+
   if (recall) {
     html += `
       <div class="prompt-l">${esc(pr.label)}<span class="wc">${wordCount(e.expression)}단어</span></div>
@@ -1496,6 +1508,7 @@ function exprCard(e, mode, dir) {
       <div class="hintrow"><button class="hint-btn">힌트</button><span class="hint-txt"></span></div>
       <div class="tap-hint">입으로 먼저 말해보고 → 탭해서 정답 비교</div>
       <div class="back">
+        ${qBlock}
         <div class="blk blk-answer"><div class="blk-l">정답</div>
           <div class="expr-row">
             <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
@@ -1517,12 +1530,9 @@ function exprCard(e, mode, dir) {
   // ── 회화 교정 전용 블록 ──
   // 자기가 틀린 문장을 정답 바로 옆에서 보는 게 이 카드의 핵심이다.
   if (isReview(e)) {
-    if (!recall && (e.question || e.questionKo)) {
-      html += `<div class="blk"><div class="blk-l">질문</div>
-        <div class="blk-mean">${esc(e.question || e.questionKo)}</div>
-        ${e.question && e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}</div>`;
-    }
-    if (e.ko) {
+    if (!recall) html += qBlock;
+    // 한→영이면 ko 는 이미 앞면 프롬프트라 다시 띄우지 않는다 — 같은 문장이 두 번 나온다.
+    if (e.ko && !(recall && pr.text === e.ko)) {
       html += `<div class="blk"><div class="blk-l">뜻</div>
         <div class="blk-mean">${esc(e.ko)}</div></div>`;
     }

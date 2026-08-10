@@ -284,6 +284,10 @@
     color: #d8c69a; font-size: 11.5px; line-height: 1.6; font-weight: 600;
   }
   .imp-warn b { color: var(--gold); }
+  .imp-warn-sub {
+    margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(245,185,66,.25);
+    color: #b9a877; font-weight: 500;
+  }
   .imp-item {
     display: flex; gap: 10px; align-items: flex-start;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
@@ -757,7 +761,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-09-09";
+const BUILD = "2026-08-10-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1536,7 +1540,8 @@ function exprCard(e, mode, dir) {
       html += `<div class="blk"><div class="blk-l">뜻</div>
         <div class="blk-mean">${esc(e.ko)}</div></div>`;
     }
-    if (e.wrong) {
+    // 숫자면 옛 게임 오답 카운터다 — 「내가 썼던 것」으로 띄우면 안 된다.
+    if (typeof e.wrong === "string" && e.wrong.trim()) {
       html += `<div class="blk"><div class="blk-l">내가 썼던 것</div>
         <div class="blk-wrong">${esc(e.wrong)}</div></div>`;
     }
@@ -1895,9 +1900,17 @@ function renderDist() {
 const GAME_LEN = 10;
 let game = null;
 
+// 게임 오답 횟수. 예전엔 `wrong` 에 넣었는데 그 필드는 회화 교정의 「내가 썼던 것」(문장)이라
+// 같은 이름을 두 뜻으로 쓰고 있었다 — 회화 카드를 게임에서 틀리면 문장 뒤에 숫자가 붙고,
+// 반대로 숫자가 든 카드는 검색이 터졌다(`.toLowerCase` 없음). 이제 `missCount` 로 센다.
+// 숫자로 남아 있는 옛 `wrong` 은 그대로 읽어준다.
+function missOf(e) {
+  if (typeof e.missCount === "number") return e.missCount;
+  return typeof e.wrong === "number" ? e.wrong : 0;
+}
 function weightOf(e) {
   if (isGraduated(e)) return 0.2;
-  const wrong = e.wrong || 0;
+  const wrong = missOf(e);
   const stage = Math.min(e.stage || 0, 5);
   let w = (1 + wrong * 3) * ((6 - stage) / 6 + 0.3);
   if (!isStudied(e)) w *= 2.5;
@@ -1995,8 +2008,8 @@ function gamePool() { return expressions.filter(playable); }
 function renderGameStart() {
   const pool = gamePool();
   const best = parseInt(localStorage.getItem("et_best") || "0", 10);
-  const weak = expressions.filter(e => (e.wrong || 0) > 0)
-    .sort((a, b) => (b.wrong || 0) - (a.wrong || 0)).slice(0, 5);
+  const weak = expressions.filter(e => missOf(e) > 0)
+    .sort((a, b) => missOf(b) - missOf(a)).slice(0, 5);
   const box = document.getElementById("gameBox");
   box.innerHTML = `
     <div class="g-hero">
@@ -2010,7 +2023,7 @@ function renderGameStart() {
     ${weak.length ? `<div class="sec-head"><div class="sec-title">잘 안 외워지는 표현</div>
       <div class="sec-sub">게임에서 틀린 횟수</div></div>
       <div class="g-weak">${weak.map(e => `<div class="row">
-        <div class="e">${esc(e.expression)}</div><div class="x">${e.wrong}회</div></div>`).join("")}</div>` : ""}`;
+        <div class="e">${esc(e.expression)}</div><div class="x">${missOf(e)}회</div></div>`).join("")}</div>` : ""}`;
   const go = document.getElementById("gGo");
   if (go && !go.disabled) go.onclick = startGame;
 }
@@ -2160,7 +2173,7 @@ async function endGame() {
     const patch = {};
     if (ok) { e.right = (e.right || 0) + 1; patch.right = e.right; }
     else {
-      e.wrong = (e.wrong || 0) + 1; patch.wrong = e.wrong;
+      e.missCount = missOf(e) + 1; patch.missCount = e.missCount;
       if (isStudied(e) && !isGraduated(e) && (!e.nextReview || e.nextReview > today)) {
         e.nextReview = addDays(today, 1);
         patch.nextReview = e.nextReview;
@@ -2225,7 +2238,7 @@ function renderBank() {
     (e.context || "").toLowerCase().includes(q) ||
     (e.ko || "").toLowerCase().includes(q) ||
     (e.question || "").toLowerCase().includes(q) ||
-    (e.wrong || "").toLowerCase().includes(q));
+    String(e.wrong || "").toLowerCase().includes(q));
 
   document.getElementById("bankCount").textContent = `${items.length} / ${expressions.length}개`;
   const box = document.getElementById("bankList");
@@ -2343,7 +2356,23 @@ const IMP_LABELS = [
   ["chunks", /^\s*Key\s+Corrections\s*$/i],
 ];
 const hasHangul = s => /[가-힣]/.test(s);
-const stripBullet = s => s.replace(/^[*\-•]\s*/, "").trim();
+// 불릿만 뗀다. `**덩어리**` 의 첫 `*` 를 불릿으로 오인하면 짝이 깨져 `*덩어리**` 가 남는다.
+const stripBullet = s => s.replace(/^(?:\*(?!\*)|[-•])\s*/, "").trim();
+
+// 강세 표기(`**`)를 쓰는 필드는 Rhythm Map 하나뿐이다. 정답·질문·뜻·덩어리는 평문이라
+// `*` 가 남으면 그대로 글자로 보인다 — 2026-08-10 ChatGPT 가 줄 전체를 볼드로 내보내면서
+// 붙여넣기 복원기가 그걸 `**...**` 로 되살렸고, 10건 전부에 `**` 가 박혀 들어왔다.
+const unbold = s => String(s || "").replace(/\*+/g, "").trim();
+
+// 줄 전체가 볼드로 와도 안쪽 강세 표기는 살린다. 바깥 껍데기만 벗긴다 —
+// 그대로 두면 `**` 짝이 어긋나 `rhythmHtml()` 이 엉뚱한 구간을 볼드로 잡는다.
+function stripOuterBold(s) {
+  let t = String(s || "").trim();
+  while (t.startsWith("**") && t.endsWith("**") && (t.match(/\*\*/g) || []).length > 2) {
+    t = t.slice(2, -2).trim();
+  }
+  return t;
+}
 
 function parseReviewNote(text) {
   const norm = String(text || "").replace(/\r\n?/g, "\n");
@@ -2374,7 +2403,7 @@ function parseReviewNote(text) {
     }
 
     const fixed = sec.fixed || [];
-    const expression = fixed.find(l => !hasHangul(l)) || "";
+    const expression = unbold(fixed.find(l => !hasHangul(l)) || "");
     if (!expression) continue;   // 교정문이 없으면 카드가 안 된다
 
     const q = sec.q || [];
@@ -2385,18 +2414,24 @@ function parseReviewNote(text) {
       else notes.push(b);
     }
     items.push({
-      title,
-      question: q.find(l => !hasHangul(l)) || "",
-      questionKo: q.find(l => hasHangul(l)) || "",
+      title: unbold(title),
+      question: unbold(q.find(l => !hasHangul(l)) || ""),
+      questionKo: unbold(q.find(l => hasHangul(l)) || ""),
       expression,
-      ko: fixed.find(l => hasHangul(l)) || "",
-      wrong: (sec.wrong || []).join(" ").trim(),
-      why: (sec.why || []).map(stripBullet).concat(notes).join("\n"),
+      ko: unbold(fixed.find(l => hasHangul(l)) || ""),
+      wrong: unbold((sec.wrong || []).join(" ")),
+      why: (sec.why || []).map(stripBullet).concat(notes).map(unbold).filter(Boolean).join("\n"),
       // 코드 블록(```)이나 백틱으로 감싸 오는 경우가 있다 —
       // 화면에 ** 를 그대로 보이게 하려고 그렇게 요청했기 때문. 껍데기만 벗긴다.
-      rhythm: ((sec.rhythm || []).filter(l => !/^```/.test(l))[0] || "")
-        .replace(/^`+|`+$/g, "").trim(),
-      chunks: chunks.join(" | "),
+      // 두 문장짜리 답변을 ChatGPT 가 두 줄로 나눠 보내기도 한다. `[0]` 만 쓰면
+      // 뒷문장의 강세·청크가 통째로 사라지므로 리듬 줄을 전부 이어 붙인다.
+      // 한글 줄은 리듬이 아니라 해설이므로 뺀다.
+      rhythm: (sec.rhythm || [])
+        .filter(l => !/^```/.test(l) && !hasHangul(l))
+        .map(l => stripOuterBold(l.replace(/^`+|`+$/g, "")))
+        .filter(Boolean)
+        .join(" "),
+      chunks: chunks.map(unbold).filter(Boolean).join(" | "),
       learnedDate: date,
     });
   }
@@ -2481,6 +2516,9 @@ document.getElementById("impParse").onclick = () => {
   // 복사 버튼으로 복사해야 마크다운이 보존된다 — 실제로 11건이 이 상태로 들어온 적 있다.
   const withR = impParsed.filter(i => i.rhythm);
   const noBold = withR.filter(i => i.rhythm.indexOf("**") < 0).length;
+  // 리듬이 정답을 다 못 덮으면 뒷문장이 평문으로 붙는다 — 쉐도잉을 문장 전체로 못 한다.
+  // 저장한 뒤 복습하다 발견하면 이미 늦으므로(2026-08-10 실제로 그랬다) 여기서 잡는다.
+  const short = withR.filter(i => rhythmTail(i.rhythm, i.expression));
   document.getElementById("impSum").innerHTML =
     `<b>${date}</b> · 항목 ${items.length}개 인식` +
     (fresh < items.length ? ` · 이미 있는 것 ${items.length - fresh}개는 자동 해제` : "") +
@@ -2488,6 +2526,12 @@ document.getElementById("impParse").onclick = () => {
       ? `<div class="imp-warn">⚠️ 리듬맵에 <b>**볼드**</b>가 하나도 없습니다 —
          ChatGPT에서 <b>드래그 대신 복사 버튼</b>으로 복사했는지 확인하세요.
          드래그로 복사하면 강세 표시가 사라집니다.</div>`
+      : "") +
+    (short.length
+      ? `<div class="imp-warn">⚠️ ${short.length}개는 <b>뒷문장에 리듬 표기가 없습니다</b> —
+         ChatGPT가 첫 문장만 표기해 보낸 것입니다. 정답 전체에 강세·청크를 붙여
+         다시 받으면 문장 전체로 쉐도잉할 수 있습니다.
+         <div class="imp-warn-sub">${short.map(i => esc(rhythmTail(i.rhythm, i.expression))).join("<br>")}</div></div>`
       : "");
   document.getElementById("impList").innerHTML = impParsed.map((it, i) => `
     <label class="imp-item${it.dup ? " dup" : ""}">

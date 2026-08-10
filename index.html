@@ -238,6 +238,9 @@
   /* 리듬이 들어간 정답은 강세가 눈에 띄도록 본문 굵기를 낮춘다 */
   /* 정답 전체가 굵으면 강세가 묻힌다. 본문은 보통, 강세만 굵게. */
   .fc .expr.rh { font-weight: 400; line-height: 1.65; color: #d6dbe8; }
+  /* Rhythm Map 이 안 덮은 뒷문장. 정답의 일부이므로 크기·색을 같게 둔다 —
+     강세 표기만 없을 뿐이라 흐리게 만들면 안 읽고 넘어가게 된다. */
+  .fc .expr.rh .rh-tail { font-weight: 400; }
   .legend { font-size: 10.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
@@ -1440,8 +1443,25 @@ document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCurso
 // 뒷면 블록 순서 고정: 뜻 → 예문(리듬) → 이럴 때 → 덩어리 → 내 문장 → 진도 → 액션
 // 데이터가 없는 블록만 빠지고, 순서와 라벨은 절대 바뀌지 않는다.
 // 정답 표시. 회화 교정은 Rhythm Map 표기 그대로 — 평문을 따로 또 보여주지 않는다.
+// Rhythm Map 이 정답 전체를 덮지 못할 때 남는 뒷부분을 돌려준다.
+// ChatGPT 가 첫 문장까지만 리듬 표기를 해 보내는 일이 잦다. 그대로 두면 화면에는
+// 앞부분만 나오는데 음성(expression)은 전체를 읽어 화면과 소리가 어긋난다 — 실제로 겪었다.
+// 단어 개수로 자른다: 리듬이 N단어를 덮었으면 정답의 N+1번째 단어부터가 남은 부분이다.
+// `'90s`→`nineties` 처럼 단어 수가 같고 표기만 다른 경우는 남는 게 없어 그대로 둔다.
+const WORD_RE = /[A-Za-z0-9'’]+/g;
+function rhythmTail(rhythm, expression) {
+  const covered = (plain(rhythm).match(WORD_RE) || []).length;
+  if (!covered) return "";
+  const tokens = [...String(expression || "").matchAll(WORD_RE)];
+  if (tokens.length <= covered) return "";
+  return String(expression).slice(tokens[covered].index).trim();
+}
+
 function answerHtml(e, p) {
-  if (isReview(e) && e.rhythm) return rhythmHtml(e.rhythm);
+  if (isReview(e) && e.rhythm) {
+    const tail = rhythmTail(e.rhythm, e.expression);
+    return rhythmHtml(e.rhythm) + (tail ? ` <span class="rh-tail">${esc(tail)}</span>` : "");
+  }
   return underlineKey(e.expression, p.chunks);
 }
 function exprCard(e, mode, dir) {

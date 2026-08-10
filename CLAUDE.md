@@ -83,6 +83,17 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 회화 교정은 정답을 앞면(한→영) 또는 정답 블록에 Rhythm Map 표기로 한 번만 보여준다.
 예문 블록을 따로 두지 않는다 — 같은 문장이 두 번 나오면 중복이다. 상세는 아래 「회화 복습 노트」 절.
 
+- **「막힌 표현」도 리듬 표기로 보여준다** (2026-08-10 추가). Hermes 가 `wanted_phrases.md` 에
+  `- Rhythm:` 줄을 같이 쓰고, `parse_wanted()` 가 그걸 `rhythm` 필드로 넘긴다.
+  지시문 원본: VPS `skills/productivity/patrick-english-coaching/references/quiet-wanted-phrase-capture.md`,
+  붙여넣기용 사본은 `chatgpt-note-rules.md`.
+  - 리듬이 없으면 `rhythm` 필드를 **만들지 않는다.** 빈 문자열을 넣으면 앱이 「리듬 있음」으로
+    오인해 빈 정답을 그린다. 2026-08-10 이전 14건은 그래서 평문 그대로다.
+  - **동기화는 create-only 라 기존 문서에 리듬이 나중에 붙지 않는다.** 옛 카드를 리듬화하려면
+    별도 백필이 필요하다(복습 진도를 지키려면 `rhythm` 필드만 PATCH 할 것).
+  - `answerHtml()` 은 소스를 가리지 않는다. 반면 **`parseContext()` 의 지름길은 반드시
+    `isReview(e)` 로 판정한다** — `e.rhythm` 으로 갈리면 리듬 붙은 막힌 표현의 상황 태그·chunks
+    파싱이 통째로 건너뛰어져 한→영 프롬프트가 사라진다. 실제로 밟을 뻔한 함정이다.
 - `context` 필드는 소스마다 의미가 다르다. `parseContext()`가 갈라준다.
   - `hermes-delivered` → 예문 (리듬 마크업 포함 가능)
   - `hermes-wanted` → `"<상황 태그>; reusable chunks: a, b, c."`
@@ -353,6 +364,10 @@ scp hermes-sync.py hermes:/root/english-sync/sync_english_to_firestore.py
 ssh hermes "/usr/bin/python3 /root/english-sync/sync_english_to_firestore.py"
 ```
 
+- **API 키에 리퍼러 제한이 걸려 있어 스크립트가 `Referer` 를 보내야 한다** (`APP_REFERER`).
+  안 보내면 `403 Requests from referer <empty> are blocked` 로 죽는다 — 2026-08-10 제한을 건 뒤
+  크론이 조용히 실패하고 있었고 로그를 열어보고서야 알았다. GCP 콘솔에서 허용 도메인을
+  바꾸면 이 상수도 같이 고칠 것.
 - 서버: SSH alias `hermes` (Hostinger VPS)
 - 크론: `20 * * * *` — 매시 20분
 - 로그: `/root/english-sync/sync.log`

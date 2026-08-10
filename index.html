@@ -849,7 +849,9 @@ const CHUNK_RE = /reusable chunks?\s*:/i;
 function parseContext(e) {
   const out = { example: "", tags: [], chunks: [] };
   // chatgpt-review 는 구조가 이미 나뉘어 저장돼 있다 — 문자열을 다시 쪼갤 필요가 없다.
-  if (e.rhythm || e.chunks) {
+  // 판정은 반드시 소스로 한다. `e.rhythm` 유무로 갈리면 리듬이 붙은 「막힌 표현」의
+  // 상황 태그·chunks 파싱이 통째로 건너뛰어져 한→영 프롬프트가 사라진다.
+  if (isReview(e)) {
     // example 을 채우지 않는다. 정답 자체를 리듬 표기로 보여주므로 예문 블록은 중복이다.
     out.chunks = String(e.chunks || "").split("|").map(s => s.trim()).filter(Boolean);
     return out;
@@ -1458,7 +1460,9 @@ function rhythmTail(rhythm, expression) {
 }
 
 function answerHtml(e, p) {
-  if (isReview(e) && e.rhythm) {
+  // 소스를 가리지 않는다 — 리듬이 있으면 쉐도잉용으로 그린다.
+  // 「막힌 표현」도 2026-08-10부터 Hermes 가 `- Rhythm:` 을 같이 보낸다.
+  if (e.rhythm) {
     const tail = rhythmTail(e.rhythm, e.expression);
     return rhythmHtml(e.rhythm) + (tail ? ` <span class="rh-tail">${esc(tail)}</span>` : "");
   }
@@ -1494,14 +1498,14 @@ function exprCard(e, mode, dir) {
       <div class="back">
         <div class="blk blk-answer"><div class="blk-l">정답</div>
           <div class="expr-row">
-            <div class="expr${isReview(e) && e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+            <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
             <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
           </div>
         </div>`;
   } else {
     html += `
       <div class="expr-row">
-        <div class="expr${isReview(e) && e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+        <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
         <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
       </div>
       <div class="tap-hint">${mode === "review" || mode === "practice"

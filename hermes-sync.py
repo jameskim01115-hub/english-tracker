@@ -47,6 +47,21 @@ FIRESTORE_URL = (
     % (PROJECT, COLLECTION)
 )
 
+# 이 API 키에는 HTTP 리퍼러 제한이 걸려 있다 (2026-08-10, 유출 대비 조치).
+# 브라우저가 아닌 이 스크립트는 Referer 를 안 보내서 그대로 두면
+#   403 "Requests from referer <empty> are blocked"
+# 로 죽는다 -- 실제로 크론이 조용히 실패하고 있었다.
+# 허용 목록에 있는 앱 주소를 명시해서 보낸다. 우회가 아니라 같은 앱의 서버측 절반이다.
+# GCP 콘솔에서 허용 도메인을 바꾸면 이 값도 같이 고칠 것.
+APP_REFERER = "https://jameskim01115-hub.github.io/english-tracker/"
+
+
+def api_headers(token=None):
+    h = {"Content-Type": "application/json", "Referer": APP_REFERER}
+    if token:
+        h["Authorization"] = "Bearer %s" % token
+    return h
+
 
 def get_id_token():
     """Sign in anonymously. The tracker's Firestore rules require a signed-in
@@ -55,7 +70,7 @@ def get_id_token():
            % API_KEY)
     body = json.dumps({"returnSecureToken": True}).encode("utf-8")
     req = urllib.request.Request(
-        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        url, data=body, headers=api_headers(), method="POST"
     )
     with urllib.request.urlopen(req, timeout=20) as r:
         return json.load(r)["idToken"]
@@ -89,9 +104,7 @@ def create_doc(did, data, token):
     url = "%s?documentId=%s&key=%s" % (FIRESTORE_URL, did, API_KEY)
     body = json.dumps({"fields": fs_fields(data)}).encode("utf-8")
     req = urllib.request.Request(
-        url, data=body, method="POST",
-        headers={"Content-Type": "application/json",
-                 "Authorization": "Bearer %s" % token},
+        url, data=body, method="POST", headers=api_headers(token),
     )
     try:
         urllib.request.urlopen(req, timeout=20)
@@ -166,9 +179,13 @@ def parse_wanted(text):
         if originals:
             ctx = re.findall(r"^- Context:\s*(.+)$", block, flags=re.M)
             ko = re.findall(r"^- Korean[^:]*:\s*(.+)$", block, flags=re.M)
+            # Rhythm 은 2026-08-10 추가. 없는 옛 블록은 빈 문자열로 두면
+            # 앱이 평문으로 그린다 -- 있던 카드가 깨지지 않는다.
+            rh = re.findall(r"^- Rhythm:\s*(.+)$", block, flags=re.M)
             yield (learned, originals[-1].strip(),
                    ctx[0].strip() if ctx else "",
-                   ko[0].strip() if ko else "")
+                   ko[0].strip() if ko else "",
+                   rh[0].strip() if rh else "")
             continue
 
         expr = (_block_field(block, "Original wanted expression(s)")
@@ -183,7 +200,7 @@ def parse_wanted(text):
         if focus:
             ctx = (ctx + "; " if ctx else "") + "reusable chunks: " + ", ".join(
                 f.strip() for f in focus[:8])
-        yield learned, expr, ctx, ko
+        yield learned, expr, ctx, ko, ""
 
 
 def parse_vocab(text):
@@ -264,7 +281,7 @@ def main():
 
     fresh = []   # 새로 만든 문서의 읽어줄 텍스트 — 음성을 미리 만들어 둔다
 
-    for learned, expr, ctx, ko in parse_wanted(read(BASE + "/wanted_phrases.md")):
+    for learned, expr, ctx, ko, rhythm in parse_wanted(read(BASE + "/wanted_phrases.md")):
         if learned < cutoff or not expr:
             continue
         did = doc_id("hermes-wanted", learned, expr)
@@ -273,6 +290,10 @@ def main():
             "source": "hermes-wanted", "slot": "", "learnedDate": learned,
             "stage": 0, "nextReview": next_review_for(learned, today),
         }
+        # 리듬이 온 경우에만 필드를 만든다. 빈 문자열을 넣으면 앱이 "리듬 있음"으로
+        # 오인해 평문 정답 대신 빈 화면을 그린다.
+        if rhythm:
+            data["rhythm"] = rhythm
         if create_doc(did, data, token):
             created += 1
             fresh.append(expr)

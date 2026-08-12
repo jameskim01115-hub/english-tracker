@@ -698,8 +698,8 @@
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <h3>표현 직접 추가</h3>
-    <input id="mExpr" placeholder="영어 표현 (예: Keep me in the loop.)">
-    <input id="mMean" placeholder="뜻 (예: 계속 상황 공유해줘)">
+    <input id="mExpr" placeholder="영어 — 리듬맵 그대로 (예: **Keep** me / in the **LOOP** ↓)">
+    <input id="mMean" placeholder="뜻 — 한국어 번역 (예: 계속 상황 공유해줘)">
     <textarea id="mCtx" rows="2" placeholder="예문 / 어떤 상황에서 쓰는지 (선택)"></textarea>
     <div class="row">
       <button class="m-cancel" id="mCancel">취소</button>
@@ -761,7 +761,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-10-01";
+const BUILD = "2026-08-12-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2326,8 +2326,13 @@ document.getElementById("mSave").onclick = async () => {
   const ctx = document.getElementById("mCtx").value.trim();
   if (!expr) { toast("표현을 입력해주세요"); return; }
   if (!canWrite()) return;
+  // 영어 칸에 리듬맵을 그대로 넣는다 (2026-08-12 Patrick). 안 갈라두면 `/` 와 `↘` 가
+  // 정답 텍스트에 글자로 박혀 화면에 나오고 TTS 도 그걸 읽는다.
+  const isRhythm = RHYTHM_MARK.test(expr);
   const doc = {
-    expression: expr, meaning: mean, context: ctx,
+    expression: isRhythm ? plainFromRhythm(expr) : expr,
+    rhythm: isRhythm ? stripOuterBold(expr) : "",
+    meaning: mean, context: ctx,
     source: "manual", slot: "", learnedDate: today,
     studied: true, studiedAt: today,
     stage: 0, nextReview: addDays(today, INTERVALS[0]),
@@ -2348,13 +2353,40 @@ document.getElementById("mSave").onclick = async () => {
 // 형식이 고정돼 있어 AI 없이 정규식으로 갈린다. 라벨 이름이 바뀌면 파싱이 깨지므로
 // 저장 전에 미리보기를 반드시 거치게 해 둔다.
 const IMP_LABELS = [
-  ["q",      /^\s*오늘의\s*질문\s*$/],
-  ["wrong",  /^\s*Patrick['’']s\s+Original\s+Answer\s*$/i],
-  ["why",    /^\s*어색한\s*부분.*$/],
-  ["fixed",  /^\s*Natural\s+Corrected\s+Answer\s*$/i],
-  ["rhythm", /^\s*Rhythm\s*Map\s*$/i],
-  ["chunks", /^\s*Key\s+Corrections\s*$/i],
+  ["q",      /^오늘의\s*질문$/],
+  ["wrong",  /^Patrick['’']?s?\s+Original\s+Answer$/i],
+  ["why",    /^어색한\s*부분.*$/],
+  ["fixed",  /^Natural\s+Corrected\s+Answer$/i],
+  ["rhythm", /^Rhythm\s*Map$/i],
+  ["chunks", /^Key\s+Corrections$/i],
 ];
+
+// 라벨 줄에서 장식을 벗겨낸 「알맹이」를 만든다.
+// ChatGPT 는 섹션 제목을 굵게 하거나 `#`·`:`·이모지를 붙여 보낼 때가 있다. 정확 일치로만
+// 보면 그 순간 섹션 하나가 통째로 사라지는데 **에러도 경고도 없다** —
+// 2026-08-12 `Rhythm Map` 이 이렇게 빗나가 4건이 리듬 없이 저장됐다.
+// 앞의 `1.1` 같은 번호도 같이 뗀다(`1.1 오늘의 질문` 형태로 오는 노트가 있다).
+function labelKey(s) {
+  return String(s || "")
+    .replace(/^[\s>]*#{1,6}\s*/, "")        // 마크다운 제목
+    .replace(/^[\s>]*(?:\d+\.)+\d*\s*/, "") // 앞 번호 (1. / 1.1)
+    .replace(/^[-•*\s]+/, "")               // 불릿
+    .replace(/[*_`~]/g, "")                 // 볼드·기울임·백틱
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/[:：]\s*$/, "")               // 끝의 콜론
+    .trim();
+}
+// 라벨을 찾는다. `Rhythm Map: 내용` 처럼 한 줄에 붙어 와도 받아서 내용을 돌려준다.
+function matchLabel(line) {
+  const hit = IMP_LABELS.find(l => l[1].test(labelKey(line)));
+  if (hit) return { key: hit[0], inline: "" };
+  const m = String(line).match(/^(.{2,45}?)[:：]\s*(\S.*)$/);
+  if (m) {
+    const h2 = IMP_LABELS.find(l => l[1].test(labelKey(m[1])));
+    if (h2) return { key: h2[0], inline: m[2].trim() };
+  }
+  return null;
+}
 const hasHangul = s => /[가-힣]/.test(s);
 // 불릿만 뗀다. `**덩어리**` 의 첫 `*` 를 불릿으로 오인하면 짝이 깨져 `*덩어리**` 가 남는다.
 const stripBullet = s => s.replace(/^(?:\*(?!\*)|[-•])\s*/, "").trim();
@@ -2374,6 +2406,25 @@ function stripOuterBold(s) {
   return t;
 }
 
+// 리듬 표기가 섞인 줄인가 — 화살표·청크 슬래시·볼드 중 하나라도 있으면 그렇다.
+const RHYTHM_MARK = /[→↘↓↗]|\s\/\s|\*\*/;
+// 리듬 줄에서 평문 문장을 되살린다. 정답 줄 자리에 리듬만 보내오는 노트를 위한 폴백이다.
+// `↘`·`↓` 는 내려 읽는 끝이라 마침표로, `→`·`↗` 는 이어지는 자리라 그냥 지운다.
+// **완벽하지 않다** — 원래 마침표 위치와 `NEIL` 같은 고유명사 대소문자는 되살릴 수 없다.
+// 그래서 노트에 평문 한 줄을 남겨두는 편이 낫다. 이건 어디까지나 안전망이다.
+function plainFromRhythm(s) {
+  return unstressCaps(String(s || ""))
+    .replace(/\*\*/g, "")
+    .replace(/\s*[↘↓]\s*/g, ". ")
+    .replace(/\s*[→↗]\s*/g, " ")
+    .replace(/\s+\/\s+/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .replace(/\.\s*\./g, ".")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.\s]*$/, ".");
+}
+
 function parseReviewNote(text) {
   const norm = String(text || "").replace(/\r\n?/g, "\n");
   let date = "";
@@ -2391,19 +2442,51 @@ function parseReviewNote(text) {
   const items = [];
   for (let i = 0; i < starts.length; i++) {
     const chunkLines = lines.slice(starts[i], i + 1 < starts.length ? starts[i + 1] : lines.length);
-    const title = chunkLines[0].replace(/^\s*\d+\.\d+\s+/, "").trim();
+    const head = chunkLines[0].replace(/^\s*\d+\.\d+\s+/, "").trim();
 
     const sec = {};
     let cur = null;
+    // 항목 머리글 자체가 라벨인 노트가 있다 — `1.1 오늘의 질문` 형태.
+    // 그냥 제목으로 흘려보내면 그 밑의 질문이 어느 섹션에도 안 담겨 사라진다.
+    const headHit = matchLabel(head);
+    if (headHit) { cur = headHit.key; sec[cur] = headHit.inline ? [headHit.inline] : []; }
+    // 그럴 땐 바로 위의 `1. 주제` 줄을 제목으로 삼는다.
+    let title = headHit ? "" : head;
+    if (headHit) {
+      for (let k = starts[i] - 1; k >= 0 && k > starts[i] - 6; k--) {
+        if (/^\s*\d+\.\s+\S/.test(lines[k])) { title = lines[k].replace(/^\s*\d+\.\s+/, "").trim(); break; }
+      }
+    }
+
     for (const raw of chunkLines.slice(1)) {
       const line = raw.trim();
-      const hit = IMP_LABELS.find(l => l[1].test(line));
-      if (hit) { cur = hit[0]; sec[cur] = []; continue; }
-      if (cur && line) sec[cur].push(line);
+      if (!line) continue;
+      const hit = matchLabel(line);
+      if (hit) { cur = hit.key; sec[cur] = hit.inline ? [hit.inline] : []; continue; }
+      if (cur) sec[cur].push(line);
     }
 
     const fixed = sec.fixed || [];
-    const expression = unbold(fixed.find(l => !hasHangul(l)) || "");
+    const fixedEn = fixed.find(l => !hasHangul(l)) || "";
+
+    // Rhythm Map 줄들. 한글 줄은 해설이라 뺀다.
+    // 두 문장짜리 답변을 ChatGPT 가 두 줄로 나눠 보내기도 해서 전부 이어 붙인다 —
+    // `[0]` 만 쓰던 시절엔 뒷문장의 강세·청크가 통째로 사라졌다.
+    let rhythm = (sec.rhythm || [])
+      .filter(l => !/^```/.test(l) && !hasHangul(l))
+      .map(l => stripOuterBold(l.replace(/^`+|`+$/g, "")))
+      .filter(Boolean)
+      .join(" ");
+
+    // 정답 자리에 평문 대신 **리듬맵만** 보내오는 노트를 받는다 (2026-08-12 Patrick이 그렇게 바꿈).
+    // 그대로 두면 `/` 와 `↘` 가 정답 텍스트에 글자로 박혀 화면에도 나오고 TTS 도 그걸 읽는다.
+    let expression;
+    if (!rhythm && RHYTHM_MARK.test(fixedEn)) {
+      rhythm = stripOuterBold(fixedEn);
+      expression = plainFromRhythm(fixedEn);
+    } else {
+      expression = unbold(fixedEn);
+    }
     if (!expression) continue;   // 교정문이 없으면 카드가 안 된다
 
     const q = sec.q || [];
@@ -2421,16 +2504,7 @@ function parseReviewNote(text) {
       ko: unbold(fixed.find(l => hasHangul(l)) || ""),
       wrong: unbold((sec.wrong || []).join(" ")),
       why: (sec.why || []).map(stripBullet).concat(notes).map(unbold).filter(Boolean).join("\n"),
-      // 코드 블록(```)이나 백틱으로 감싸 오는 경우가 있다 —
-      // 화면에 ** 를 그대로 보이게 하려고 그렇게 요청했기 때문. 껍데기만 벗긴다.
-      // 두 문장짜리 답변을 ChatGPT 가 두 줄로 나눠 보내기도 한다. `[0]` 만 쓰면
-      // 뒷문장의 강세·청크가 통째로 사라지므로 리듬 줄을 전부 이어 붙인다.
-      // 한글 줄은 리듬이 아니라 해설이므로 뺀다.
-      rhythm: (sec.rhythm || [])
-        .filter(l => !/^```/.test(l) && !hasHangul(l))
-        .map(l => stripOuterBold(l.replace(/^`+|`+$/g, "")))
-        .filter(Boolean)
-        .join(" "),
+      rhythm,
       chunks: chunks.map(unbold).filter(Boolean).join(" | "),
       learnedDate: date,
     });
@@ -2516,12 +2590,20 @@ document.getElementById("impParse").onclick = () => {
   // 복사 버튼으로 복사해야 마크다운이 보존된다 — 실제로 11건이 이 상태로 들어온 적 있다.
   const withR = impParsed.filter(i => i.rhythm);
   const noBold = withR.filter(i => i.rhythm.indexOf("**") < 0).length;
+  // 리듬이 **아예 없는** 항목. 예전엔 `withR` 가 비면 경고 조건이 전부 거짓이 돼
+  // 아무 말 없이 저장됐다 — 2026-08-12 4건이 그렇게 평문으로 들어갔다.
+  const noRhythm = impParsed.filter(i => !i.rhythm).length;
   // 리듬이 정답을 다 못 덮으면 뒷문장이 평문으로 붙는다 — 쉐도잉을 문장 전체로 못 한다.
   // 저장한 뒤 복습하다 발견하면 이미 늦으므로(2026-08-10 실제로 그랬다) 여기서 잡는다.
   const short = withR.filter(i => rhythmTail(i.rhythm, i.expression));
   document.getElementById("impSum").innerHTML =
     `<b>${date}</b> · 항목 ${items.length}개 인식` +
     (fresh < items.length ? ` · 이미 있는 것 ${items.length - fresh}개는 자동 해제` : "") +
+    (noRhythm
+      ? `<div class="imp-warn">🚨 ${noRhythm}개는 <b>Rhythm Map 이 아예 없습니다</b> —
+         이대로 저장하면 강세·끊어읽기 없이 평문으로만 들어가 <b>쉐도잉을 할 수 없습니다.</b>
+         노트에 <b>Rhythm Map</b> 줄이 있는지, 라벨 이름이 그대로인지 확인하세요.</div>`
+      : "") +
     (withR.length && noBold === withR.length
       ? `<div class="imp-warn">⚠️ 리듬맵에 <b>**볼드**</b>가 하나도 없습니다 —
          ChatGPT에서 <b>드래그 대신 복사 버튼</b>으로 복사했는지 확인하세요.

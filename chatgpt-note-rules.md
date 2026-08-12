@@ -37,11 +37,26 @@ Natural Corrected Answer 를 낼 때, Rhythm Map 은 **정답의 모든 문장**
 
 한 줄로 이어서 쓴다. 문장이 바뀌어도 줄을 바꾸지 않는다.
 
+[정답은 리듬맵으로만 쓴다]
+
+Natural Corrected Answer 는 **리듬 표기를 붙인 영어 한 줄**로 쓴다.
+같은 문장을 평문으로 또 쓰지 않는다. 그 아래 줄에 한국어 뜻을 쓴다.
+
+Natural Corrected Answer
+To**day** / we had a **PROB**lem / with a **staff** member ↘ Our **build**ing manager **NEIL** → / isn't really taking responsibility ↘
+오늘 직원 한 명과 관련해서 문제가 있었어요.
+
+[섹션 제목은 장식하지 않는다]
+
+「오늘의 질문」「Patrick's Original Answer」「Natural Corrected Answer」「Key Corrections」 같은
+섹션 제목은 **굵게 하거나 `#`·번호·콜론을 붙이지 않는다.** 그냥 그 글자만 한 줄에 쓴다.
+제목이 달라지면 앱이 그 섹션을 통째로 놓친다.
+
 [볼드는 강세에만 쓴다]
 
-Natural Corrected Answer, 오늘의 질문, Key Corrections 의 덩어리 —
+오늘의 질문, Key Corrections 의 덩어리, 한국어 뜻 —
 이 줄들은 **줄 전체를 볼드로 만들지 않는다.** 평범한 글자로 쓴다.
-볼드(`**`)는 Rhythm Map 안에서 강세를 표시할 때만 쓴다.
+볼드(`**`)는 정답 문장 안에서 강세를 표시할 때만 쓴다.
 
 줄 전체가 볼드면 앱이 그걸 강세 표기로 읽어 화면에 `**` 가 글자로 남는다.
 

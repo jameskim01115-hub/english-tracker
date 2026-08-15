@@ -9,8 +9,8 @@ import xml.etree.ElementTree as ET
 
 src = open("server.py").read()
 tree = ast.parse(src)
-WANT_FN = {"unstress_caps", "_xml_escape", "build_ssml"}
-WANT_CONST = {"SPELL_OUT", "BR"}
+WANT_FN = {"unstress_caps", "_xml_escape", "build_ssml", "clean"}
+WANT_CONST = {"SPELL_OUT", "BR", "MAX_CHARS"}
 parts = []
 for n in tree.body:
     if isinstance(n, ast.FunctionDef) and n.name in WANT_FN:
@@ -80,6 +80,32 @@ for t, exp in [("**STAND**", "**stand**"), ("**CUSA**", "**CUSA**"), ("AQUALINK"
     print(f"  {mark} {t!r:18} -> {got!r}")
     if got != exp:
         fails.append(f"caps {t}")
+
+# clean() — SSML 을 안 쓰는 경로(현재 기본). 대문자를 반드시 벗겨야 한다.
+# 안 벗기면 TTS 가 약어로 보고 철자를 읽는다 (UNWIND → 유엔윈드).
+print("\n=== clean() — 평문 경로 ===")
+clean = ns["clean"]
+CLEAN_CASES = [
+    ("I just can't **STAND** / ungrateful people. ↘", "I just can't stand ungrateful people."),
+    ("The **CUSA** fee is due.", "The CUSA fee is due."),          # SPELL_OUT 은 유지
+    ("AQUALINK called.", "aqualink called."),
+    ("already lowercase text", "already lowercase text"),          # 멱등 — 기존 캐시 키 보존
+    ("de**POS**it it", "deposit it"),
+]
+for src_t, exp in CLEAN_CASES:
+    got = clean(src_t)
+    mark = "✅" if got == exp else "❌"
+    print(f"  {mark} {src_t!r}\n      -> {got!r}")
+    if got != exp:
+        print(f"      기대: {exp!r}")
+        fails.append(f"clean {src_t[:20]}")
+# 대문자가 하나라도 남으면(SPELL_OUT 제외) 철자로 읽힌다
+import re as _re
+leftover = _re.findall(r"[A-Za-z']*[A-Z]{2,}[A-Za-z']*", clean("**STAND** and **GRANTED** ↘"))
+bad = [w for w in leftover if w not in ns["SPELL_OUT"]]
+print(f"  {'✅' if not bad else '❌'} 대문자 잔존: {bad or '없음'}")
+if bad:
+    fails.append("clean caps leftover")
 
 print("\n" + ("❌ 실패: " + ", ".join(fails) if fails else "✅ 전부 통과"))
 sys.exit(1 if fails else 0)

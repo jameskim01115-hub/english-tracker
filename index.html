@@ -825,7 +825,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-15-02";
+const BUILD = "2026-08-15-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -848,6 +848,20 @@ const SRV_PREFIX = "srv:";
 // Emma(여성)·Andrew(남성)를 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
 // 다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 앱에서 매번 새로 생성한다.
 const DEFAULT_SRV_VOICE = SRV_PREFIX + "Emma";
+
+// 기본값을 바꿔도 `localStorage.et_voice` 에 저장된 예전 선택이 이긴다 —
+// 그대로 두면 Patrick 기기는 계속 Supertonic 이 나온다(실제로 그랬다).
+// 예전 기본값이던 srv:F2 만 한 번 Emma 로 옮긴다. 그 외 선택은 존중한다.
+// 플래그가 있어 한 번만 돌고, 이후 Supertonic 을 다시 골라도 되돌리지 않는다.
+(function migrateVoiceOnce() {
+  try {
+    if (localStorage.getItem("et_voice_m1")) return;
+    localStorage.setItem("et_voice_m1", "1");
+    if (localStorage.getItem("et_voice") === SRV_PREFIX + "F2") {
+      localStorage.setItem("et_voice", DEFAULT_SRV_VOICE);
+    }
+  } catch (e) { /* 저장 실패는 무시 — 기본값으로 동작한다 */ }
+})();
 // paintVoices()가 스크립트 앞쪽 loadVoices()에서 먼저 호출되므로 여기 둔다.
 // 아래쪽에 두면 TDZ(선언 전 접근)로 스크립트 전체가 죽는다 — 실제로 겪었다.
 const SRV_LABEL = { F: "여성", M: "남성" };

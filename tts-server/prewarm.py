@@ -15,16 +15,24 @@ def plain(s):
     s = re.sub(r"\s+/\s+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+# API 키에 HTTP 리퍼러 제한이 걸려 있다. 헤더 없이 부르면 서버측 스크립트는
+# `403 Requests from referer <empty> are blocked` 로 죽는다 — 우회가 아니라
+# 같은 앱의 서버측 절반이므로 정당하다. hermes-sync.py 의 APP_REFERER 와 같은 값이어야 하고,
+# GCP 콘솔에서 허용 도메인을 바꾸면 양쪽 다 고칠 것. (2026-08-15: 이게 빠져 프리워밍이 죽어 있었다)
+APP_REFERER = "https://jameskim01115-hub.github.io/english-tracker/"
+
 def token():
     u = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={API_KEY}"
     r = urllib.request.Request(u, data=b'{"returnSecureToken":true}',
-                               headers={"Content-Type": "application/json"}, method="POST")
+                               headers={"Content-Type": "application/json",
+                                        "Referer": APP_REFERER}, method="POST")
     return json.load(urllib.request.urlopen(r, timeout=20))["idToken"]
 
 def docs(tok):
     u = (f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)"
          f"/documents/english_expressions?pageSize=300")
-    r = urllib.request.Request(u, headers={"Authorization": f"Bearer {tok}"})
+    r = urllib.request.Request(u, headers={"Authorization": f"Bearer {tok}",
+                                           "Referer": APP_REFERER})
     return json.load(urllib.request.urlopen(r, timeout=30)).get("documents", [])
 
 def g(f, k):

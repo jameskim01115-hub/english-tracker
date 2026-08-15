@@ -825,14 +825,29 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-15-01";
+const BUILD = "2026-08-15-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
 const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
-const SRV_VOICES = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
+// 서버 음성 목록. **Neural 이 먼저**다 — 2026-08-15 블라인드 청취에서 Emma 가 유일한 ★5였고
+// Supertonic 은 최고점·평균 모두 최하위였다. Supertonic 은 지우지 않고 아래에 남긴다
+// (657건 캐시가 그쪽이고, edge-tts 가 막히면 폴백이 필요하다).
+const SRV_VOICES = [
+  { v: "Emma",    g: "F", n: "Emma ★5" },
+  { v: "Ava",     g: "F", n: "Ava" },
+  { v: "AvaM",    g: "F", n: "Ava 2" },
+  { v: "Jenny",   g: "F", n: "Jenny" },
+  { v: "Andrew",  g: "M", n: "Andrew" },
+  { v: "AndrewM", g: "M", n: "Andrew 2" },
+  { v: "Brian",   g: "M", n: "Brian" },
+  { v: "BrianM",  g: "M", n: "Brian 2" },
+];
+const SRV_VOICES_OLD = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
 const SRV_PREFIX = "srv:";
-const DEFAULT_SRV_VOICE = SRV_PREFIX + "F2";   // F2(여성)·M1(남성)을 Patrick이 고름. 둘 다 미리 생성해 둔다
+// Emma(여성)·Andrew(남성)를 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
+// 다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 앱에서 매번 새로 생성한다.
+const DEFAULT_SRV_VOICE = SRV_PREFIX + "Emma";
 // paintVoices()가 스크립트 앞쪽 loadVoices()에서 먼저 호출되므로 여기 둔다.
 // 아래쪽에 두면 TDZ(선언 전 접근)로 스크립트 전체가 죽는다 — 실제로 겪었다.
 const SRV_LABEL = { F: "여성", M: "남성" };
@@ -1229,8 +1244,12 @@ function paintSayRecent() {
 }
 
 function saySpeak(text, voice, speed) {
-  const t = plain(text).slice(0, 400);
-  if (!t) { toast("문장을 입력해주세요"); return; }
+  // 리듬 표기(`**강세**`·`/`·`↘`)를 **벗기지 않고 그대로** 보낸다.
+  // 서버가 판단한다 — Azure 키가 있으면 SSML 로 강세·끊어읽기를 되살리고,
+  // 없으면(현재) 서버 쪽 clean() 이 평문으로 벗긴다. 결과는 지금과 동일하다.
+  // 여기서 미리 plain() 을 태우면 나중에 키를 넣어도 되살릴 원본이 사라진다.
+  const t = String(text || "").slice(0, 400).trim();
+  if (!plain(t)) { toast("문장을 입력해주세요"); return; }
   const btn = document.getElementById("sayGo");
   const note = document.getElementById("sayNote");
 
@@ -1250,7 +1269,8 @@ function saySpeak(text, voice, speed) {
   // 서버가 죽거나 edge-tts 가 막히면 기기 음성으로라도 소리를 낸다.
   sayAudio.onerror = () => { done("서버 음성 실패 — 기기 음성으로 재생합니다"); speakDevice(t, null); };
 
-  sayAudio.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${speed}`;
+  // ssml=1 은 서버가 Azure 키를 가졌을 때만 실제로 켜진다. 없으면 무시된다.
+  sayAudio.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${speed}&ssml=1`;
   const p = sayAudio.play();
   if (p && p.catch) p.catch(() => { done("재생 실패"); speakDevice(t, null); });
 }
@@ -2866,7 +2886,8 @@ document.getElementById("impSave").onclick = async () => {
 function prewarmTTS(items) {
   const texts = [];
   items.forEach(e => { texts.push(e.expression); if (e.rhythm) texts.push(plain(e.rhythm)); });
-  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "M1"];
+  // Emma(여성)·Andrew(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
+  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Andrew"];
   texts.filter(Boolean).forEach(t => voices.forEach(v => {
     fetch(`${TTS_URL}?t=${encodeURIComponent(plain(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));
@@ -2882,17 +2903,26 @@ function paintVoices() {
   const list = enVoices();
   const cur = pickVoice();
   const k = voiceKey();
-  const srvOpts = SRV_VOICES.map(v =>
-    `<option value="${SRV_PREFIX}${v}"${k === SRV_PREFIX + v ? " selected" : ""}>서버 · ${v} (${SRV_LABEL[v[0]]})</option>`).join("");
+  const srvOpts = SRV_VOICES.map(o =>
+    `<option value="${SRV_PREFIX}${o.v}"${k === SRV_PREFIX + o.v ? " selected" : ""}>` +
+    `${esc(o.n)} (${SRV_LABEL[o.g]})</option>`).join("");
+  const oldOpts = SRV_VOICES_OLD.map(v =>
+    `<option value="${SRV_PREFIX}${v}"${k === SRV_PREFIX + v ? " selected" : ""}>` +
+    `${v} (${SRV_LABEL[v[0]]})</option>`).join("");
   const devOpts = list.map(v =>
     `<option value="${esc(v.voiceURI)}"${k === v.voiceURI ? " selected" : ""}>기기 · ${esc(v.name)}</option>`).join("");
-  sel.innerHTML = `<optgroup label="서버 음성 — 모든 기기 동일 품질">${srvOpts}</optgroup>`
+  sel.innerHTML = `<optgroup label="원어민 음성 — 권장">${srvOpts}</optgroup>`
+    + `<optgroup label="Supertonic — 예전 음성">${oldOpts}</optgroup>`
     + (devOpts ? `<optgroup label="이 기기 음성">${devOpts}</optgroup>` : "");
   // 지금 쓰는 음성의 품질 등급을 그대로 보여준다.
   // 기기가 3대(맥·아이폰·아이패드)라 어디서 기계음이 나는지 바로 알 수 있어야 한다.
   const curEl = document.getElementById("voiceCur");
   if (k.startsWith(SRV_PREFIX)) {
-    curEl.textContent = `현재: 서버 ${k.slice(SRV_PREFIX.length)} · Supertonic — 기기와 무관하게 같은 품질`;
+    const vk = k.slice(SRV_PREFIX.length);
+    const nv = SRV_VOICES.find(o => o.v === vk);
+    curEl.textContent = nv
+      ? `현재: ${nv.n} · 원어민 음성 — 기기와 무관하게 같은 품질`
+      : `현재: ${vk} · Supertonic(예전) — 기기와 무관하게 같은 품질`;
     curEl.className = "voice-cur good";
     document.getElementById("voiceNote").innerHTML = "";
     return;   // 서버 음성을 쓰면 기기 음성 안내는 필요 없다

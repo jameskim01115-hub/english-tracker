@@ -8,6 +8,13 @@ services:
     volumes:
       - /root/tts/assets:/assets:ro
       - /root/tts/cache:/cache
+    # Azure 승격용. `.env` 에 값이 있으면 컨테이너로 넘어가고, 없으면 빈 값이라
+    # 서버가 자동으로 edge-tts 경로를 쓴다. `.env` 가 아예 없어도 뜬다.
+    # compose 의 `.env` 는 기본적으로 **치환용**일 뿐이라 이 선언이 없으면
+    # 키를 넣어도 컨테이너 안에서는 안 보인다 — 실제로 빠뜨렸던 부분이다.
+    environment:
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY:-}
+      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION:-southeastasia}
     labels:
       - traefik.enable=true
       - traefik.http.routers.english-tts.rule=Host(`tts.srv1722311.hstgr.cloud`)

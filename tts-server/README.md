@@ -1,6 +1,38 @@
-# TTS 릴레이 (Supertonic 3)
+# TTS 릴레이 (Supertonic 3 + Microsoft Neural)
 
 앱의 🔊가 쓰는 음성 서버. Hostinger VPS(`ssh hermes`)에서 Docker로 돈다.
+
+## 엔진 2개 — 음성 이름으로 갈린다
+
+| 음성 이름 | 엔진 | 쓰는 곳 |
+|---|---|---|
+| `F1`~`F5`, `M1`~`M5` | Supertonic 3 (로컬 ONNX) | 기존 카드 재생·프리워밍 캐시 |
+| `Emma` `Ava` `AvaM` `Jenny` `Andrew` `AndrewM` `Brian` `BrianM` | Microsoft Neural | 「발음」 탭 |
+
+Microsoft Neural 은 **전송 경로가 둘이고 소리는 완전히 같다.**
+
+- `AZURE_SPEECH_KEY` **없음** → `edge-tts` (현재 상태). 키·카드 불필요. 비공식 경로.
+  **커스텀 SSML 불가** — Microsoft 가 Edge 가 만들지 않는 SSML 을 차단한다. rate 만 조절된다.
+- `AZURE_SPEECH_KEY` **있음** → Azure REST 공식. `ssml=1` 로 강세·끊어읽기 재현이 켜진다
+  (`build_ssml()`). 월 45만 자에서 자동 차단(F0 무료 한도 50만 대비 여유).
+
+승격하려면 키만 넣으면 된다 — 음성 이름이 같아서 **소리 변화 없이** 넘어간다.
+
+```bash
+ssh hermes "cd /root/tts/app && printf 'AZURE_SPEECH_KEY=...\nAZURE_SPEECH_REGION=southeastasia\n' >> .env && docker compose up -d"
+```
+
+### ⚠️ edge-tts 버전을 낮게 고정하지 말 것
+
+요청에 실리는 `Sec-MS-GEC-Version`(Edge 버전 문자열)이 낡으면 Microsoft 가 **403** 을 준다.
+2026-08-15 에 `edge-tts==7.0.2` 로 박았다가 Neural 음성 8개가 전부 죽었다 —
+Supertonic 은 멀쩡해서 부분 장애로 보였다. `>=7.2.8` 로 하한만 두고 최신을 받는다.
+**갑자기 403 이 나면 시계·IP 를 의심하기 전에 이 버전부터 올려볼 것** (그때 시계는 1초 오차였다).
+
+### Patrick 이 고른 음성 (2026-08-15 블라인드 청취)
+
+24개 음성을 가려놓고 채점한 결과 **Emma 가 유일한 ★5**. Kokoro af_aoede ★4, Supertonic F4 ★4.
+자료: `03_output/tts-비교-20260814/`. **들어보지 않은 음성을 목록에 추가하지 말 것.**
 
 ## 왜 있나
 

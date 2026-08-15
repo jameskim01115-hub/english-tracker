@@ -825,7 +825,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-15-03";
+const BUILD = "2026-08-15-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1279,7 +1279,13 @@ function saySpeak(text, voice, speed) {
     note.textContent = msg || "";
   };
   sayAudio.onended = () => done("");
-  sayAudio.onplaying = () => { note.textContent = `${voice} · ${speed.toFixed(1)}x`; };
+  // **재생이 시작되면 바로 버튼을 푼다.** 끝날 때까지 잠가두면 긴 문장에서
+  // 다시 듣기·다른 음성으로 바꾸기가 막힌다. 잠그는 목적은 생성 중복 방지뿐이다.
+  sayAudio.onplaying = () => {
+    btn.disabled = false;
+    btn.classList.remove("on");
+    note.textContent = `${voice} · ${speed.toFixed(1)}x`;
+  };
   // 서버가 죽거나 edge-tts 가 막히면 기기 음성으로라도 소리를 낸다.
   sayAudio.onerror = () => { done("서버 음성 실패 — 기기 음성으로 재생합니다"); speakDevice(t, null); };
 

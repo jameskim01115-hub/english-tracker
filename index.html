@@ -165,7 +165,6 @@
   .fc .expr-row { display: flex; align-items: flex-start; gap: 10px; }
   .fc .expr { flex: 1; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
   .fc .expr.ko { color: #ffd98a; font-size: 17px; }
-  .fc .expr.ko.tagmode { color: #c9b6e8; font-size: 14.5px; line-height: 1.5; font-weight: 700; }
   .prompt-l {
     font-size: 10.5px; font-weight: 800; color: var(--dim);
     letter-spacing: .5px; margin-bottom: 6px; text-transform: uppercase;
@@ -248,7 +247,6 @@
     background: var(--card2); border: 1px solid var(--line); color: #b6bdcd;
     line-height: 1.3; cursor: pointer;
   }
-  .chip.tag { color: var(--sub); background: transparent; font-size: 11.5px; padding: 4px 9px; }
   .chip:active { border-color: rgba(90,169,255,.4); }
   /* 회화 교정 카드 */
   /* 49단어짜리 문장이 카드 하나로 화면을 다 먹는 걸 막는다. 열면 전체가 보인다. */
@@ -835,7 +833,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-17-02";
+const BUILD = "2026-08-17-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -954,7 +952,7 @@ function relDate(iso) {
 // hermes-wanted    : context = "<상황 태그>; reusable chunks: a, b, c."
 const CHUNK_RE = /reusable chunks?\s*:/i;
 function parseContext(e) {
-  const out = { example: "", tags: [], chunks: [] };
+  const out = { example: "", chunks: [] };
   // chatgpt-review 는 구조가 이미 나뉘어 저장돼 있다 — 문자열을 다시 쪼갤 필요가 없다.
   // 판정은 반드시 소스로 한다. `e.rhythm` 유무로 갈리면 리듬이 붙은 「막힌 표현」의
   // 상황 태그·chunks 파싱이 통째로 건너뛰어져 한→영 프롬프트가 사라진다.
@@ -966,10 +964,9 @@ function parseContext(e) {
   const ctx = (e.context || "").trim();
   if (!ctx) return out;
   if (CHUNK_RE.test(ctx)) {
-    const idx = ctx.search(CHUNK_RE);
-    const head = ctx.slice(0, idx).replace(/[;,\s]+$/, "");
-    const tail = ctx.slice(idx).replace(CHUNK_RE, "").replace(/\.\s*$/, "");
-    out.tags = head.split(/[\/;]/).map(s => s.trim()).filter(Boolean);
+    // 앞부분은 봇이 붙인 상황 태그다. **버린다** — 「이럴 때」는 화면 어디에도 넣지 않는다
+    // (2026-08-17 Patrick). 여기서 tags 를 만들지 않는 것이 그 규칙의 유일한 강제 장치다.
+    const tail = ctx.slice(ctx.search(CHUNK_RE)).replace(CHUNK_RE, "").replace(/\.\s*$/, "");
     const sep = tail.includes(";") ? ";" : ",";
     out.chunks = tail.split(sep).map(s => s.trim().replace(/\.$/, "")).filter(Boolean);
   } else {
@@ -977,14 +974,6 @@ function parseContext(e) {
   }
   return out;
 }
-// 「이럴 때」에 그릴 태그 — 짧은 상황 키워드만 남긴다.
-// 봇의 `- Context:` 에는 `Manila city hall` 같은 키워드와
-// `delayed action or no update after escalation` 같은 서술형 설명이 섞여 온다.
-// 서술형은 카드에서 도움이 안 된다 — 그 자리에 한국어 뜻을 보여준다 (2026-08-17 Patrick).
-// **`p.tags` 자체는 건드리지 않는다.** `promptFor()` 에서 ko 가 없는 옛 카드의
-// 한→영 프롬프트가 이 태그뿐이라, 걸러낸 것을 프롬프트로 쓰면 단서가 통째로 사라진다.
-const TAG_MAX_WORDS = 4;
-function shortTags(tags) { return tags.filter(t => wordCount(t) <= TAG_MAX_WORDS); }
 // 리듬 마크업 렌더 — **강세**, → ↘ ↓ ↗ 억양, " / " 끊어읽기
 function hasRhythm(s) { return /\*\*|[→↘↓↗]/.test(s || ""); }
 // ChatGPT 복습 노트의 Rhythm Map 은 **굵게** 대신 대문자로 강세를 표시한다
@@ -1051,6 +1040,12 @@ function isStudied(e) { return e.studied === true || (e.stage || 0) > 0; }
 function isGraduated(e) { return (e.stage || 0) >= INTERVALS.length; }
 const SRC_REVIEW = "chatgpt-review";
 function isReview(e) { return e.source === SRC_REVIEW; }
+// 한국어 뜻은 소스마다 다른 필드에 담긴다 — 봇 배달·직접 추가는 `meaning`,
+// 막힌 표현·회화 교정은 `ko` 다 (`hermes-sync.py` 가 그렇게 넣는다).
+// **화면마다 `e.meaning` 을 직접 보지 말고 이걸 쓸 것.** 예전엔 각자 `meaning` 만 보다가
+// 막힌 표현에는 뜻이 아예 안 나왔고, 그 빈자리를 영어 상황 태그가 메우고 있었다
+// (2026-08-17 Patrick 지적 — 태그는 전부 제거했다).
+function meaningOf(e) { return e.meaning || e.ko || ""; }
 function srcOf(e) {
   if (e.source === "hermes-wanted") return { cls: "wanted", label: "막힌 표현" };
   if (e.source === "hermes-delivered") return { cls: "delivered", label: "봇 배달" };
@@ -1061,19 +1056,20 @@ function slotLabel(s) {
   return { AM: "아침", "10AM": "10시 단어", PM: "저녁" }[s] || s || "";
 }
 // 한→영 앞면에 띄울 프롬프트. 한글 뜻이 없는 「막힌 표현」은 상황 태그로 대체한다.
-function promptFor(e, p) {
+function promptFor(e) {
   // 한→영은 "정답의 한국어"를 보여준다. 회화 교정도 마찬가지다.
   // 질문만 보여주면 무슨 문장을 말해야 하는지 알 수 없어 인출이 성립하지 않는다 —
   // 아무 대답이나 만들 수 있는데 정답은 특정 문장 하나다 (2026-08-10 Patrick 지적).
   // 질문은 카드를 펼쳤을 때 정답 바로 위에 나온다.
-  if (e.ko) return { ok: true, label: "이 말을 영어로", text: e.ko, tag: false };
+  if (e.ko) return { ok: true, label: "이 말을 영어로", text: e.ko };
   // ko 가 없는 옛 회화 교정 카드만 질문으로 폴백한다.
   if (isReview(e) && (e.question || e.questionKo)) {
     return { ok: true, label: "이 질문에 영어로 답하기", text: e.question || e.questionKo,
-             sub: e.question ? e.questionKo : "", tag: false, q: true };
+             sub: e.question ? e.questionKo : "", q: true };
   }
-  if (e.meaning) return { ok: true, label: "이 뜻을 영어로", text: e.meaning, tag: false };
-  if (p.tags.length) return { ok: true, label: "이 상황을 영어로", text: p.tags.join(" · "), tag: true };
+  if (e.meaning) return { ok: true, label: "이 뜻을 영어로", text: e.meaning };
+  // 상황 태그 폴백은 없앴다 — 「이럴 때」를 화면에서 전부 뺐기 때문이다 (2026-08-17 Patrick).
+  // 한국어가 하나도 없는 카드는 한→영을 포기하고 영→한으로 내려간다.
   return { ok: false };
 }
 function wordCount(s) {
@@ -1705,7 +1701,9 @@ document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCurso
 
 // ═══════════════ 표현 카드 — 모든 화면이 같은 규격을 쓴다 ═══════════════
 // 뒷면 블록 순서 고정 (2026-08-17 Patrick 확정):
-//   뜻 → 예문(리듬) → 발음 → 이럴 때 → 덩어리 → 이렇게도 말해요(접힘) → 진도 → 액션
+//   뜻 → 예문(리듬) → 발음 → 덩어리 → 이렇게도 말해요(접힘) → 진도 → 액션
+// 「이럴 때」(영어 상황 태그)는 2026-08-17 Patrick 지시로 **전부 제거**했다.
+// 카드·게임·목록 어디에도 다시 넣지 말 것 — 그 자리는 한국어 뜻이 대신한다.
 // 데이터가 없는 블록만 빠지고, 순서와 라벨은 절대 바뀌지 않는다.
 // 감정/톤은 Patrick이 명시적으로 뺐다 — 다시 넣지 말 것.
 
@@ -1751,7 +1749,7 @@ function exprCard(e, mode, dir) {
   card.dataset.id = e.id;
 
   // 한→영은 프롬프트로 쓸 한글(또는 상황)이 있을 때만. 없으면 영→한으로 내려간다.
-  const pr = promptFor(e, p);
+  const pr = promptFor(e);
   const recall = dir === "ko2en" && pr.ok;
 
   const slot = slotLabel(e.slot);
@@ -1773,7 +1771,7 @@ function exprCard(e, mode, dir) {
   if (recall) {
     html += `
       <div class="prompt-l">${esc(pr.label)}<span class="wc">${wordCount(e.expression)}단어</span></div>
-      <div class="expr ko${pr.tag ? " tagmode" : ""}${pr.q ? " q" : ""}">${esc(pr.text)}</div>
+      <div class="expr ko${pr.q ? " q" : ""}">${esc(pr.text)}</div>
       ${pr.sub ? `<div class="prompt-sub">${esc(pr.sub)}</div>` : ""}
       <div class="hintrow"><button class="hint-btn">힌트</button><span class="hint-txt"></span></div>
       <div class="tap-hint">입으로 먼저 말해보고 → 탭해서 정답 비교</div>
@@ -1813,11 +1811,9 @@ function exprCard(e, mode, dir) {
     }
   }
   // 1. 뜻 (한→영이면 이미 앞면에 썼으므로 생략)
-  // 소스마다 한국어가 담기는 필드가 다르다 — 배달은 `meaning`, 막힌 표현은 `ko` 다.
-  // 예전엔 `meaning` 만 봐서 **막힌 표현 카드에 뜻이 아예 안 나왔다** (2026-08-17 Patrick 지적).
   // 회화 교정은 위 `isReview` 블록에서 이미 그렸으므로 여기서 제외한다 — 안 그러면 두 번 나온다.
-  const mean = e.meaning || (isReview(e) ? "" : e.ko);
-  if (mean && !(recall && !pr.tag)) {
+  const mean = isReview(e) ? "" : meaningOf(e);
+  if (mean && !recall) {
     html += `<div class="blk"><div class="blk-l">뜻</div>
       <div class="blk-mean">${esc(mean)}</div></div>`;
   }
@@ -1834,14 +1830,7 @@ function exprCard(e, mode, dir) {
     html += `<div class="blk"><div class="blk-l">발음</div>
       <div class="blk-pron">${rhythmHtml(e.pron)}</div></div>`;
   }
-  // 3. 이럴 때 (한→영에서 상황을 프롬프트로 썼으면 생략)
-  // 서술형 태그는 `shortTags()` 가 걸러낸다. 남는 게 없으면 블록 자체가 안 나온다.
-  const tags = shortTags(p.tags);
-  if (tags.length && !(recall && pr.tag)) {
-    html += `<div class="blk"><div class="blk-l">이럴 때</div>
-      <div class="chips">${tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join("")}</div></div>`;
-  }
-  // 4. 덩어리 (통째로 외울 조각 — 탭하면 들린다)
+  // 3. 덩어리 (통째로 외울 조각 — 탭하면 들린다)
   if (p.chunks.length) {
     html += `<div class="blk"><div class="blk-l">덩어리로 외우기</div>
       <div class="chips">${p.chunks.map(c =>
@@ -2131,7 +2120,7 @@ function renderDue() {
 }
 // 복습 큐가 비었을 때의 자유 연습. 카드만 넘겨보고 복습 일정은 건드리지 않는다.
 function renderPractice() {
-  const items = pickWeighted(expressions.filter(e => promptFor(e, parseContext(e)).ok), 20);
+  const items = pickWeighted(expressions.filter(e => promptFor(e).ok), 20);
   const box = document.getElementById("dueList");
   box.innerHTML = `<div class="empty" style="margin-bottom:10px">
     연습 모드 — 단계·복습일은 바뀌지 않습니다.</div>`;
@@ -2356,7 +2345,7 @@ function renderRound() {
   }
 
   if (r.kind === "order") {
-    body = `<div class="g-prompt${r.e.meaning ? " ko" : " sm"}">${esc(r.e.meaning || parseContext(r.e).tags.join(" · ") || "단어를 순서대로")}</div>
+    body = `<div class="g-prompt${meaningOf(r.e) ? " ko" : " sm"}">${esc(meaningOf(r.e) || "단어를 순서대로")}</div>
       <div class="g-slot" id="gSlot"></div>
       <div class="g-pool" id="gPool">${r.tokens.map((t, i) =>
         `<button class="tok" data-i="${i}">${esc(t)}</button>`).join("")}</div>`;
@@ -2443,7 +2432,7 @@ function finishRound(ok) {
     <div class="g-feed">
       <div class="verdict ${ok ? "ok" : "no"}">${ok ? "정답" : "오답"}</div>
       <div class="ans">${esc(e.expression)}</div>
-      <div class="sub">${esc(e.meaning || p.tags.join(" · ") || "")}</div>
+      <div class="sub">${esc(meaningOf(e))}</div>
       ${p.example ? `<div class="sub">${rhythmHtml(p.example)}</div>` : ""}
       <button class="g-next" id="gNext">${last ? "결과 보기" : "다음 문제"}</button>
     </div>`;
@@ -2491,7 +2480,7 @@ async function endGame() {
       <div class="sec-sub">다음 게임에 더 자주 나옵니다</div></div>
       <div class="g-weak">${missed.map(e => `<div class="row">
         <div class="e">${esc(e.expression)}<br>
-        <span style="font-size:11.5px;color:var(--sub);font-weight:600">${esc(e.meaning || "")}</span></div>
+        <span style="font-size:11.5px;color:var(--sub);font-weight:600">${esc(meaningOf(e))}</span></div>
         </div>`).join("")}</div>`
       : `<div class="empty" style="margin-top:14px"><b>전부 맞혔습니다.</b></div>`}`;
   document.getElementById("gAgain").onclick = startGame;

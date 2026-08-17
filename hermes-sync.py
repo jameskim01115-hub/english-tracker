@@ -28,10 +28,13 @@ from datetime import date, timedelta
 BASE = "/docker/hermes-agent-7jge/data/english"
 # Hermes 크론이 실행 결과 전문을 남기는 곳. `b2_vocab_log.md` 는 중복 체크용 3칸(표현|뜻|예문)이라
 # 리듬맵·한글발음·확장 표현이 **애초에 안 담긴다** — 그 원본이 여기 있다 (2026-08-17 발견).
-# 파일 앞머리의 `# Cron Job: <이름>` 으로 영어 배달 잡을 골라낸다. 잡 ID는 바뀔 수 있으므로
-# 디렉터리 이름에 의존하지 않는다.
+# **잡 이름으로 거르지 않는다.** 영어 배달 잡 3개 중 하나는 이름이
+# `patrick-b2-words-weekday-10am` 이라 `english` 가 안 들어간다 — 이름으로 걸렀다가
+# 10AM 단어 카드가 통째로 누락됐다 (2026-08-17). 잡 이름은 언제든 바뀔 수 있다.
+# 대신 **응답에 리듬 화살표(→ ↘ ↓ ↗)가 있는가**로 판별한다. 리듬맵의 공통 신호라
+# 두 형식 모두 걸린다. `발음:` 라벨로 걸렀다가 라벨을 안 쓰는 10AM 형식을 또 놓쳤다.
 CRON_OUT = "/docker/hermes-agent-7jge/data/cron/output"
-LESSON_JOB_RE = re.compile(r"^#\s*Cron Job:\s*(\S*english\S*)", re.M | re.I)
+LESSON_MARK_RE = re.compile(r"[→↘↓↗]")
 # English Tracker 전용 프로젝트. M Building 프로젝트를 절대 여기에 넣지 말 것.
 PROJECT = "english-tracker-cea9f"
 API_KEY = "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8"
@@ -273,65 +276,92 @@ def _loose(s):
     return re.sub(r"\s+", " ", re.sub(r"\b(a|an|the)\b", " ", _plain(s))).strip()
 
 
+def _has_hangul(s):
+    return bool(re.search(r"[가-힣]", s or ""))
+
+
+def _is_en_line(s):
+    """영어 리듬맵 줄인가. 한글이 없고, 라틴 단어가 둘 이상이며, 리듬 표기가 있어야 한다."""
+    if not s or _has_hangul(s):
+        return False
+    if not re.search(r"[*/→↘↓↗]", s):
+        return False
+    return len(re.findall(r"[A-Za-z][A-Za-z'’-]*", s)) >= 2
+
+
 def lesson_units(text):
-    """레슨 전문에서 (영어 리듬맵, 한글 발음, 한국어 뜻) 단위를 순서대로 뽑는다.
+    """레슨 전문에서 (영어 리듬맵, 한글 발음, 한국어 뜻) 단위를 뽑는다.
 
-    봇 출력 구조 (`patrick-b2-vocab-delivery.md` 규격):
+    **배달 잡마다 출력 형식이 다르다.** 라벨에 의존하면 한쪽이 통째로 누락된다 —
+    실제로 10AM 단어 카드가 그래서 빠졌다 (2026-08-17).
 
-        질문: <리듬맵> ↗
-        발음: <한글>
-        답변: <리듬맵> ↓
-        발음: <한글>
-        뜻: <한국어>
-        【이렇게도 말해요 — 확장】
-        - <리듬맵> ↘
-          발음: <한글>
-          뜻: <한국어>
-          톤/사용: <설명>
+      8AM 미션        질문: <리듬맵>      /  발음: <한글>  /  뜻: <한국어>
+      10AM 단어 카드  <리듬맵>            /  <한글 발음>   /  <한국어 뜻>     ← 라벨 없음, 위치로
+      10AM 확장       확장: 덩어리 · 덩어리                                  ← 문장이 아니라 조각
 
-    `kind` 로 자리를 구분한다 — 질문/답변은 **대화 쌍**이라 카드의 예문으로 쓰고,
-    「이렇게도 말해요」에는 **확장 블록만** 넣는다. 섞으면 답변이 확장으로 둔갑한다.
+    그래서 **라벨이 아니라 줄의 생김새**로 판별한다. 영어 리듬맵 줄을 찾고,
+    바로 다음 한글 줄을 발음, 그 다음 한글 줄을 뜻으로 본다.
 
-    **프롬프트 부분은 반드시 잘라낸다.** 크론 출력 파일은 앞쪽 770여 줄이 스킬 문서(프롬프트)라
-    거기 있는 `{리듬맵 표기 영어}` 같은 **템플릿 자리표시자까지 긁어온다** — 실제로 겪었다.
-    실제 응답은 마지막 `## Response` 줄 뒤부터다.
+    프롬프트 구간은 반드시 잘라낸다 — 앞쪽 770여 줄이 스킬 문서라 거기 있는
+    `{리듬맵 표기 영어}` 같은 템플릿 자리표시자까지 긁어온다.
     """
     cut = [m.end() for m in re.finditer(r"^## Response$", text, flags=re.M)]
     if cut:
         text = text[cut[-1]:]
 
-    units = []
-    lines = text.splitlines()
+    lines = [l.strip().rstrip("　 ") for l in text.splitlines()]
+    units, seen = [], set()
     in_variants = False
-    for i, raw in enumerate(lines):
-        line = raw.strip().rstrip("　 ")
-        if line.startswith("【"):
+    owner = ""          # 10AM 카드의 대표 덩어리. `확장:` 을 이 표현에 묶어준다
+
+    for i, line in enumerate(lines):
+        if line.startswith("【") or line.startswith("━━━"):
             in_variants = "이렇게도" in line or "확장" in line
-        m = re.match(r"^(?:질문|답변)\s*:\s*(.+)$", line)
-        if m:
-            en, kind = m.group(1).strip(), "main"
-        elif in_variants and re.match(r"^[-*]\s+\S", line) and i + 1 < len(lines) \
-                and re.match(r"^\s*발음\s*:", lines[i + 1]):
-            # 확장 항목 — 불릿 다음 줄이 발음이면 그 불릿이 영어 문장이다
-            en, kind = re.sub(r"^[-*]\s+", "", line).strip(), "variant"
-        else:
+            if line.startswith("━━━"):
+                owner = ""          # 새 카드 시작
+        mo = re.match(r"^잘 쓰는 덩어리\s*:\s*(.+)$", line)
+        if mo:
+            owner = mo.group(1).strip()
             continue
-        if "{" in en or "}" in en:
-            continue          # 템플릿 자리표시자 방어 (경계가 밀려도 안 새게)
+
+        # 10AM 형식의 `확장: a · b` — 조각 나열이라 발음·뜻이 없다
+        mv = re.match(r"^확장\s*:\s*(.+)$", line)
+        if mv:
+            for frag in re.split(r"\s*[·|]\s*", mv.group(1)):
+                frag = frag.strip()
+                if frag and frag.lower() not in seen:
+                    seen.add(frag.lower())
+                    units.append({"en": frag, "pron": "", "ko": "",
+                                  "kind": "variant", "owner": owner})
+            continue
+
+        en = re.sub(r"^(?:질문|답변)\s*:\s*", "", line)
+        en = re.sub(r"^[-*]\s+", "", en).strip()
+        if not _is_en_line(en) or "{" in en or "}" in en:
+            continue
 
         pron = ko = ""
-        for nxt in lines[i + 1:i + 5]:
-            t = nxt.strip()
-            p = re.match(r"^발음\s*:\s*(.+)$", t)
-            k = re.match(r"^뜻\s*:\s*(.+)$", t)
-            if p and not pron:
-                pron = p.group(1).strip()
-            elif k and not ko:
-                ko = k.group(1).strip()
-            elif re.match(r"^(질문|답변|감정|톤/사용)\s*:", t) or t.startswith("【"):
+        for nxt in lines[i + 1:i + 4]:
+            if not nxt:
+                continue
+            t = re.sub(r"^(발음|뜻)\s*:\s*", "", nxt).strip()
+            if re.match(r"^(질문|답변|확장|톤/사용|감정)\s*:", nxt) or nxt.startswith(("【", "━━━")):
                 break
-        if en:
-            units.append({"en": en, "pron": pron, "ko": ko, "kind": kind})
+            if not _has_hangul(t):
+                break
+            # 리듬 표기가 남아 있으면 발음, 아니면 뜻
+            if not pron and re.search(r"[*/→↘↓↗]", t):
+                pron = t
+            elif not ko:
+                ko = t
+                break
+
+        key = re.sub(r"\W+", "", en).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        units.append({"en": en, "pron": pron, "ko": ko, "owner": owner,
+                      "kind": "variant" if in_variants else "main"})
     return units
 
 
@@ -346,6 +376,10 @@ def enrich(expr, units, max_variants=2):
         return "", "", []
 
     def hit(u):
+        # 10AM 카드의 `확장:` 은 조각이라 표현 전체를 포함하지 않는다 —
+        # 같은 카드 소속(owner)이면 문자열이 안 겹쳐도 그 표현의 확장이다.
+        if u.get("owner") and _loose(u["owner"]) == loose:
+            return True
         return key in _plain(u["en"]) or (loose and loose in _loose(u["en"]))
 
     hits = [u for u in units if hit(u)]
@@ -405,9 +439,16 @@ def read_lesson(day):
                 body = f.read()
         except OSError:
             continue
-        if LESSON_JOB_RE.search(body):
-            out.append(body)
-    return "\n".join(out)
+        # **파일마다 응답 구간만 잘라서** 담는다. 파일을 통째로 이어붙이면
+        # lesson_units 의 「마지막 `## Response` 뒤부터」가 앞 파일 내용을 통째로 날린다 —
+        # 실제로 10AM 단어 카드가 8AM 미션 뒤에 붙어 사라졌다 (2026-08-17).
+        cut = [m.end() for m in re.finditer(r"^## Response$", body, flags=re.M)]
+        if not cut:
+            continue
+        tail = body[cut[-1]:]
+        if LESSON_MARK_RE.search(tail):     # 리듬 화살표가 있어야 레슨이다
+            out.append(tail)
+    return "\n\n".join(out)
 
 
 def speech_text(raw: str) -> str:

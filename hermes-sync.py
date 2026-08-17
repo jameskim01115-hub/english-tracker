@@ -182,67 +182,83 @@ def _block_field(block, label):
     return " ".join(l.strip() for l in m.group(1).splitlines() if l.strip())
 
 
+# 라벨 동의어. **봇이 형식을 자주 바꾼다** — 2026-08-17에 `Original:` 대신
+# `Preferred expression:`, `## 날짜` 헤더 대신 `---`+`Date:` 로 써서 블록이 통째로 안 읽혔다.
+# 봇을 조이는 것보다 파서가 견디는 편이 낫다 (CLAUDE.md: "라벨 매칭은 장식에 견뎌야 한다").
+# 새 라벨이 나오면 여기에 추가할 것.
+WANTED_LABELS = {
+    "expr": ["Original wanted expression(s)", "Original wanted expression",
+             "Preferred expression", "Original", "English", "표현"],
+    "ko":   ["Korean meaning", "Korean", "한국어", "뜻"],
+    "rh":   ["Rhythm map", "Rhythm", "리듬맵", "리듬"],
+    "pron": ["Korean pronunciation", "Pronunciation", "한글 발음", "발음"],
+    "ctx":  ["Context", "Tags", "상황", "태그"],
+    "ex":   ["Examples", "Example", "확장", "이렇게도 말해요"],
+}
+
+
+def _label_get(block, keys):
+    """`- 라벨: 값` / `라벨: 값` 둘 다 받는다. 볼드·앞불릿 장식도 벗긴다."""
+    for label in keys:
+        m = re.search(r"^\s*(?:[-*]\s*)?\**\s*%s\s*\**\s*:\s*(.+)$" % re.escape(label),
+                      block, flags=re.M | re.I)
+        if m:
+            v = m.group(1).strip().strip("*").strip()
+            if v:
+                return v
+    return ""
+
+
 def parse_wanted(text):
-    """Yield (date, expression, context, korean) from wanted_phrases.md blocks.
+    """wanted_phrases.md 에서 (날짜, 표현, 상황, 한국어, 리듬, 발음, 확장) 을 뽑는다.
 
-    The file has two shapes and both are live:
+    **블록 형태가 세 가지고 전부 살아 있다.** 봇이 형식을 바꿔도 기존 카드가 깨지면 안 된다.
 
-    1) compact (2026-08~)     ## <date> 막힌 표현
-                              - Original: ...
-                              - Context: ...
-                              - Korean: ...        <- optional, added 2026-08-07
+      1) compact   `## YYYY-MM-DD 막힌 표현` + `- Original:` …
+      2) verbose   `## YYYY-MM-DD …` + `Original wanted expression:` (2026-07)
+      3) 구분선형   `---` + `Date: YYYY-MM-DD …` + `Preferred expression:` … (2026-08-17~)
 
-    2) verbose (2026-07)      ## <date> <weekday> <time>
-                              Original wanted expression:
-                              ...
-                              Korean meaning:
-                              ...
-                              Study focus:
-                              - chunk
-
-    Only the compact shape used to be parsed, so verbose entries were silently
-    skipped. Korean is what the app needs for 한→영 recall, so pull it from
-    whichever shape provides it.
+    라벨은 `WANTED_LABELS` 의 동의어로 찾는다. 날짜는 `## YYYY-MM-DD` 또는 `Date: YYYY-MM-DD`.
     """
-    for block in re.split(r"^## ", text, flags=re.M):
-        m = re.match(r"(\d{4}-\d{2}-\d{2})", block)
+    # `## ` 와 `---` 양쪽으로 자른다. 어느 쪽이든 날짜를 못 찾으면 그 조각은 버린다.
+    blocks = re.split(r"^(?:## |---\s*$)", text, flags=re.M)
+    for block in blocks:
+        m = (re.match(r"\s*(\d{4}-\d{2}-\d{2})", block)
+             or re.search(r"^\s*Date\s*:\s*(\d{4}-\d{2}-\d{2})", block, flags=re.M))
         if not m:
             continue
         learned = m.group(1)
 
-        # multiple Original lines = variants; last one is the preferred form
+        # 여러 Original 이 있으면 마지막이 선호형이다 (기존 동작 유지)
         originals = re.findall(r"^- Original[^:]*:\s*(.+)$", block, flags=re.M)
-        if originals:
-            ctx = re.findall(r"^- Context:\s*(.+)$", block, flags=re.M)
-            ko = re.findall(r"^- Korean[^:]*:\s*(.+)$", block, flags=re.M)
-            # Rhythm 은 2026-08-10 추가. 없는 옛 블록은 빈 문자열로 두면
-            # 앱이 평문으로 그린다 -- 있던 카드가 깨지지 않는다.
-            rh = re.findall(r"^- Rhythm:\s*(.+)$", block, flags=re.M)
-            # Pronunciation·Examples 는 봇이 2026-08 중순부터 쓰기 시작했는데
-            # 파서가 몰라서 통째로 버려지고 있었다 (2026-08-17 발견).
-            pr = re.findall(r"^- Pronunciation:\s*(.+)$", block, flags=re.M)
-            ex = re.findall(r"^- Examples:\s*(.+)$", block, flags=re.M)
-            yield (learned, originals[-1].strip(),
-                   ctx[0].strip() if ctx else "",
-                   ko[0].strip() if ko else "",
-                   rh[0].strip() if rh else "",
-                   pr[0].strip() if pr else "",
-                   examples_to_variants(ex[0]) if ex else [])
-            continue
+        expr = originals[-1].strip() if originals else _label_get(block, WANTED_LABELS["expr"])
+        ko = _label_get(block, WANTED_LABELS["ko"])
+        ctx = _label_get(block, WANTED_LABELS["ctx"])
+        rh = _label_get(block, WANTED_LABELS["rh"])
+        pron = _label_get(block, WANTED_LABELS["pron"])
+        ex = _label_get(block, WANTED_LABELS["ex"])
 
-        expr = (_block_field(block, "Original wanted expression(s)")
-                or _block_field(block, "Original wanted expression")
-                or _block_field(block, "Original"))
         if not expr:
-            continue
-        ko = _block_field(block, "Korean meaning") or _block_field(block, "Korean")
-        focus = re.findall(r"^- (.+)$", block, flags=re.M)
-        situation = _block_field(block, "Possible practical situation")
-        ctx = situation
-        if focus:
-            ctx = (ctx + "; " if ctx else "") + "reusable chunks: " + ", ".join(
-                f.strip() for f in focus[:8])
-        yield learned, expr, ctx, ko, "", "", []
+            # verbose(2026-07) 는 값이 라벨 **다음 줄**에 온다
+            expr = (_block_field(block, "Original wanted expression(s)")
+                    or _block_field(block, "Original wanted expression"))
+            if not expr:
+                continue
+        ko = ko or _block_field(block, "Korean meaning")
+
+        # 상황이 없으면 `Study focus:` 불릿에서 덩어리 목록을 만든다 (verbose 형식).
+        # **이 처리를 expr 분기 안에 두면 안 된다** — 같은 줄에 값이 오는 verbose 블록은
+        # 위에서 expr 이 잡혀 분기를 안 타고, 그래서 19건이 상황을 잃었다 (2026-08-17 회귀).
+        if not ctx:
+            known = re.compile(r"^\s*(%s)\s*:" % "|".join(
+                re.escape(l) for ls in WANTED_LABELS.values() for l in ls), re.I)
+            focus = [f.strip() for f in re.findall(r"^- (.+)$", block, flags=re.M)
+                     if not known.match(f)]
+            ctx = _block_field(block, "Possible practical situation")
+            if focus:
+                ctx = (ctx + "; " if ctx else "") + "reusable chunks: " + ", ".join(focus[:8])
+
+        yield learned, expr, ctx, ko, rh, pron, examples_to_variants(ex) if ex else []
 
 
 def parse_vocab(text):

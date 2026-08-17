@@ -26,6 +26,12 @@ import urllib.error
 from datetime import date, timedelta
 
 BASE = "/docker/hermes-agent-7jge/data/english"
+# Hermes 크론이 실행 결과 전문을 남기는 곳. `b2_vocab_log.md` 는 중복 체크용 3칸(표현|뜻|예문)이라
+# 리듬맵·한글발음·확장 표현이 **애초에 안 담긴다** — 그 원본이 여기 있다 (2026-08-17 발견).
+# 파일 앞머리의 `# Cron Job: <이름>` 으로 영어 배달 잡을 골라낸다. 잡 ID는 바뀔 수 있으므로
+# 디렉터리 이름에 의존하지 않는다.
+CRON_OUT = "/docker/hermes-agent-7jge/data/cron/output"
+LESSON_JOB_RE = re.compile(r"^#\s*Cron Job:\s*(\S*english\S*)", re.M | re.I)
 # English Tracker 전용 프로젝트. M Building 프로젝트를 절대 여기에 넣지 말 것.
 PROJECT = "english-tracker-cea9f"
 API_KEY = "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8"
@@ -121,6 +127,31 @@ def create_doc(did, data, token):
         return False
 
 
+def patch_doc(did, data, token, clear=None):
+    """기존 문서에 **지정한 필드만** 덧쓴다 (updateMask).
+
+    동기화는 create-only 라 새 필드(rhythm·pron·variants)가 옛 문서에는 안 붙는다.
+    문서를 통째로 다시 쓰면 stage·nextReview 같은 **복습 진도가 날아간다** —
+    updateMask 로 새 필드만 건드리는 게 유일하게 안전한 방법이다.
+    """
+    clear = clear or []
+    if not data and not clear:
+        return False
+    # updateMask 에 넣고 fields 에서 빼면 **그 필드가 삭제된다.** 잘못 들어간 필드를 되돌릴 때 쓴다.
+    mask = "&".join("updateMask.fieldPaths=%s" % k for k in list(data) + list(clear))
+    url = "%s/%s?%s&key=%s" % (FIRESTORE_URL, did, mask, API_KEY)
+    body = json.dumps({"fields": fs_fields(data)}).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=body, method="PATCH", headers=api_headers(token),
+    )
+    try:
+        urllib.request.urlopen(req, timeout=20)
+        return True
+    except Exception as e:
+        print("ERROR patching %s: %s" % (did, e), file=sys.stderr)
+        return False
+
+
 def next_review_for(learned_iso, today):
     """Stage-0 next review = learned+1d; stagger past-due backfill over 5 days."""
     y, m, d = (int(x) for x in learned_iso.split("-"))
@@ -184,10 +215,16 @@ def parse_wanted(text):
             # Rhythm 은 2026-08-10 추가. 없는 옛 블록은 빈 문자열로 두면
             # 앱이 평문으로 그린다 -- 있던 카드가 깨지지 않는다.
             rh = re.findall(r"^- Rhythm:\s*(.+)$", block, flags=re.M)
+            # Pronunciation·Examples 는 봇이 2026-08 중순부터 쓰기 시작했는데
+            # 파서가 몰라서 통째로 버려지고 있었다 (2026-08-17 발견).
+            pr = re.findall(r"^- Pronunciation:\s*(.+)$", block, flags=re.M)
+            ex = re.findall(r"^- Examples:\s*(.+)$", block, flags=re.M)
             yield (learned, originals[-1].strip(),
                    ctx[0].strip() if ctx else "",
                    ko[0].strip() if ko else "",
-                   rh[0].strip() if rh else "")
+                   rh[0].strip() if rh else "",
+                   pr[0].strip() if pr else "",
+                   examples_to_variants(ex[0]) if ex else [])
             continue
 
         expr = (_block_field(block, "Original wanted expression(s)")
@@ -202,7 +239,7 @@ def parse_wanted(text):
         if focus:
             ctx = (ctx + "; " if ctx else "") + "reusable chunks: " + ", ".join(
                 f.strip() for f in focus[:8])
-        yield learned, expr, ctx, ko, ""
+        yield learned, expr, ctx, ko, "", "", []
 
 
 def parse_vocab(text):
@@ -218,6 +255,159 @@ def parse_vocab(text):
             if len(parts) >= 2 and parts[0]:
                 example = parts[2] if len(parts) >= 3 else ""
                 yield current[0], current[1], parts[0], parts[1], example
+
+
+# ═══════════ 레슨 원문에서 리듬·발음·확장 뽑기 ═══════════
+
+def _plain(s):
+    """비교용 평문 — 리듬 표기와 구두점을 벗기고 소문자로."""
+    s = re.sub(r"\*\*", "", s or "")
+    s = re.sub(r"[→↘↓↗/]", " ", s)
+    s = re.sub(r"[^\w\s']", " ", s)
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def _loose(s):
+    """관사를 뺀 비교용 문자열. `issue an OR` 과 `issue the OR` 을 같게 본다 —
+    확장 문장은 같은 표현을 관사만 바꿔 쓰는 일이 잦다."""
+    return re.sub(r"\s+", " ", re.sub(r"\b(a|an|the)\b", " ", _plain(s))).strip()
+
+
+def lesson_units(text):
+    """레슨 전문에서 (영어 리듬맵, 한글 발음, 한국어 뜻) 단위를 순서대로 뽑는다.
+
+    봇 출력 구조 (`patrick-b2-vocab-delivery.md` 규격):
+
+        질문: <리듬맵> ↗
+        발음: <한글>
+        답변: <리듬맵> ↓
+        발음: <한글>
+        뜻: <한국어>
+        【이렇게도 말해요 — 확장】
+        - <리듬맵> ↘
+          발음: <한글>
+          뜻: <한국어>
+          톤/사용: <설명>
+
+    `kind` 로 자리를 구분한다 — 질문/답변은 **대화 쌍**이라 카드의 예문으로 쓰고,
+    「이렇게도 말해요」에는 **확장 블록만** 넣는다. 섞으면 답변이 확장으로 둔갑한다.
+
+    **프롬프트 부분은 반드시 잘라낸다.** 크론 출력 파일은 앞쪽 770여 줄이 스킬 문서(프롬프트)라
+    거기 있는 `{리듬맵 표기 영어}` 같은 **템플릿 자리표시자까지 긁어온다** — 실제로 겪었다.
+    실제 응답은 마지막 `## Response` 줄 뒤부터다.
+    """
+    cut = [m.end() for m in re.finditer(r"^## Response$", text, flags=re.M)]
+    if cut:
+        text = text[cut[-1]:]
+
+    units = []
+    lines = text.splitlines()
+    in_variants = False
+    for i, raw in enumerate(lines):
+        line = raw.strip().rstrip("　 ")
+        if line.startswith("【"):
+            in_variants = "이렇게도" in line or "확장" in line
+        m = re.match(r"^(?:질문|답변)\s*:\s*(.+)$", line)
+        if m:
+            en, kind = m.group(1).strip(), "main"
+        elif in_variants and re.match(r"^[-*]\s+\S", line) and i + 1 < len(lines) \
+                and re.match(r"^\s*발음\s*:", lines[i + 1]):
+            # 확장 항목 — 불릿 다음 줄이 발음이면 그 불릿이 영어 문장이다
+            en, kind = re.sub(r"^[-*]\s+", "", line).strip(), "variant"
+        else:
+            continue
+        if "{" in en or "}" in en:
+            continue          # 템플릿 자리표시자 방어 (경계가 밀려도 안 새게)
+
+        pron = ko = ""
+        for nxt in lines[i + 1:i + 5]:
+            t = nxt.strip()
+            p = re.match(r"^발음\s*:\s*(.+)$", t)
+            k = re.match(r"^뜻\s*:\s*(.+)$", t)
+            if p and not pron:
+                pron = p.group(1).strip()
+            elif k and not ko:
+                ko = k.group(1).strip()
+            elif re.match(r"^(질문|답변|감정|톤/사용)\s*:", t) or t.startswith("【"):
+                break
+        if en:
+            units.append({"en": en, "pron": pron, "ko": ko, "kind": kind})
+    return units
+
+
+def enrich(expr, units, max_variants=2):
+    """표현 하나에 대해 (리듬맵, 발음, 확장목록) 을 고른다.
+
+    표현이 실제로 들어간 문장만 쓴다. 못 찾으면 빈 값을 돌려주고 호출부가 필드를
+    아예 안 만든다 — 빈 문자열을 넣으면 앱이 「있음」으로 오인해 빈 블록을 그린다.
+    """
+    key, loose = _plain(expr), _loose(expr)
+    if not key:
+        return "", "", []
+
+    def hit(u):
+        return key in _plain(u["en"]) or (loose and loose in _loose(u["en"]))
+
+    hits = [u for u in units if hit(u)]
+    if not hits:
+        return "", "", []
+    # 예문은 질문/답변에서 고른다. 확장밖에 없으면 그거라도 쓴다.
+    mains = [u for u in hits if u["kind"] == "main"] or hits
+    main = mains[0]
+    variants = [
+        {"en": u["en"], "pron": u["pron"], "ko": u["ko"]}
+        for u in hits if u["kind"] == "variant" and u["en"] != main["en"]
+    ][:max_variants]
+    return main["en"], main["pron"], variants
+
+
+def extras_only(data):
+    """백필로 덧쓸 필드만 골라낸다. 진도·본문은 절대 포함하지 않는다."""
+    return {k: data[k] for k in ("rhythm", "pron", "variants") if data.get(k)}
+
+
+def add_extras(data, pron, variants):
+    """발음·확장을 문서에 붙인다. **값이 있을 때만** 필드를 만든다.
+
+    빈 문자열을 넣으면 앱이 「있음」으로 보고 빈 블록을 그린다 — rhythm 에서 이미 겪은 함정이다.
+    확장은 구분자 충돌(리듬맵에 `/`·`|` 가 들어간다)을 피하려고 JSON 문자열로 넣는다.
+    """
+    if pron:
+        data["pron"] = pron
+    if variants:
+        data["variants"] = json.dumps(variants, ensure_ascii=False)
+
+
+def examples_to_variants(raw, limit=2):
+    """`- Examples:` 한 줄을 확장 목록으로. 형식: `en → ko; en → ko; ...`
+
+    막힌 **단어** 블록에만 붙는다(막힌 문장에는 없다). 발음은 안 오므로 비운다.
+    """
+    out = []
+    for chunk in re.split(r"\s*;\s*", raw or ""):
+        parts = re.split(r"\s*(?:→|->)\s*", chunk.strip(), maxsplit=1)
+        en = parts[0].strip().rstrip(".")
+        if not en:
+            continue
+        out.append({"en": en, "pron": "", "ko": parts[1].strip() if len(parts) > 1 else ""})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def read_lesson(day):
+    """해당 날짜의 영어 배달 크론 출력 전문을 이어붙여 돌려준다. 없으면 빈 문자열."""
+    import glob
+    out = []
+    for path in sorted(glob.glob("%s/*/%s_*.md" % (CRON_OUT, day))):
+        try:
+            with open(path, encoding="utf-8") as f:
+                body = f.read()
+        except OSError:
+            continue
+        if LESSON_JOB_RE.search(body):
+            out.append(body)
+    return "\n".join(out)
 
 
 def speech_text(raw: str) -> str:
@@ -276,14 +466,18 @@ def prewarm(texts):
 
 
 def main():
+    # --backfill: 이미 있는 문서에 새 필드(rhythm·pron·variants)만 덧붙인다.
+    # 진도(stage·nextReview)는 건드리지 않는다. 평소 크론은 이 모드를 쓰지 않는다.
+    backfill = "--backfill" in sys.argv
     today = today_manila()
     token = get_id_token()
     cutoff = (today - timedelta(days=BACKFILL_DAYS)).isoformat()
-    created = skipped = 0
+    created = skipped = patched = 0
 
     fresh = []   # 새로 만든 문서의 읽어줄 텍스트 — 음성을 미리 만들어 둔다
 
-    for learned, expr, ctx, ko, rhythm in parse_wanted(read(BASE + "/wanted_phrases.md")):
+    for learned, expr, ctx, ko, rhythm, pron, variants in parse_wanted(
+            read(BASE + "/wanted_phrases.md")):
         if learned < cutoff or not expr:
             continue
         did = doc_id("hermes-wanted", learned, expr)
@@ -293,33 +487,59 @@ def main():
             "stage": 0, "nextReview": next_review_for(learned, today),
         }
         # 리듬이 온 경우에만 필드를 만든다. 빈 문자열을 넣으면 앱이 "리듬 있음"으로
-        # 오인해 평문 정답 대신 빈 화면을 그린다.
+        # 오인해 평문 정답 대신 빈 화면을 그린다. pron·variants 도 같은 원칙.
         if rhythm:
             data["rhythm"] = rhythm
+        add_extras(data, pron, variants)
         if create_doc(did, data, token):
             created += 1
             fresh.append(expr)
         else:
             skipped += 1
+            if backfill:
+                patched += patch_doc(did, extras_only(data), token)
 
+    # 레슨 전문은 날짜당 한 번만 읽어 캐시한다 (파일이 90KB대라 표현마다 읽으면 낭비다).
+    lessons = {}
     for learned, slot, expr, meaning, example in parse_vocab(read(BASE + "/b2_vocab_log.md")):
         if learned < cutoff or not expr:
             continue
+        if learned not in lessons:
+            lessons[learned] = lesson_units(read_lesson(learned))
+        rhythm, pron, variants = enrich(expr, lessons[learned])
+
         did = doc_id("hermes-delivered", learned, expr)
         data = {
             "expression": expr, "meaning": meaning, "context": example, "ko": "",
             "source": "hermes-delivered", "slot": slot, "learnedDate": learned,
             "stage": 0, "nextReview": next_review_for(learned, today),
         }
+        # 로그의 `example` 은 평문이다. 레슨 원문에서 같은 문장의 리듬맵을 찾으면 그걸 쓴다 —
+        # 화면에 강세·청크가 보여야 쉐도잉이 된다.
+        #
+        # **`rhythm` 필드가 아니라 `context`(예문) 에 넣는다.** 배달 카드의 학습 단위는
+        # `eat out` 같은 덩어리지 문장 전체가 아니다. `rhythm` 에 넣으면 카드 앞면이
+        # 덩어리 대신 문장으로 바뀌고, 예문 블록이 같은 문장을 평문으로 또 보여준다
+        # (2026-08-17 화면에서 확인). 막힌 표현(wanted)은 문장 자체가 학습 단위라 그쪽은 rhythm 이 맞다.
+        if rhythm:
+            data["context"] = rhythm
+        add_extras(data, pron, variants)
         if create_doc(did, data, token):
             created += 1
             fresh.extend([expr, example])
         else:
             skipped += 1
+            if backfill:
+                # 예문(context)에 리듬맵을 덧쓰고, 배달 카드에 잘못 들어갔던 rhythm 은 지운다.
+                # rhythm 이 남아 있으면 앞면이 덩어리 대신 문장으로 나온다 (2026-08-17 실수).
+                fields = extras_only(data)
+                if data.get("context"):
+                    fields["context"] = data["context"]
+                patched += patch_doc(did, fields, token, clear=["rhythm"])
 
     warmed = prewarm(fresh)
-    print("%s sync done: created=%d skipped=%d tts_warmed=%d"
-          % (today.isoformat(), created, skipped, warmed))
+    print("%s sync done: created=%d skipped=%d patched=%d tts_warmed=%d"
+          % (today.isoformat(), created, skipped, patched, warmed))
 
 
 if __name__ == "__main__":

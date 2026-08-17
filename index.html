@@ -271,6 +271,16 @@
   .why-list { display: none; margin: 2px 0 0; padding-left: 16px; }
   .why-list.open { display: block; }
   .why-list li { font-size: 12.5px; color: #b6bdcd; line-height: 1.6; margin-bottom: 3px; }
+  /* 발음(한글) — 리듬맵 바로 아래. 강세 표기가 영어와 1:1로 대응되므로 같은 리듬 스타일을 탄다 */
+  .blk-pron { font-size: 13.5px; color: #c3c9d9; line-height: 1.7; }
+  /* 이렇게도 말해요 — 항목마다 영어·발음·뜻 3줄 */
+  .var-list { padding-left: 0; list-style: none; }
+  .var-list > li { margin-bottom: 10px; }
+  .var-list > li:last-child { margin-bottom: 2px; }
+  .v-en { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; color: #c3c9d9; line-height: 1.7; }
+  .v-en > span { flex: 1; }
+  .v-pron { font-size: 12.5px; color: #aab2c4; line-height: 1.65; margin-top: 1px; }
+  .v-ko { font-size: 12.5px; color: var(--sub); line-height: 1.55; margin-top: 2px; }
 
   /* 가져오기 모달 */
   .imp-modal { max-height: 88vh; overflow-y: auto; }
@@ -825,7 +835,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-15-04";
+const BUILD = "2026-08-17-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1686,8 +1696,20 @@ document.getElementById("calPrev").onclick = () => { calCursor.setMonth(calCurso
 document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCursor.getMonth() + 1); renderCalendar(); };
 
 // ═══════════════ 표현 카드 — 모든 화면이 같은 규격을 쓴다 ═══════════════
-// 뒷면 블록 순서 고정: 뜻 → 예문(리듬) → 이럴 때 → 덩어리 → 내 문장 → 진도 → 액션
+// 뒷면 블록 순서 고정 (2026-08-17 Patrick 확정):
+//   뜻 → 예문(리듬) → 발음 → 이럴 때 → 덩어리 → 이렇게도 말해요(접힘) → 진도 → 액션
 // 데이터가 없는 블록만 빠지고, 순서와 라벨은 절대 바뀌지 않는다.
+// 감정/톤은 Patrick이 명시적으로 뺐다 — 다시 넣지 말 것.
+
+// 확장 표현. hermes-sync 가 JSON 문자열로 넣는다 (리듬맵에 `/`·`|` 가 들어가 구분자를 못 쓴다).
+// 옛 문서에는 필드가 없다 — 그때는 빈 배열이라 블록 자체가 안 그려진다.
+function variantsOf(e) {
+  if (!e || !e.variants) return [];
+  try {
+    const v = typeof e.variants === "string" ? JSON.parse(e.variants) : e.variants;
+    return Array.isArray(v) ? v.filter(x => x && x.en) : [];
+  } catch (err) { return []; }
+}
 // 정답 표시. 회화 교정은 Rhythm Map 표기 그대로 — 평문을 따로 또 보여주지 않는다.
 // Rhythm Map 이 정답 전체를 덮지 못할 때 남는 뒷부분을 돌려준다.
 // ChatGPT 가 첫 문장까지만 리듬 표기를 해 보내는 일이 잦다. 그대로 두면 화면에는
@@ -1794,6 +1816,12 @@ function exprCard(e, mode, dir) {
       <button class="spk sm" data-say="${esc(p.example)}" title="듣기">🔊</button></div>
       </div>`;
   }
+  // 2.5 발음 (한글) — 봇이 리듬맵과 청크·강세를 1:1로 맞춰 보낸다.
+  // 쉐도잉이 Patrick의 최우선이라 리듬맵 바로 아래 붙인다. 없으면 블록 자체가 안 나온다.
+  if (e.pron) {
+    html += `<div class="blk"><div class="blk-l">발음</div>
+      <div class="blk-pron">${rhythmHtml(e.pron)}</div></div>`;
+  }
   // 3. 이럴 때 (한→영에서 상황을 프롬프트로 썼으면 생략)
   if (p.tags.length && !(recall && pr.tag)) {
     html += `<div class="blk"><div class="blk-l">이럴 때</div>
@@ -1805,7 +1833,19 @@ function exprCard(e, mode, dir) {
       <div class="chips">${p.chunks.map(c =>
         `<span class="chip" data-say="${esc(c)}">${esc(c)}</span>`).join("")}</div></div>`;
   }
-  // 4.5 왜 틀렸나 — 길어서 기본은 접어둔다. 카드가 늘어지면 복습을 안 하게 된다.
+  // 4.5 이렇게도 말해요 — 같은 뜻을 다르게 말하는 연습. **기본 접힘**이다.
+  // 카드가 길어지면 복습을 안 하게 된다 — 「왜 틀렸나」와 같은 이유로 접어둔다 (Patrick 확인함).
+  const vars = variantsOf(e);
+  if (vars.length) {
+    html += `<div class="blk"><div class="blk-l why-toggle">이렇게도 말해요 <span class="why-more">보기 (${vars.length})</span></div>
+      <ul class="why-list var-list">${vars.map(v => `<li>
+        <div class="v-en"><span>${rhythmHtml(v.en)}</span>
+          <button class="spk sm" data-say="${esc(v.en)}" title="듣기">🔊</button></div>
+        ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
+        ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}
+      </li>`).join("")}</ul></div>`;
+  }
+  // 5. 왜 틀렸나 — 길어서 기본은 접어둔다. 카드가 늘어지면 복습을 안 하게 된다.
   if (isReview(e) && e.why) {
     const lines = String(e.why).split("\n").filter(Boolean);
     html += `<div class="blk"><div class="blk-l why-toggle">왜 틀렸나 <span class="why-more">보기 (${lines.length})</span></div>
@@ -1854,11 +1894,18 @@ function exprCard(e, mode, dir) {
   card.querySelectorAll("[data-say]").forEach(el => {
     el.addEventListener("click", ev => { ev.stopPropagation(); speak(el.dataset.say, el); });
   });
-  const whyT = card.querySelector(".why-toggle");
-  if (whyT) whyT.addEventListener("click", ev => {
-    ev.stopPropagation();
-    const on = card.querySelector(".why-list").classList.toggle("open");
-    card.querySelector(".why-more").textContent = on ? "접기" : `보기 (${card.querySelectorAll(".why-list li").length})`;
+  // 접히는 블록이 둘이다 (이렇게도 말해요 / 왜 틀렸나). **각 토글을 자기 블록에 짝지어야 한다** —
+  // querySelector 단수로 두면 두 번째 토글이 아예 안 열리고, 개수도 두 블록을 합쳐 세게 된다.
+  card.querySelectorAll(".why-toggle").forEach(t => {
+    const box = t.parentElement;
+    const list = box.querySelector(".why-list");
+    const more = box.querySelector(".why-more");
+    if (!list || !more) return;
+    const n = list.querySelectorAll(":scope > li").length;
+    t.addEventListener("click", ev => {
+      ev.stopPropagation();
+      more.textContent = list.classList.toggle("open") ? "접기" : `보기 (${n})`;
+    });
   });
   const hintBtn = card.querySelector(".hint-btn");
   if (hintBtn) {

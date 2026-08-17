@@ -835,7 +835,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-17-01";
+const BUILD = "2026-08-17-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -977,6 +977,14 @@ function parseContext(e) {
   }
   return out;
 }
+// 「이럴 때」에 그릴 태그 — 짧은 상황 키워드만 남긴다.
+// 봇의 `- Context:` 에는 `Manila city hall` 같은 키워드와
+// `delayed action or no update after escalation` 같은 서술형 설명이 섞여 온다.
+// 서술형은 카드에서 도움이 안 된다 — 그 자리에 한국어 뜻을 보여준다 (2026-08-17 Patrick).
+// **`p.tags` 자체는 건드리지 않는다.** `promptFor()` 에서 ko 가 없는 옛 카드의
+// 한→영 프롬프트가 이 태그뿐이라, 걸러낸 것을 프롬프트로 쓰면 단서가 통째로 사라진다.
+const TAG_MAX_WORDS = 4;
+function shortTags(tags) { return tags.filter(t => wordCount(t) <= TAG_MAX_WORDS); }
 // 리듬 마크업 렌더 — **강세**, → ↘ ↓ ↗ 억양, " / " 끊어읽기
 function hasRhythm(s) { return /\*\*|[→↘↓↗]/.test(s || ""); }
 // ChatGPT 복습 노트의 Rhythm Map 은 **굵게** 대신 대문자로 강세를 표시한다
@@ -1805,9 +1813,13 @@ function exprCard(e, mode, dir) {
     }
   }
   // 1. 뜻 (한→영이면 이미 앞면에 썼으므로 생략)
-  if (e.meaning && !(recall && !pr.tag)) {
+  // 소스마다 한국어가 담기는 필드가 다르다 — 배달은 `meaning`, 막힌 표현은 `ko` 다.
+  // 예전엔 `meaning` 만 봐서 **막힌 표현 카드에 뜻이 아예 안 나왔다** (2026-08-17 Patrick 지적).
+  // 회화 교정은 위 `isReview` 블록에서 이미 그렸으므로 여기서 제외한다 — 안 그러면 두 번 나온다.
+  const mean = e.meaning || (isReview(e) ? "" : e.ko);
+  if (mean && !(recall && !pr.tag)) {
     html += `<div class="blk"><div class="blk-l">뜻</div>
-      <div class="blk-mean">${esc(e.meaning)}</div></div>`;
+      <div class="blk-mean">${esc(mean)}</div></div>`;
   }
   // 2. 예문 — 리듬 표기가 있으면 그대로 살린다 (쉐도잉용). 기호 설명은 붙이지 않는다.
   if (p.example) {
@@ -1823,9 +1835,11 @@ function exprCard(e, mode, dir) {
       <div class="blk-pron">${rhythmHtml(e.pron)}</div></div>`;
   }
   // 3. 이럴 때 (한→영에서 상황을 프롬프트로 썼으면 생략)
-  if (p.tags.length && !(recall && pr.tag)) {
+  // 서술형 태그는 `shortTags()` 가 걸러낸다. 남는 게 없으면 블록 자체가 안 나온다.
+  const tags = shortTags(p.tags);
+  if (tags.length && !(recall && pr.tag)) {
     html += `<div class="blk"><div class="blk-l">이럴 때</div>
-      <div class="chips">${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join("")}</div></div>`;
+      <div class="chips">${tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join("")}</div></div>`;
   }
   // 4. 덩어리 (통째로 외울 조각 — 탭하면 들린다)
   if (p.chunks.length) {

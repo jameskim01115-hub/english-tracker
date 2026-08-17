@@ -101,6 +101,17 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 - `context` 필드는 소스마다 의미가 다르다. `parseContext()`가 갈라준다.
   - `hermes-delivered` → 예문 (리듬 마크업 포함 가능)
   - `hermes-wanted` → `"<상황 태그>; reusable chunks: a, b, c."`
+- **한국어 뜻이 담기는 필드도 소스마다 다르다** — 배달은 `meaning`, 막힌 표현은 `ko` 다
+  (`hermes-sync.py` 가 그렇게 넣는다). 카드가 `meaning` 만 보던 탓에 **막힌 표현 카드에는
+  뜻이 아예 안 나오고 있었다** (2026-08-17 Patrick 지적). `mean = e.meaning || (isReview(e) ? "" : e.ko)`.
+  회화 교정은 위쪽 `isReview` 블록에서 이미 뜻을 그리므로 **여기서 반드시 제외**한다 — 안 그러면 두 번 나온다.
+- **「이럴 때」에는 짧은 상황 키워드만 그린다** (`shortTags()`, 5단어 이상 제외).
+  봇의 `- Context:` 에는 `Manila city hall` 같은 키워드와
+  `delayed action or no update after escalation` 같은 **서술형 설명**이 섞여 온다.
+  서술형은 카드에서 도움이 안 된다고 Patrick이 지적했고, 그 자리를 한국어 뜻이 대신한다 (2026-08-17).
+  - **`p.tags` 자체를 걸러내면 안 된다.** `promptFor()` 는 `ko` 가 없는 옛 카드에서 이 태그를
+    한→영 프롬프트로 쓴다 — 원본을 깎으면 그 카드의 프롬프트가 통째로 사라진다. 렌더에서만 거른다.
+  - 남는 태그가 없으면 블록 자체가 안 나온다. 뜻이 있으니 문제되지 않는다.
 - **리듬 마크업 — Patrick의 쉐도잉 표기 규칙이다. 임의로 바꾸지 말 것.**
   | 표기 | 뜻 | 렌더 |
   |---|---|---|

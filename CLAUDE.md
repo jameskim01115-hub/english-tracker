@@ -337,6 +337,31 @@ Natural Corrected Answer / Rhythm Map / Key Corrections
 - `variants` 는 **JSON 문자열**이다(`[{en,pron,ko}]`). 리듬맵에 `/`·`|` 가 들어가 구분자를 못 쓴다.
   앱은 `variantsOf()` 로 읽고, 파싱 실패하면 빈 배열이라 블록이 안 그려진다.
 
+### 막힌 표현은 봇이 정리해서 넣는다 (2026-08-17)
+
+Patrick이 봇에 던지는 「막힌 표현」은 **형식이 없다** — 한국어만, 영어만, 단어 하나, 조각 전부 온다.
+**형식을 맞추는 건 Patrick이 아니라 봇의 일이다**(Patrick 명시). 봇 규격이 그렇게 고쳐져 있다:
+
+```
+/docker/hermes-agent-7jge/data/skills/productivity/patrick-english-coaching/references/
+  quiet-wanted-phrase-capture.md
+```
+
+**저장소 사본: `bot-specs/quiet-wanted-phrase-capture.md`** — `.hermes/sync.sh` 가
+`patrick-english-coaching` 스킬은 안 받아오므로 이 사본이 유일한 백업이다. 서버를 고치면 여기도 같이 고칠 것.
+
+봇이 채워야 하는 6줄 (하나라도 빠지면 트래커 카드의 그 블록이 안 나온다):
+
+```md
+- Original / - Korean / - Rhythm / - Pronunciation / - Context / - Examples
+```
+
+`Pronunciation`(→카드의 「발음」)과 `Examples`(→「이렇게도 말해요」)는 2026-08-17에 **필수로 승격**했다.
+그전에는 `Pronunciation` 이 "Patrick이 직접 줬을 때만"이었고 `Examples` 는 규격에 없었다 —
+그래서 08-14 이전 항목에 발음이 없다(데이터 자체가 없으니 백필로도 못 채운다).
+
+**봇에게 되묻게 하지 말 것.** "무슨 뜻인가요?" 같은 확인 질문은 Patrick이 형식을 맞추게 만드는 것과 같다.
+
 ### 옛 문서 백필
 
 동기화는 create-only라 **기존 문서에는 새 필드가 안 붙는다.**

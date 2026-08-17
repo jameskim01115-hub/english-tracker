@@ -833,7 +833,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-17-03";
+const BUILD = "2026-08-17-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2638,11 +2638,19 @@ document.getElementById("mSave").onclick = async () => {
 // ChatGPT Live 대화 뒤에 만드는 복습 노트를 붙여넣어 카드로 만든다.
 // 형식이 고정돼 있어 AI 없이 정규식으로 갈린다. 라벨 이름이 바뀌면 파싱이 깨지므로
 // 저장 전에 미리보기를 반드시 거치게 해 둔다.
+// **라벨은 동의어로 받는다.** ChatGPT 는 항목 성격에 따라 제목을 바꿔 쓴다 —
+// 교정할 게 없는 항목은 `Natural Corrected Answer` 대신 `오늘 연습한 문장`,
+// 확장 연습이면 `오늘 연습한 확장 답변`, Patrick 문장이 그대로 좋으면 `Patrick's Sentence`.
+// 2026-08-17 이것 때문에 **항목 3개가 통째로 사라졌다**(2.1·6.1·7). 봇 쪽 지시문을 조이는 대신
+// 파서가 견딘다 — 새 표기가 나오면 여기에 한 줄 추가하면 된다.
 const IMP_LABELS = [
   ["q",      /^오늘의\s*질문$/],
+  ["q",      /^Patrick['’']?s?\s+Question$/i],
   ["wrong",  /^Patrick['’']?s?\s+Original\s+Answer$/i],
   ["why",    /^어색한\s*부분.*$/],
   ["fixed",  /^Natural\s+Corrected\s+Answer$/i],
+  ["fixed",  /^오늘\s*연습한\s*(?:확장\s*)?(?:문장|답변)$/],
+  ["fixed",  /^Patrick['’']?s?\s+Sentence$/i],
   ["rhythm", /^Rhythm\s*Map$/i],
   ["chunks", /^Key\s+Corrections$/i],
 ];
@@ -2674,6 +2682,9 @@ function matchLabel(line) {
   return null;
 }
 const hasHangul = s => /[가-힣]/.test(s);
+// 노트의 한국어 줄은 `→ 어제는 일요일이었는데…` 처럼 화살표로 시작한다. 그대로 저장하면
+// 카드의 「뜻」이 화살표로 시작한다 — 표기 기호지 내용이 아니므로 벗긴다.
+const stripArrow = s => String(s || "").replace(/^\s*[→⇒➡]\s*/, "").trim();
 // 불릿만 뗀다. `**덩어리**` 의 첫 `*` 를 불릿으로 오인하면 짝이 깨져 `*덩어리**` 가 남는다.
 const stripBullet = s => s.replace(/^(?:\*(?!\*)|[-•])\s*/, "").trim();
 
@@ -2725,10 +2736,22 @@ function parseReviewNote(text) {
   const starts = [];
   lines.forEach((l, i) => { if (/^\s*\d+\.\d+\s+\S/.test(l)) starts.push(i); });
 
+  // **하위 번호가 없는 섹션도 항목이다.** `7. 오늘 마지막 표현` 처럼 `7.1` 없이 바로 내용이
+  // 오는 섹션이 있는데, 예전엔 `\d+\.\d+` 만 항목으로 봐서 **통째로 사라졌다**(2026-08-17).
+  // 자식이 있는 섹션(`1.` → `1.1`)은 제목이므로 제외한다 — 이 조건이 노트 끝의
+  // 「오늘 꼭 가져갈 표현 5개」 같은 **번호 목록도 같이 걸러준다**(그 번호들은 본문에 자식이 있다).
+  const hasChild = n => starts.some(i => new RegExp(`^\\s*${n}\\.\\d`).test(lines[i]));
+  lines.forEach((l, i) => {
+    const m = l.match(/^\s*(\d+)\.\s+\S/);
+    if (m && !hasChild(m[1])) starts.push(i);
+  });
+  starts.sort((a, b) => a - b);
+
   const items = [];
   for (let i = 0; i < starts.length; i++) {
     const chunkLines = lines.slice(starts[i], i + 1 < starts.length ? starts[i + 1] : lines.length);
-    const head = chunkLines[0].replace(/^\s*\d+\.\d+\s+/, "").trim();
+    // `1.1 제목` 과 `7. 제목` 둘 다 번호를 뗀다.
+    const head = chunkLines[0].replace(/^\s*\d+(?:\.\d+)*\.?\s+/, "").trim();
 
     const sec = {};
     let cur = null;
@@ -2753,7 +2776,17 @@ function parseReviewNote(text) {
     }
 
     const fixed = sec.fixed || [];
-    const fixedEn = fixed.find(l => !hasHangul(l)) || "";
+    // 정답 자리에 **평문과 리듬맵이 둘 다** 오는 노트가 있다 (`Patrick's Sentence` 형태).
+    // 갈라 쓰지 않으면 먼저 나온 평문만 잡고 **리듬이 통째로 버려진다.**
+    const fixedAll = fixed.filter(l => !hasHangul(l));
+    const rhIdx = fixedAll.findIndex(l => RHYTHM_MARK.test(l));
+    const fixedRh = rhIdx >= 0 ? fixedAll[rhIdx] : "";
+    // **평문은 리듬 줄보다 앞에 있을 때만 쓴다.** 뒤에 오는 영어 줄은 정답이 아니라,
+    // `포인트`·`추가 예문` 처럼 라벨로 인식되지 않은 해설 구간이 `fixed` 에 계속 쌓인 것이다 —
+    // 앞뒤를 안 가리고 골랐더니 4.1 정답이 `I have to solve the problem.`(틀린 원문)로 바뀌었다.
+    const fixedPlain = rhIdx > 0
+      ? (fixedAll.slice(0, rhIdx).find(l => !RHYTHM_MARK.test(l)) || "") : "";
+    const fixedEn = fixedAll[0] || "";
 
     // Rhythm Map 줄들. 한글 줄은 해설이라 뺀다.
     // 두 문장짜리 답변을 ChatGPT 가 두 줄로 나눠 보내기도 해서 전부 이어 붙인다 —
@@ -2767,11 +2800,12 @@ function parseReviewNote(text) {
     // 정답 자리에 평문 대신 **리듬맵만** 보내오는 노트를 받는다 (2026-08-12 Patrick이 그렇게 바꿈).
     // 그대로 두면 `/` 와 `↘` 가 정답 텍스트에 글자로 박혀 화면에도 나오고 TTS 도 그걸 읽는다.
     let expression;
-    if (!rhythm && RHYTHM_MARK.test(fixedEn)) {
-      rhythm = stripOuterBold(fixedEn);
-      expression = plainFromRhythm(fixedEn);
+    if (!rhythm && fixedRh) {
+      rhythm = stripOuterBold(fixedRh);
+      // 평문이 같이 왔으면 그걸 쓴다 — 되살린 평문은 쉼표·고유명사 대소문자를 복구 못 한다.
+      expression = fixedPlain ? unbold(fixedPlain) : plainFromRhythm(fixedRh);
     } else {
-      expression = unbold(fixedEn);
+      expression = unbold(fixedPlain || fixedEn);
     }
     if (!expression) continue;   // 교정문이 없으면 카드가 안 된다
 
@@ -2784,10 +2818,10 @@ function parseReviewNote(text) {
     }
     items.push({
       title: unbold(title),
-      question: unbold(q.find(l => !hasHangul(l)) || ""),
-      questionKo: unbold(q.find(l => hasHangul(l)) || ""),
+      question: stripArrow(unbold(q.find(l => !hasHangul(l)) || "")),
+      questionKo: stripArrow(unbold(q.find(l => hasHangul(l)) || "")),
       expression,
-      ko: unbold(fixed.find(l => hasHangul(l)) || ""),
+      ko: stripArrow(unbold(fixed.find(l => hasHangul(l)) || "")),
       wrong: unbold((sec.wrong || []).join(" ")),
       why: (sec.why || []).map(stripBullet).concat(notes).map(unbold).filter(Boolean).join("\n"),
       rhythm,

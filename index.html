@@ -833,7 +833,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-17-04";
+const BUILD = "2026-08-18-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -969,9 +969,14 @@ function parseContext(e) {
     const tail = ctx.slice(ctx.search(CHUNK_RE)).replace(CHUNK_RE, "").replace(/\.\s*$/, "");
     const sep = tail.includes(";") ? ";" : ",";
     out.chunks = tail.split(sep).map(s => s.trim().replace(/\.$/, "")).filter(Boolean);
-  } else {
+  } else if (e.source === "hermes-delivered") {
+    // 배달 카드만 context 가 예문이다 (리듬맵이 여기 들어간다).
     out.example = ctx;
   }
+  // 막힌 표현은 **예문을 만들지 않는다** — 정답 문장 자체가 학습 재료라 예문 블록은 중복이다
+  // (회화 교정 카드와 같은 이유). 봇이 `reusable chunks:` 없이 `Tags:` 만 보내는 형식으로
+  // 바꾼 뒤로, 이 자리에 `막힌표현, M Building, maintenance fee…` 같은 **상황 키워드가
+  // 예문인 척 찍히고 있었다** (2026-08-18 Patrick 지적, 44건 중 2건).
   return out;
 }
 // 리듬 마크업 렌더 — **강세**, → ↘ ↓ ↗ 억양, " / " 끊어읽기
@@ -1004,6 +1009,9 @@ function rhythmHtml(s) {
     if (lone) return ' <i class="br">|</i> ';
     return m;
   });
+  // 짝이 안 맞는 `**` 를 벗긴다. 봇이 볼드를 안 닫고 보내는 일이 있고
+  // (`… 쏘우 **롱`), 그대로 두면 **별표가 글자로 화면에 박힌다** (2026-08-18 Patrick 지적).
+  h = h.replace(/\*\*/g, "");
   return h;
 }
 

@@ -445,6 +445,26 @@ def examples_to_variants(raw, limit=2):
     return out
 
 
+_window_cache = {}
+
+
+def lesson_units_window(today, days):
+    """최근 `days` 일치 레슨을 전부 합친 단위 목록. 한 번만 읽고 캐시한다.
+
+    막힌 표현은 **저장된 날 레슨에는 없다** — 봇이 그날 배달한 내용이 아니라
+    Patrick이 그날 못 했던 말이기 때문. 대신 봇 규격상 저장된 막힌 표현은
+    나중 레슨의 1순위 재료라, 며칠 뒤 레슨에 등장하면 그때 확장 표현을 얻을 수 있다.
+    그래서 하루가 아니라 **기간 전체**를 훑는다.
+    """
+    key = (today.isoformat(), days)
+    if key not in _window_cache:
+        units = []
+        for i in range(days + 1):
+            units.extend(lesson_units(read_lesson((today - timedelta(days=i)).isoformat())))
+        _window_cache[key] = units
+    return _window_cache[key]
+
+
 def read_lesson(day):
     """해당 날짜의 영어 배달 크론 출력 전문을 이어붙여 돌려준다. 없으면 빈 문자열."""
     import glob
@@ -545,6 +565,14 @@ def main():
         }
         # 리듬이 온 경우에만 필드를 만든다. 빈 문자열을 넣으면 앱이 "리듬 있음"으로
         # 오인해 평문 정답 대신 빈 화면을 그린다. pron·variants 도 같은 원칙.
+        # 봇이 확장(Examples)을 안 보내는 형식으로 바뀌었다. 레슨 원문에서 같은 표현을
+        # 찾아 확장·발음을 채운다 (2026-08-18 Patrick 요청 — C안).
+        # **봇이 준 값이 있으면 그대로 둔다** — 레슨 것으로 덮어쓰지 않는다.
+        if not variants or not pron:
+            l_rh, l_pron, l_var = enrich(expr, lesson_units_window(today, BACKFILL_DAYS))
+            pron = pron or l_pron
+            variants = variants or l_var
+            rhythm = rhythm or l_rh
         if rhythm:
             data["rhythm"] = rhythm
         add_extras(data, pron, variants)

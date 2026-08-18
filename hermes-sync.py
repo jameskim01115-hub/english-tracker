@@ -395,14 +395,14 @@ def lesson_units(text):
 
 
 def enrich(expr, units, max_variants=2):
-    """표현 하나에 대해 (리듬맵, 발음, 확장목록) 을 고른다.
+    """표현 하나에 대해 (리듬맵, 발음, 예문 뜻, 확장목록) 을 고른다.
 
     표현이 실제로 들어간 문장만 쓴다. 못 찾으면 빈 값을 돌려주고 호출부가 필드를
     아예 안 만든다 — 빈 문자열을 넣으면 앱이 「있음」으로 오인해 빈 블록을 그린다.
     """
     key, loose = _plain(expr), _loose(expr)
     if not key:
-        return "", "", []
+        return "", "", "", []
 
     def hit(u):
         # 10AM 카드의 `확장:` 은 조각이라 표현 전체를 포함하지 않는다 —
@@ -413,7 +413,7 @@ def enrich(expr, units, max_variants=2):
 
     hits = [u for u in units if hit(u)]
     if not hits:
-        return "", "", []
+        return "", "", "", []
     # 예문은 질문/답변에서 고른다. 확장밖에 없으면 그거라도 쓴다.
     mains = [u for u in hits if u["kind"] == "main"] or hits
     main = mains[0]
@@ -421,12 +421,14 @@ def enrich(expr, units, max_variants=2):
         {"en": u["en"], "pron": u["pron"], "ko": u["ko"]}
         for u in hits if u["kind"] == "variant" and u["en"] != main["en"]
     ][:max_variants]
-    return main["en"], main["pron"], variants
+    # 예문의 한국어 뜻(`main["ko"]`)은 파서가 이미 뽑아두고도 여기서 버려지고 있었다
+    # (2026-08-18 Patrick 지적). 배달 카드 화면에 예문만 영어로 나오던 원인이다.
+    return main["en"], main["pron"], main["ko"], variants
 
 
 def extras_only(data):
     """백필로 덧쓸 필드만 골라낸다. 진도·본문은 절대 포함하지 않는다."""
-    return {k: data[k] for k in ("rhythm", "pron", "variants") if data.get(k)}
+    return {k: data[k] for k in ("rhythm", "pron", "variants", "contextKo") if data.get(k)}
 
 
 def add_extras(data, pron, variants):
@@ -570,6 +572,16 @@ def main():
     today = today_manila()
     token = get_id_token()
     cutoff = (today - timedelta(days=BACKFILL_DAYS)).isoformat()
+    # `--days N` 은 **배달 카드 범위만** 넓힌다. 예문 뜻(`contextKo`) 처럼 나중에 추가한 필드를
+    # 과거 카드에 소급해 채울 때 쓴다. 배달 카드의 재료는 `lessons[learned]` — 그 카드가
+    # 배달된 날의 레슨 하나뿐이라 범위를 넓혀도 엉뚱한 문장이 붙지 않는다.
+    # **막힌 표현은 7일에 고정한다.** 그쪽은 `lesson_units_window` 로 기간 전체를 훑는 구조라
+    # 범위를 넓히면 몇 달 전 표현에 무관한 레슨의 리듬·발음이 붙는다.
+    days_deliv = BACKFILL_DAYS
+    for i, a in enumerate(sys.argv):
+        if a == "--days" and i + 1 < len(sys.argv):
+            days_deliv = max(BACKFILL_DAYS, int(sys.argv[i + 1]))
+    cutoff_deliv = (today - timedelta(days=days_deliv)).isoformat()
     created = skipped = patched = 0
 
     fresh = []   # 새로 만든 문서의 읽어줄 텍스트 — 음성을 미리 만들어 둔다
@@ -590,7 +602,8 @@ def main():
         # 찾아 확장·발음을 채운다 (2026-08-18 Patrick 요청 — C안).
         # **봇이 준 값이 있으면 그대로 둔다** — 레슨 것으로 덮어쓰지 않는다.
         if not variants or not pron:
-            l_rh, l_pron, l_var = enrich(expr, lesson_units_window(today, BACKFILL_DAYS))
+            # 막힌 표현은 `ko` 에 이미 제 뜻이 있고 예문 블록 자체를 안 그린다 — 예문 뜻은 안 쓴다.
+            l_rh, l_pron, _l_ko, l_var = enrich(expr, lesson_units_window(today, BACKFILL_DAYS))
             pron = pron or l_pron
             variants = variants or l_var
             rhythm = rhythm or l_rh
@@ -608,11 +621,11 @@ def main():
     # 레슨 전문은 날짜당 한 번만 읽어 캐시한다 (파일이 90KB대라 표현마다 읽으면 낭비다).
     lessons = {}
     for learned, slot, expr, meaning, example in parse_vocab(read(BASE + "/b2_vocab_log.md")):
-        if learned < cutoff or not expr:
+        if learned < cutoff_deliv or not expr:
             continue
         if learned not in lessons:
             lessons[learned] = lesson_units(read_lesson(learned))
-        rhythm, pron, variants = enrich(expr, lessons[learned])
+        rhythm, pron, ctx_ko, variants = enrich(expr, lessons[learned])
 
         did = doc_id("hermes-delivered", learned, expr)
         data = {
@@ -629,6 +642,12 @@ def main():
         # (2026-08-17 화면에서 확인). 막힌 표현(wanted)은 문장 자체가 학습 단위라 그쪽은 rhythm 이 맞다.
         if rhythm:
             data["context"] = rhythm
+        # 예문의 한국어 뜻. **기존 `ko` 에 넣으면 안 된다** — `promptFor()` 가 `ko` 를 먼저 보므로
+        # 복습 한→영 앞면이 "이 예문 전체를 영작하라"로 바뀐다. 이 카드의 학습 단위는
+        # `make a billing adjustment` 같은 덩어리지 문장 전체가 아니다.
+        # 값이 있을 때만 필드를 만든다 (빈 문자열 = 앱이 「있음」으로 오인).
+        if ctx_ko:
+            data["contextKo"] = ctx_ko
         add_extras(data, pron, variants)
         if create_doc(did, data, token):
             created += 1

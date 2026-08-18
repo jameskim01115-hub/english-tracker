@@ -226,6 +226,8 @@
     display: flex; align-items: flex-start; gap: 9px;
   }
   .blk-ex > span { flex: 1; }
+  /* 예문의 한국어 뜻. 영어 줄보다 한 단계 낮춰 쉐도잉 시선을 뺏지 않게 한다 (`.v-ko` 와 같은 규격) */
+  .ex-ko { font-size: 12.5px; color: var(--sub); line-height: 1.55; margin-top: 4px; }
   /* 리듬 표기는 예문·정답·게임 피드백 어디에 나오든 같게 보여야 한다 — 선택자를 좁히지 말 것 */
   b.st { color: #fff; font-weight: 800; }
   b.st.peak {
@@ -833,7 +835,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-18-01";
+const BUILD = "2026-08-18-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1827,9 +1829,13 @@ function exprCard(e, mode, dir) {
   }
   // 2. 예문 — 리듬 표기가 있으면 그대로 살린다 (쉐도잉용). 기호 설명은 붙이지 않는다.
   if (p.example) {
+    // `contextKo` = 예문 문장의 한국어 뜻. 봇이 레슨에 같이 보내는데 동기화가 버리고 있었다
+    // (2026-08-18 복구). **카드 위쪽 「뜻」과 다른 것이다** — 저건 표현(덩어리)의 뜻이고
+    // 이건 예문 문장 전체의 뜻이다. 둘을 같은 필드로 합치지 말 것.
     html += `<div class="blk"><div class="blk-l">예문${hasRhythm(p.example) ? " · 리듬" : ""}</div>
       <div class="blk-ex"><span>${rhythmHtml(p.example)}</span>
       <button class="spk sm" data-say="${esc(p.example)}" title="듣기">🔊</button></div>
+      ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}
       </div>`;
   }
   // 2.5 발음 (한글) — 봇이 리듬맵과 청크·강세를 1:1로 맞춰 보낸다.

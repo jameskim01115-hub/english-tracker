@@ -193,7 +193,11 @@ WANTED_LABELS = {
     "rh":   ["Rhythm map", "Rhythm", "리듬맵", "리듬"],
     "pron": ["Korean pronunciation", "Pronunciation", "한글 발음", "발음"],
     "ctx":  ["Context", "Tags", "상황", "태그"],
-    "ex":   ["Examples", "Example", "확장", "이렇게도 말해요"],
+    # 확장 표현. 봇이 부를 때마다 이름을 바꾼다 — 실제로 본 것만 넣지 말고 넉넉히 둘 것.
+    "ex":   ["Related expressions", "Related expression", "Other ways to say",
+             "Alternatives", "Alternative expressions", "Variations",
+             "Examples", "Example",
+             "이렇게도 말해요", "확장", "비슷한 표현", "다른 표현"],
 }
 
 
@@ -229,9 +233,18 @@ def parse_wanted(text):
             continue
         learned = m.group(1)
 
-        # 여러 Original 이 있으면 마지막이 선호형이다 (기존 동작 유지)
-        originals = re.findall(r"^- Original[^:]*:\s*(.+)$", block, flags=re.M)
+        # 여러 Original 이 있으면 마지막이 선호형이다 (기존 동작 유지).
+        # **`Original Korean:` 은 제외한다** — 한국어 원문이지 학습할 영어가 아니다.
+        # 옛 정규식이 이걸 먹어서 카드 표현이 한국어로 들어갔다 (2026-08-18).
+        originals = re.findall(r"^- Original(?!\s+Korean)[^:]*:\s*(.+)$", block, flags=re.M)
         expr = originals[-1].strip() if originals else _label_get(block, WANTED_LABELS["expr"])
+        # 그래도 한국어만 잡혔으면 영어 라벨을 다시 뒤진다. 입력 형태가 매번 달라
+        # (한글만 / 영문 / 섞임) 어느 라벨에 영어가 오는지 고정할 수 없다.
+        if expr and not re.search(r"[A-Za-z]", expr):
+            alt = _label_get(block, WANTED_LABELS["expr"])
+            if alt and re.search(r"[A-Za-z]", alt):
+                ko = ko or expr
+                expr = alt
         ko = _label_get(block, WANTED_LABELS["ko"])
         ctx = _label_get(block, WANTED_LABELS["ctx"])
         rh = _label_get(block, WANTED_LABELS["rh"])
@@ -429,12 +442,20 @@ def add_extras(data, pron, variants):
 
 
 def examples_to_variants(raw, limit=2):
-    """`- Examples:` 한 줄을 확장 목록으로. 형식: `en → ko; en → ko; ...`
+    """확장 표현 한 줄을 목록으로. 봇이 쓰는 구분자가 두 가지다.
 
-    막힌 **단어** 블록에만 붙는다(막힌 문장에는 없다). 발음은 안 오므로 비운다.
+        Examples:            en → ko; en → ko
+        Related expressions: 문장1 / 문장2 / 문장3
+
+    `/` 로도 자르되 **리듬 표기가 섞인 줄은 자르지 않는다** — 리듬맵의 청크 구분자도
+    ` / ` 라서 한 문장이 조각나 버린다.
     """
+    raw = (raw or "").strip()
+    sep = r"\s*;\s*"
+    if ";" not in raw and not re.search(r"\*\*|[→↘↓↗]", raw):
+        sep = r"\s+/\s+"
     out = []
-    for chunk in re.split(r"\s*;\s*", raw or ""):
+    for chunk in re.split(sep, raw):
         parts = re.split(r"\s*(?:→|->)\s*", chunk.strip(), maxsplit=1)
         en = parts[0].strip().rstrip(".")
         if not en:

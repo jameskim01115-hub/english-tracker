@@ -8,6 +8,9 @@ services:
     volumes:
       - /root/tts/assets:/assets:ro
       - /root/tts/cache:/cache
+      # Kokoro 모델 353MB. 이미지에 넣으면 빌드가 무거워져 호스트에서 마운트한다.
+      # 없으면 남성 음성만 죽고 Emma·Supertonic 은 계속 동작한다(지연 로딩).
+      - /root/tts/kokoro:/kokoro:ro
     # Azure 승격용. `.env` 에 값이 있으면 컨테이너로 넘어가고, 없으면 빈 값이라
     # 서버가 자동으로 edge-tts 경로를 쓴다. `.env` 가 아예 없어도 뜬다.
     # compose 의 `.env` 는 기본적으로 **치환용**일 뿐이라 이 선언이 없으면

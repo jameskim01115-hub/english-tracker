@@ -50,7 +50,7 @@ SPELL_OUT = re.compile(r"CUSA|CRBC|CRLC|OR|BIR|VAT|SSS|AEP|LOI|NTE|PO|STF|DPR|BF
 
 # Patrick이 고른 두 목소리(2026-08-15 블라인드 청취: Emma 유일한 ★5).
 # 둘 다 미리 만들어 두면 앱에서 바꿔도 안 기다린다. index.html 의 DEFAULT_SRV_VOICE·prewarmTTS 와 같아야 한다.
-TTS_VOICES = ["Emma", "Andrew"]
+TTS_VOICES = ["Emma", "Puck"]
 TTS_SPEED = "0.9"
 
 FIRESTORE_URL = (

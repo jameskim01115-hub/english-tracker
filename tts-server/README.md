@@ -117,3 +117,25 @@ ssh hermes "docker cp /root/tts/prewarm.py english-tts:/tmp/ && \
   VPS 내부(프리워밍·크론)는 면제.
 - 입력 400자 제한.
 - 최악의 경우 피해는 CPU 낭비뿐이다. 과금되는 외부 API를 쓰지 않는 이유이기도 하다.
+
+## Kokoro-82M (2026-08-19 추가) — 남성 음성 전담
+
+`Puck`(am_puck) · `Echo`(am_echo). **Patrick 블라인드 청취 3라운드로 고른 것만** 넣는다.
+
+- **torch 가 아니라 `kokoro-onnx`** 를 쓴다 — Supertonic 이 이미 쓰는 onnxruntime 을 공유해 이미지가 안 커진다.
+- 모델 파일은 이미지에 넣지 않고 호스트에서 마운트한다: `/root/tts/kokoro` → `/kokoro` (353MB)
+  ```
+  kokoro-v1.0.onnx   325MB
+  voices-v1.0.bin     28MB
+  ```
+  받는 곳: `github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/`
+- **espeak-ng 가 필수다.** 없으면 남성 음성만 통째로 죽는다(Dockerfile 에 있음).
+- **지연 로딩**이라 모델이 없어도 서버는 뜨고 Emma·Supertonic 은 정상 동작한다.
+  첫 요청이 모델 로딩을 포함해 ~2.8초, 이후 캐시 미스가 ~1.7초.
+- ONNX 세션 하나를 공유하므로 `_kokoro_lock` 으로 직렬화한다.
+
+확인:
+```bash
+curl -s https://tts.srv1722311.hstgr.cloud/health | python3 -m json.tool   # kokoro.models 가 true 여야 한다
+curl -s -o /tmp/t.mp3 -w "%{http_code} %{size_download}\n" "https://tts.srv1722311.hstgr.cloud/tts?t=hello&v=Puck&s=0.9"
+```

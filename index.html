@@ -843,27 +843,28 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-18-04";
+const BUILD = "2026-08-19-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
 const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
-// 서버 음성 목록. **Neural 이 먼저**다 — 2026-08-15 블라인드 청취에서 Emma 가 유일한 ★5였고
-// Supertonic 은 최고점·평균 모두 최하위였다. Supertonic 은 지우지 않고 아래에 남긴다
-// (657건 캐시가 그쪽이고, edge-tts 가 막히면 폴백이 필요하다).
+// 서버 음성 목록. **Patrick이 블라인드 청취로 직접 고른 것만 남긴다.**
+//   여성 Emma — 2026-08-15 유일한 ★5
+//   남성 Puck·Echo — 2026-08-19 Kokoro. Edge 남성(Andrew·Brian)은 최고 ★4에 그쳤고
+//   전부 「책 읽는 느낌」이었다. Kokoro 미국 남성 9명 전량 비교에서 am_puck 이
+//   **문장·세션을 바꿔도 ★5를 유지한 유일한 음성**이고, am_echo 는 Patrick이 따로 지정했다.
+//
+// **Ava·Ava 2·Jenny·Andrew·Brian 계열은 목록에서 뺐다 (2026-08-19 Patrick).**
+// 서버는 아직 그 이름들을 받아준다 — 예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것이고,
+// 문제가 생기면 이 목록에 한 줄 되돌리면 즉시 복구된다. 목록에 다시 추가하지 말 것.
 const SRV_VOICES = [
-  { v: "Emma",    g: "F", n: "Emma ★5" },
-  { v: "Ava",     g: "F", n: "Ava" },
-  { v: "AvaM",    g: "F", n: "Ava 2" },
-  { v: "Jenny",   g: "F", n: "Jenny" },
-  { v: "Andrew",  g: "M", n: "Andrew" },
-  { v: "AndrewM", g: "M", n: "Andrew 2" },
-  { v: "Brian",   g: "M", n: "Brian" },
-  { v: "BrianM",  g: "M", n: "Brian 2" },
+  { v: "Emma", g: "F", n: "Emma ★5" },
+  { v: "Puck", g: "M", n: "Puck ★5" },
+  { v: "Echo", g: "M", n: "Echo" },
 ];
 const SRV_VOICES_OLD = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
 const SRV_PREFIX = "srv:";
-// Emma(여성)·Andrew(남성)를 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
+// Emma(여성)·Puck(남성)을 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
 // 다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 앱에서 매번 새로 생성한다.
 const DEFAULT_SRV_VOICE = SRV_PREFIX + "Emma";
 
@@ -1241,15 +1242,11 @@ function speak(text, btn) {
 // 전송 경로(edge-tts / Azure)는 서버가 정하고 **소리는 같다**. 앱은 몰라도 된다.
 const SAY_VOICES_F = [
   { v: "Emma",  n: "Emma",  top: true },   // 2026-08-15 블라인드 청취 유일한 ★5
-  { v: "Ava",   n: "Ava" },
-  { v: "AvaM",  n: "Ava 2" },
-  { v: "Jenny", n: "Jenny" },
 ];
+// 남성은 Kokoro 다 (2026-08-19). Edge 남성은 톤이 맞아도 전부 「책 읽는 느낌」이라 뺐다.
 const SAY_VOICES_M = [
-  { v: "Andrew",  n: "Andrew" },
-  { v: "AndrewM", n: "Andrew 2" },
-  { v: "Brian",   n: "Brian" },
-  { v: "BrianM",  n: "Brian 2" },
+  { v: "Puck", n: "Puck", top: true },     // 2026-08-19 두 라운드 연속 ★5
+  { v: "Echo", n: "Echo" },
 ];
 // 이산 5단계로 고정한다. 연속 슬라이더로 두면 캐시 키가 sha1(voice|speed|text) 라
 // 값마다 새로 생성돼 캐시가 무의미해진다.
@@ -3100,8 +3097,8 @@ document.getElementById("impSave").onclick = async () => {
 function prewarmTTS(items) {
   const texts = [];
   items.forEach(e => { texts.push(e.expression); if (e.rhythm) texts.push(plain(e.rhythm)); });
-  // Emma(여성)·Andrew(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
-  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Andrew"];
+  // Emma(여성)·Puck(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
+  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Puck"];
   texts.filter(Boolean).forEach(t => voices.forEach(v => {
     fetch(`${TTS_URL}?t=${encodeURIComponent(plain(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));

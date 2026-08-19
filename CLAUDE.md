@@ -21,7 +21,7 @@ Hermes 크론잡 (VPS)
 | 오늘 | **달력(이번 주, 접힘)** · 습관 5칸 · 배울 표현(5개) · 설정 |
 | 복습 | 오늘 복습 큐 |
 | 게임 | 5종 라운드 퀴즈 |
-| 발음 | 아무 문장이나 입력 → 원어민 음성 8명 · 속도 5단계 (2026-08-15 추가) |
+| 발음 | 아무 문장이나 입력 → 원어민 음성 3명 · 속도 5단계 (2026-08-15 추가, 08-19 음성 정리) |
 | 표현 | 전체 목록 + 검색 + 필터 + 직접 추가 + 회화 노트 가져오기 + **누적 · 단계별 현황** |
 
 Patrick 요청으로 정해진 것들이라 임의로 되돌리지 말 것:
@@ -147,7 +147,16 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 - **「내 문장」 입력을 다시 넣지 말 것.** 한 번 넣었다가 Patrick이 부담된다고 해서 뺐다 (표현마다 작문은 시간이 너무 걸린다).
 ## TTS — 서버 음성이 기본이다
 
-**기본은 VPS의 Supertonic 3 릴레이**다. 상세: `tts-server/README.md`.
+**기본은 VPS의 음성 서버**다. 상세: `tts-server/README.md`. 엔진이 **3개**이고 음성 이름으로 갈린다:
+
+| 엔진 | 음성 | 비고 |
+|---|---|---|
+| Microsoft Neural | `Emma` 등 | edge-tts 경유(키 없음). Azure 키를 넣으면 SSML 승격 |
+| **Kokoro-82M (로컬 ONNX)** | **`Puck`·`Echo`** | 남성 전담. `kokoro-onnx` + espeak-ng, 모델은 `/root/tts/kokoro` 마운트(353MB) |
+| Supertonic 3 | `F1`~`M5` | 옛 캐시·폴백용. 목록에서는 뺐다 |
+
+**Kokoro는 지연 로딩이다** — 모델이 없거나 패키지가 깨져도 Emma·Supertonic 은 계속 동작한다.
+`/health` 의 `kokoro.models` 로 모델 존재를, `kokoro.loaded` 로 로딩 여부를 본다.
 이유: iOS Safari가 다운로드한 Apple 프리미엄 음성을 웹에 노출하지 않아 아이폰에서 기계음밖에
 못 쓰던 문제를 해결하려는 것. 기기와 무관하게 같은 품질이 나온다.
 
@@ -155,11 +164,12 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 https://tts.srv1722311.hstgr.cloud/tts?t=<텍스트>&v=F2&s=0.9
 ```
 
-- `TTS_SPEED = 0.9`, 기본 음성 `srv:F2`. **`hermes-sync.py`의 `TTS_VOICES`·`TTS_SPEED`와 값이 같아야 한다** —
+- `TTS_SPEED = 0.9`, 기본 음성 `srv:Emma`. **`hermes-sync.py`의 `TTS_VOICES`·`TTS_SPEED`와 값이 같아야 한다** —
   다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 매번 새로 생성한다.
-- Patrick이 고른 목소리는 **F2(여성)·M1(남성)** 둘. 미리 생성도 두 개 다 돌린다 —
+- Patrick이 고른 목소리는 **Emma(여성)·Puck(남성)** 둘. 미리 생성도 두 개 다 돌린다 —
   앱에서 바꿔도 기다림이 없게 하려는 것. 목소리를 바꾸려면 `DEFAULT_SRV_VOICE`와
   `hermes-sync.py`의 `TTS_VOICES`를 같이 고치고 프리워밍을 다시 돌릴 것.
+  (이 줄은 2026-08-15까지 `F2`·`M1`로 남아 있던 옛 내용이었다 — 08-19에 정정했다.)
 - 서버가 죽거나 오프라인이면 `speakServer()`가 `speakDevice()`로 자동 폴백한다. 소리는 항상 난다.
 - 설정 선택값(`localStorage.et_voice`)은 `srv:F2` 형태(서버) 또는 voiceURI(기기) 둘 중 하나다.
 
@@ -202,9 +212,18 @@ TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」
 아무 영어 문장이나 넣고 원어민 발음을 듣는다. Patrick이 평소 표현을 찾아본 뒤
 "실제로 어떻게 발음하나"를 확인하고 싶어서 만들었다.
 
-- **음성 8개** — 여성 Emma·Ava·Ava 2·Jenny / 남성 Andrew·Andrew 2·Brian·Brian 2.
-  전부 Microsoft Neural. **Patrick이 2026-08-15 블라인드 청취로 직접 채점한 것만 넣었다** —
-  들어보지 않은 음성을 추가하지 말 것.
+- **음성 3개** — 여성 **Emma**(Microsoft Neural) / 남성 **Puck·Echo**(Kokoro).
+  **Patrick이 블라인드 청취로 직접 채점한 것만 넣는다 — 들어보지 않은 음성을 추가하지 말 것.**
+  - **남성이 Kokoro인 이유** (2026-08-19, 3라운드): Patrick 지적 — 모델 음이 자기 음역(105~112Hz)보다
+    높으면 따라 하다 발음이 흔들린다. Edge 남성 전량(Andrew·Brian·Christopher·Eric·Steffan·Guy·Roger)을
+    실측·청취했으나 **최고 ★4**에 그쳤고 톤이 맞아도 전부 「책 읽는 느낌」이었다. Microsoft가
+    `Conversation`으로 분류한 en-US 남성은 Andrew·Brian **둘뿐**이고 나머지는 전부 `News,Novel`이다.
+  - **피치를 인위적으로 내리는 건 실패했다.** Andrew −20Hz는 "인위적"이라 제외, Brian −20Hz는 "거칠다".
+    **F0를 낮추는 게 답이 아니라 애초에 그 음역인 음성을 찾는 게 답이었다.**
+  - Kokoro 미국 남성 9명 전량 비교에서 **am_puck 만 문장·세션이 바뀌어도 ★5를 유지**했다(유일).
+    am_echo는 Patrick이 따로 「맘에 든다」고 지정. **남성 ★5는 이번이 처음이다.**
+  - **Ava·Ava 2·Jenny·Andrew·Brian 계열은 목록에서 뺐다.** 서버는 아직 그 이름을 받아준다 —
+    예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것. 목록에 다시 넣지 말 것.
 - **기본값은 Emma.** 24개 음성 블라인드 비교에서 **유일한 ★5**였다(칩에 ★5 배지).
   Kokoro af_aoede ★4, Supertonic F4 ★4 로 뒤를 이었다. 근거 자료:
   `03_output/tts-비교-20260814/`(비교 페이지 2개 + mp3 40개).

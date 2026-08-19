@@ -67,6 +67,46 @@ NEURAL_VOICES = {
     "BrianM":  "en-US-BrianMultilingualNeural",
 }
 
+# ══════════════ Kokoro-82M (로컬 ONNX) ══════════════
+# **남성 음성은 여기서 나온다.** 2026-08-19 Patrick 블라인드 청취 3라운드 결과:
+# Edge 남성(Andrew·Brian)은 최고 ★4에 그쳤고 전부 「책 읽는 느낌」이었다.
+# Kokoro 미국 남성 9명 전량 비교에서 am_puck 이 **문장·세션을 바꿔도 ★5를 유지**한 유일한 음성이고,
+# am_echo 도 Patrick이 따로 「맘에 든다」고 지정했다. **들어보지 않은 음성은 넣지 않는다.**
+#
+# torch 가 아니라 **onnxruntime** 을 쓴다(`kokoro-onnx`) — Supertonic 이 이미 쓰는 런타임이라
+# 이미지가 커지지 않는다. 모델 파일은 이미지에 넣지 않고 호스트에서 마운트한다(353MB).
+KOKORO_DIR = os.environ.get("KOKORO_DIR", "/kokoro")
+KOKORO_VOICES = {
+    "Puck": "am_puck",    # 106Hz — 두 라운드 연속 ★5
+    "Echo": "am_echo",    # 110Hz — Patrick 추가 지정
+}
+_kokoro = None
+_kokoro_lock = threading.Lock()
+
+
+def kokoro_engine():
+    """지연 로딩. 모델이 없거나 패키지가 깨져도 **다른 엔진은 계속 살아야 한다.**"""
+    global _kokoro
+    if _kokoro is None:
+        with _kokoro_lock:
+            if _kokoro is None:
+                from kokoro_onnx import Kokoro   # 지연 임포트
+                t0 = time.time()
+                _kokoro = Kokoro(os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx"),
+                                 os.path.join(KOKORO_DIR, "voices-v1.0.bin"))
+                print(f"kokoro 로딩 완료 ({time.time()-t0:.1f}s)", flush=True)
+    return _kokoro
+
+
+def kokoro_synth(text, voice, speed):
+    """Kokoro 로 mp3 바이트를 만든다. 24kHz float32 → mp3."""
+    k = kokoro_engine()
+    with _kokoro_lock:      # ONNX 세션 하나를 공유하므로 직렬화한다
+        audio, sr = k.create(text, voice=KOKORO_VOICES[voice], speed=speed, lang="en-us")
+    buf = io.BytesIO()
+    sf.write(buf, np.asarray(audio), sr, format="MP3")
+    return buf.getvalue()
+
 # F0 무료 티어는 월 50만 자. 5만 자를 여유로 남긴다.
 # 이 가드가 없으면 루프 버그 하나로 한 달치를 태우고 그 뒤 조용히 실패한다.
 AZURE_MONTHLY_CHARS = 450_000
@@ -326,9 +366,11 @@ def synth(text, voice, speed, use_ssml=False):
         with open(path, "rb") as f:
             return f.read(), True
 
-    if voice in NEURAL_VOICES:
-        # 네트워크 호출이라 ONNX 락을 잡지 않는다 — 잡으면 동시 요청이 줄줄이 밀린다.
-        data = neural_synth(text, voice, speed, use_ssml)
+    if voice in NEURAL_VOICES or voice in KOKORO_VOICES:
+        # Neural 은 네트워크 호출이라 Supertonic 의 ONNX 락을 잡지 않는다 —
+        # 잡으면 동시 요청이 줄줄이 밀린다. Kokoro 는 자기 락을 따로 쓴다.
+        data = (kokoro_synth(text, voice, speed) if voice in KOKORO_VOICES
+                else neural_synth(text, voice, speed, use_ssml))
         tmp = path + ".tmp"
         with open(tmp, "wb") as f:
             f.write(data)
@@ -413,6 +455,11 @@ class Handler(BaseHTTPRequestHandler):
                     "chars_this_month": azure_usage() if AZURE_KEY else None,
                     "monthly_cap": AZURE_MONTHLY_CHARS if AZURE_KEY else None,
                 },
+                "kokoro": {
+                    "voices": sorted(KOKORO_VOICES),
+                    "loaded": _kokoro is not None,
+                    "models": os.path.isfile(os.path.join(KOKORO_DIR, "kokoro-v1.0.onnx")),
+                },
             }))
             return
 
@@ -422,7 +469,8 @@ class Handler(BaseHTTPRequestHandler):
 
         voice = q.get("v", [DEFAULT_VOICE])[0]
         is_neural = voice in NEURAL_VOICES
-        if not is_neural and voice not in VOICES:
+        is_kokoro = voice in KOKORO_VOICES
+        if not is_neural and not is_kokoro and voice not in VOICES:
             voice = DEFAULT_VOICE
 
         # ssml=1 은 **Azure 키가 있을 때만** 켜진다.

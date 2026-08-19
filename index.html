@@ -710,7 +710,7 @@
        Patrick이 불필요하다고 해서 뺐고 그 결정은 유지한다 (CLAUDE.md). -->
   <section class="panel" id="p-say">
     <div class="sec-head" style="margin-top:6px">
-      <div class="sec-title">발음 듣기<small>원어민 음성 8명</small></div>
+      <div class="sec-title">발음 듣기<small id="sayCount">원어민 음성</small></div>
     </div>
 
     <textarea id="sayText" class="say-in" rows="3" maxlength="400"
@@ -843,7 +843,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-19-01";
+const BUILD = "2026-08-19-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1251,7 +1251,13 @@ const SAY_VOICES_M = [
 // 이산 5단계로 고정한다. 연속 슬라이더로 두면 캐시 키가 sha1(voice|speed|text) 라
 // 값마다 새로 생성돼 캐시가 무의미해진다.
 const SAY_SPEEDS = [0.7, 0.8, 0.9, 1.0, 1.1];
+// 음성 개수는 **목록에서 센다.** 예전엔 "원어민 음성 8명"을 화면에 적어놨는데
+// 2026-08-19에 3명으로 줄이면서 그 문구만 8명으로 남아 어긋났다.
 const SAY_MAX_RECENT = 12;
+function paintSayCount() {
+  const el = document.getElementById("sayCount");
+  if (el) el.textContent = `원어민 음성 ${SAY_VOICES_F.length + SAY_VOICES_M.length}명`;
+}
 
 let sayVoice = localStorage.getItem("et_say_voice") || "Emma";
 let saySpeed = parseFloat(localStorage.getItem("et_say_speed")) || 0.9;
@@ -1273,6 +1279,7 @@ function paintSayChips() {
     `${esc(o.n)}${o.top ? '<span class="top">★5</span>' : ""}</button>`;
   document.getElementById("sayVoicesF").innerHTML = SAY_VOICES_F.map(chip).join("");
   document.getElementById("sayVoicesM").innerHTML = SAY_VOICES_M.map(chip).join("");
+  paintSayCount();
   document.getElementById("saySpeeds").innerHTML = SAY_SPEEDS.map(s =>
     `<button class="say-chip${saySpeed === s ? " on" : ""}" data-s="${s}">` +
     `${s.toFixed(1)}x${s === 0.9 ? "" : ""}</button>`).join("");

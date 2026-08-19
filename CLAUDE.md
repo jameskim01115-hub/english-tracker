@@ -21,7 +21,7 @@ Hermes 크론잡 (VPS)
 | 오늘 | **달력(이번 주, 접힘)** · 습관 5칸 · 배울 표현(5개) · 설정 |
 | 복습 | 오늘 복습 큐 |
 | 게임 | 5종 라운드 퀴즈 |
-| 발음 | 아무 문장이나 입력 → 원어민 음성 3명 · 속도 5단계 (2026-08-15 추가, 08-19 음성 정리) |
+| 발음 | 아무 문장이나 입력 → 원어민 음성 7명 · 속도 5단계 (2026-08-15 추가, 08-19 음성 개편) |
 | 표현 | 전체 목록 + 검색 + 필터 + 직접 추가 + 회화 노트 가져오기 + **누적 · 단계별 현황** |
 
 Patrick 요청으로 정해진 것들이라 임의로 되돌리지 말 것:
@@ -153,10 +153,21 @@ stage 6 = 졸업(`nextReview = "9999-12-31"`).
 |---|---|---|
 | Microsoft Neural | `Emma` 등 | edge-tts 경유(키 없음). Azure 키를 넣으면 SSML 승격 |
 | **Kokoro-82M (로컬 ONNX)** | **`Puck`·`Echo`** | 남성 전담. `kokoro-onnx` + espeak-ng, 모델은 `/root/tts/kokoro` 마운트(353MB) |
-| Supertonic 3 | `F1`~`M5` | 옛 캐시·폴백용. 목록에서는 뺐다 |
+| ~~Supertonic 3~~ | — | **2026-08-19 완전 제거** (아래) |
 
-**Kokoro는 지연 로딩이다** — 모델이 없거나 패키지가 깨져도 Emma·Supertonic 은 계속 동작한다.
+**Kokoro는 지연 로딩이다** — 모델이 없거나 패키지가 깨져도 Neural 음성은 계속 동작한다.
 `/health` 의 `kokoro.models` 로 모델 존재를, `kokoro.loaded` 로 로딩 여부를 본다.
+
+### Supertonic 제거 (2026-08-19)
+
+**남겨둔 이유가 사라져서 지웠다.** 「edge-tts 가 막히면 폴백」이 이유였는데
+**Kokoro 가 그 역할을 대신한다** — 로컬 실행이라 Microsoft 쪽 사정과 무관하다.
+
+- 효과: 컨테이너 메모리 **1.29GB → 34.7MB**, 시작 시 모델 로딩(수 초)도 사라졌다
+- 옛 선택값(`srv:F2` 등)이 와도 **죽지 않는다** — 서버가 조용히 `DEFAULT_VOICE`(Emma)로 떨어뜨린다. 실측 확인
+- 모델 383MB 는 지우지 않고 이름만 바꿔 뒀다: `/root/tts/assets.removed-20260819`
+  문제 없으면 `rm -rf` 해도 된다. 되살리려면 이름을 `assets` 로 돌리고 compose 에 마운트를 복구
+- 같이 지운 것: `helper.py`, `TTS_ASSETS` 환경변수, `/assets` 마운트, 앱의 `SRV_VOICES_OLD` optgroup
 이유: iOS Safari가 다운로드한 Apple 프리미엄 음성을 웹에 노출하지 않아 아이폰에서 기계음밖에
 못 쓰던 문제를 해결하려는 것. 기기와 무관하게 같은 품질이 나온다.
 
@@ -212,7 +223,8 @@ TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」
 아무 영어 문장이나 넣고 원어민 발음을 듣는다. Patrick이 평소 표현을 찾아본 뒤
 "실제로 어떻게 발음하나"를 확인하고 싶어서 만들었다.
 
-- **음성 3개** — 여성 **Emma**(Microsoft Neural) / 남성 **Puck·Echo**(Kokoro).
+- **음성 7개** — 여성 **Emma** / 남성 **Puck·Echo**(Kokoro) · **Christopher·Steffan·Andrew·Brian**(Neural).
+  Puck·Echo 가 기본 추천이고 나머지 넷은 ★4로 남은 것들이다 (2026-08-19 Patrick 요청으로 추가).
   **Patrick이 블라인드 청취로 직접 채점한 것만 넣는다 — 들어보지 않은 음성을 추가하지 말 것.**
   - **남성이 Kokoro인 이유** (2026-08-19, 3라운드): Patrick 지적 — 모델 음이 자기 음역(105~112Hz)보다
     높으면 따라 하다 발음이 흔들린다. Edge 남성 전량(Andrew·Brian·Christopher·Eric·Steffan·Guy·Roger)을
@@ -222,8 +234,10 @@ TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」
     **F0를 낮추는 게 답이 아니라 애초에 그 음역인 음성을 찾는 게 답이었다.**
   - Kokoro 미국 남성 9명 전량 비교에서 **am_puck 만 문장·세션이 바뀌어도 ★5를 유지**했다(유일).
     am_echo는 Patrick이 따로 「맘에 든다」고 지정. **남성 ★5는 이번이 처음이다.**
-  - **Ava·Ava 2·Jenny·Andrew·Brian 계열은 목록에서 뺐다.** 서버는 아직 그 이름을 받아준다 —
-    예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것. 목록에 다시 넣지 말 것.
+  - **Ava·Ava 2·Jenny·Andrew 2·Brian 2 는 목록에서 뺐다.** 서버는 아직 그 이름을 받아준다 —
+    예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것.
+  - **Andrew·Brian 은 되살렸다** (2026-08-19). Patrick이 처음엔 이름을 지목해 "맘에 안 든다"고 했는데
+    **블라인드에서는 둘 다 ★4였다.** 이름을 가리면 평가가 달라진 사례라 기록해 둔다.
 - **기본값은 Emma.** 24개 음성 블라인드 비교에서 **유일한 ★5**였다(칩에 ★5 배지).
   Kokoro af_aoede ★4, Supertonic F4 ★4 로 뒤를 이었다. 근거 자료:
   `03_output/tts-비교-20260814/`(비교 페이지 2개 + mp3 40개).

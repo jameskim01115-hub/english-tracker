@@ -843,7 +843,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-19-02";
+const BUILD = "2026-08-19-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -858,11 +858,14 @@ const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
 // 서버는 아직 그 이름들을 받아준다 — 예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것이고,
 // 문제가 생기면 이 목록에 한 줄 되돌리면 즉시 복구된다. 목록에 다시 추가하지 말 것.
 const SRV_VOICES = [
-  { v: "Emma", g: "F", n: "Emma ★5" },
-  { v: "Puck", g: "M", n: "Puck ★5" },
-  { v: "Echo", g: "M", n: "Echo" },
+  { v: "Emma",        g: "F", n: "Emma ★5" },
+  { v: "Puck",        g: "M", n: "Puck ★5" },
+  { v: "Echo",        g: "M", n: "Echo" },
+  { v: "Christopher", g: "M", n: "Christopher" },
+  { v: "Steffan",     g: "M", n: "Steffan" },
+  { v: "Andrew",      g: "M", n: "Andrew" },
+  { v: "Brian",       g: "M", n: "Brian" },
 ];
-const SRV_VOICES_OLD = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"];
 const SRV_PREFIX = "srv:";
 // Emma(여성)·Puck(남성)을 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
 // 다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 앱에서 매번 새로 생성한다.
@@ -1247,6 +1250,14 @@ const SAY_VOICES_F = [
 const SAY_VOICES_M = [
   { v: "Puck", n: "Puck", top: true },     // 2026-08-19 두 라운드 연속 ★5
   { v: "Echo", n: "Echo" },
+  // ★4 로 남은 둘 (2026-08-19 Patrick 요청으로 추가). 낭독체라 「책 읽는 느낌」 평이 붙었지만
+  // Steffan 은 "가장 맘에 든다", Christopher 는 F0 가 Patrick 음역 한가운데다.
+  { v: "Christopher", n: "Christopher" },  // 106.7Hz ★4
+  { v: "Steffan",     n: "Steffan" },      // 117.6Hz ★4
+  // 2026-08-19 Patrick 요청으로 되살렸다. 처음엔 "맘에 안 든다"고 뺐지만
+  // 블라인드에서는 둘 다 ★4였다 — 이름을 가리면 평가가 달랐던 사례.
+  { v: "Andrew",      n: "Andrew" },       // 114.8Hz ★4
+  { v: "Brian",       n: "Brian" },        // 121.8Hz ★4
 ];
 // 이산 5단계로 고정한다. 연속 슬라이더로 두면 캐시 키가 sha1(voice|speed|text) 라
 // 값마다 새로 생성돼 캐시가 무의미해진다.
@@ -3124,13 +3135,9 @@ function paintVoices() {
   const srvOpts = SRV_VOICES.map(o =>
     `<option value="${SRV_PREFIX}${o.v}"${k === SRV_PREFIX + o.v ? " selected" : ""}>` +
     `${esc(o.n)} (${SRV_LABEL[o.g]})</option>`).join("");
-  const oldOpts = SRV_VOICES_OLD.map(v =>
-    `<option value="${SRV_PREFIX}${v}"${k === SRV_PREFIX + v ? " selected" : ""}>` +
-    `${v} (${SRV_LABEL[v[0]]})</option>`).join("");
   const devOpts = list.map(v =>
     `<option value="${esc(v.voiceURI)}"${k === v.voiceURI ? " selected" : ""}>기기 · ${esc(v.name)}</option>`).join("");
   sel.innerHTML = `<optgroup label="원어민 음성 — 권장">${srvOpts}</optgroup>`
-    + `<optgroup label="Supertonic — 예전 음성">${oldOpts}</optgroup>`
     + (devOpts ? `<optgroup label="이 기기 음성">${devOpts}</optgroup>` : "");
   // 지금 쓰는 음성의 품질 등급을 그대로 보여준다.
   // 기기가 3대(맥·아이폰·아이패드)라 어디서 기계음이 나는지 바로 알 수 있어야 한다.

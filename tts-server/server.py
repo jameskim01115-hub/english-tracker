@@ -8,7 +8,7 @@
 GET /tts?t=<text>&v=<voice>&s=<speed>[&ssml=1]  -> audio/mpeg
 GET /health                                     -> ok
 
-음성 이름으로 엔진이 갈린다 — `F1`~`M5`는 Supertonic, 그 외는 Microsoft Neural(`NEURAL_VOICES`).
+음성 이름으로 엔진이 갈린다 — `Puck`·`Echo`는 Kokoro, 그 외는 Microsoft Neural(`NEURAL_VOICES`).
 2026-08-15 블라인드 청취에서 Azure Emma가 유일하게 만점(★5)을 받아 추가했다.
 Supertonic은 그대로 두고 폴백으로 남긴다 — 기존 카드·프리워밍 캐시가 전부 그쪽이다.
 
@@ -32,16 +32,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 import soundfile as sf
 
-from helper import load_text_to_speech, load_voice_style
-
-ASSETS = os.environ.get("TTS_ASSETS", "/assets")
 CACHE = os.environ.get("TTS_CACHE", "/cache")
 PORT = int(os.environ.get("TTS_PORT", "8080"))
 
-VOICES = {f"{g}{i}" for g in ("F", "M") for i in range(1, 6)}
-DEFAULT_VOICE = "F1"
+# Supertonic(F1~M5)은 2026-08-19에 제거했다. 남긴 이유가 「edge-tts 가 막혔을 때의 폴백」이었는데
+# **Kokoro 가 그 역할을 대신한다** — 로컬 실행이라 Microsoft 쪽 사정과 무관하다.
+# 옛 `srv:F2` 같은 선택값이 와도 조용히 DEFAULT_VOICE 로 떨어진다.
+DEFAULT_VOICE = "Emma"
 MAX_CHARS = 400
-TOTAL_STEP = 8
 
 # ══════════════ Microsoft Neural 음성 ══════════════
 # 전송 경로가 둘이고 **소리는 완전히 같다** — 같은 Azure 음성 모델이기 때문이다.
@@ -65,6 +63,11 @@ NEURAL_VOICES = {
     "AndrewM": "en-US-AndrewMultilingualNeural",
     "Brian":   "en-US-BrianNeural",
     "BrianM":  "en-US-BrianMultilingualNeural",
+    # 2026-08-19 남성 비교에서 ★4 를 받아 목록에 올린 둘. 낭독체(`News,Novel`)라
+    # 「책 읽는 느낌」 평이 붙었지만 Steffan 은 "가장 맘에 든다", Christopher 는
+    # F0 가 Patrick 음역(105~112Hz) 한가운데다. 긴 설명문에는 이쪽이 맞을 수 있다.
+    "Christopher": "en-US-ChristopherNeural",   # 106.7Hz ★4
+    "Steffan":     "en-US-SteffanNeural",       # 117.6Hz ★4
 }
 
 # ══════════════ Kokoro-82M (로컬 ONNX) ══════════════
@@ -131,22 +134,8 @@ RATE_WINDOW = 3600     # 초
 
 os.makedirs(CACHE, exist_ok=True)
 
-_lock = threading.Lock()          # ONNX 세션 직렬화
 _rate = {}                        # ip -> deque[timestamp]
 _rate_lock = threading.Lock()
-_styles = {}
-
-print("모델 로딩 중…", flush=True)
-_tts = load_text_to_speech(os.path.join(ASSETS, "onnx"), False)
-_sample_rate = _tts.sample_rate
-print(f"모델 로딩 완료 (sample_rate={_sample_rate})", flush=True)
-
-
-def style_for(voice):
-    if voice not in _styles:
-        _styles[voice] = load_voice_style([os.path.join(ASSETS, "voice_styles", f"{voice}.json")])
-    return _styles[voice]
-
 
 def clean(text):
     """앱이 보내는 리듬 마크업을 읽기용 평문으로 되돌린다.
@@ -304,7 +293,7 @@ def edge_synth(text, voice, speed):
     """
     import asyncio
 
-    import edge_tts   # 지연 임포트 — 없어도 Supertonic 경로는 계속 살아야 한다
+    import edge_tts   # 지연 임포트 — 없어도 Kokoro 경로는 계속 살아야 한다
 
     pct = int(round((speed - 1.0) * 100))
 
@@ -367,8 +356,7 @@ def synth(text, voice, speed, use_ssml=False):
             return f.read(), True
 
     if voice in NEURAL_VOICES or voice in KOKORO_VOICES:
-        # Neural 은 네트워크 호출이라 Supertonic 의 ONNX 락을 잡지 않는다 —
-        # 잡으면 동시 요청이 줄줄이 밀린다. Kokoro 는 자기 락을 따로 쓴다.
+        # Neural 은 네트워크 호출이라 락을 잡지 않는다. Kokoro 는 자기 락을 쓴다.
         data = (kokoro_synth(text, voice, speed) if voice in KOKORO_VOICES
                 else neural_synth(text, voice, speed, use_ssml))
         tmp = path + ".tmp"
@@ -377,36 +365,14 @@ def synth(text, voice, speed, use_ssml=False):
         os.replace(tmp, path)
         return data, False
 
-    with _lock:
-        # 락 안에서 다시 확인 — 동시 요청이 같은 문장을 두 번 만들지 않게
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            with open(path, "rb") as f:
-                return f.read(), True
-        wav, duration = _tts(text, "en", style_for(voice), TOTAL_STEP, speed)
-
-    audio = np.asarray(wav)
-    if audio.ndim > 1:
-        audio = audio[0]
-    # duration 이 실제 발화 길이 — 뒤에 붙는 패딩을 잘라낸다
-    dur = float(np.asarray(duration).reshape(-1)[0])
-    end = min(len(audio), int(dur * _sample_rate))
-    if end > 0:
-        audio = audio[:end]
-
-    buf = io.BytesIO()
-    sf.write(buf, audio, _sample_rate, format="MP3")
-    data = buf.getvalue()
-
-    tmp = path + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(data)
-    os.replace(tmp, path)   # 부분 파일이 캐시로 남지 않게
-    return data, False
+    # 여기까지 왔으면 알 수 없는 음성이다. 요청 처리부가 미리 DEFAULT_VOICE 로 바꾸므로
+    # 정상 경로에서는 도달하지 않는다.
+    raise RuntimeError(f"unknown voice: {voice}")
 
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "supertonic-relay"
+    server_version = "english-tts"
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} {fmt % args}", flush=True)
@@ -446,7 +412,6 @@ class Handler(BaseHTTPRequestHandler):
             n = len([f for f in os.listdir(CACHE) if f.endswith(".mp3")])
             self._send(200, json.dumps({
                 "ok": True, "cached": n,
-                "voices": sorted(VOICES),
                 "neural": {
                     "transport": "azure" if AZURE_KEY else "edge-tts",
                     "ssml": bool(AZURE_KEY),
@@ -470,8 +435,9 @@ class Handler(BaseHTTPRequestHandler):
         voice = q.get("v", [DEFAULT_VOICE])[0]
         is_neural = voice in NEURAL_VOICES
         is_kokoro = voice in KOKORO_VOICES
-        if not is_neural and not is_kokoro and voice not in VOICES:
-            voice = DEFAULT_VOICE
+        if not is_neural and not is_kokoro:
+            voice = DEFAULT_VOICE      # 옛 Supertonic 선택값(srv:F2 등)도 여기로 떨어진다
+            is_neural = True
 
         # ssml=1 은 **Azure 키가 있을 때만** 켜진다.
         # Supertonic 은 SSML 을 못 읽고, edge-tts 는 커스텀 SSML 이 차단돼 있다.

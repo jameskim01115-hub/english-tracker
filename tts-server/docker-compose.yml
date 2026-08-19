@@ -6,7 +6,6 @@ services:
     ports:
       - "127.0.0.1:8080:8080"   # 호스트 크론(prewarm)용. 외부 노출 아님
     volumes:
-      - /root/tts/assets:/assets:ro
       - /root/tts/cache:/cache
       # Kokoro 모델 353MB. 이미지에 넣으면 빌드가 무거워져 호스트에서 마운트한다.
       # 없으면 남성 음성만 죽고 Emma·Supertonic 은 계속 동작한다(지연 로딩).

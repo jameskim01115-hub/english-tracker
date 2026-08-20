@@ -201,11 +201,25 @@ WANTED_LABELS = {
 }
 
 
-def _label_get(block, keys):
-    """`- 라벨: 값` / `라벨: 값` 둘 다 받는다. 볼드·앞불릿 장식도 벗긴다."""
-    for label in keys:
-        m = re.search(r"^\s*(?:[-*]\s*)?\**\s*%s\s*\**\s*:\s*(.+)$" % re.escape(label),
-                      block, flags=re.M | re.I)
+def _label_get(block, keys, idx=""):
+    """`- 라벨: 값` / `라벨: 값` 둘 다 받는다. 볼드·앞불릿 장식도 벗긴다.
+
+    **한 블록에 문장이 둘이면 봇이 라벨에 번호를 붙인다** — `- Korean 2:` `- Rhythm 2:`.
+    지금까지 `Original` 만 번호를 견디는 별도 정규식을 갖고 있었고, 나머지는 번호가 붙는
+    순간 통째로 안 읽혔다. 그래서 카드에 문장과 덩어리만 나오고 **뜻·리듬·발음이 전부
+    비어 있었다** (2026-08-20 Patrick 지적, 에러도 경고도 없었다).
+
+    `idx` 가 주어지면 그 번호를 **먼저** 찾고, 없으면 번호 없는 라벨로 떨어진다.
+    번호 없는 패턴이 `Korean 1:` 을 잘못 집을 일은 없다 — 라벨 뒤에 곧바로 `:` 를 요구한다.
+    """
+    pats = []
+    if idx:
+        pats += [(label, r"^\s*(?:[-*]\s*)?\**\s*%s\s*%s\s*\**\s*:\s*(.+)$"
+                  % (re.escape(label), re.escape(idx))) for label in keys]
+    pats += [(label, r"^\s*(?:[-*]\s*)?\**\s*%s\s*\**\s*:\s*(.+)$"
+              % re.escape(label)) for label in keys]
+    for _label, pat in pats:
+        m = re.search(pat, block, flags=re.M | re.I)
         if m:
             v = m.group(1).strip().strip("*").strip()
             if v:
@@ -236,8 +250,17 @@ def parse_wanted(text):
         # 여러 Original 이 있으면 마지막이 선호형이다 (기존 동작 유지).
         # **`Original Korean:` 은 제외한다** — 한국어 원문이지 학습할 영어가 아니다.
         # 옛 정규식이 이걸 먹어서 카드 표현이 한국어로 들어갔다 (2026-08-18).
-        originals = re.findall(r"^- Original(?!\s+Korean)[^:]*:\s*(.+)$", block, flags=re.M)
-        expr = originals[-1].strip() if originals else _label_get(block, WANTED_LABELS["expr"])
+        # 접미사도 같이 잡는다 — `- Original 2:` 의 「2」로 Korean/Rhythm/Pronunciation 을 짝지어야 한다.
+        # 안 그러면 2번 문장을 표현으로 쓰면서 1번 문장의 리듬·발음을 붙이게 된다.
+        originals = re.findall(r"^- Original(?!\s+Korean)([^:]*):\s*(.+)$", block, flags=re.M)
+        idx = ""
+        if originals:
+            suffix, chosen = originals[-1]
+            expr = chosen.strip()
+            m_idx = re.search(r"\d+", suffix)
+            idx = m_idx.group(0) if m_idx else ""
+        else:
+            expr = _label_get(block, WANTED_LABELS["expr"])
         # 그래도 한국어만 잡혔으면 영어 라벨을 다시 뒤진다. 입력 형태가 매번 달라
         # (한글만 / 영문 / 섞임) 어느 라벨에 영어가 오는지 고정할 수 없다.
         if expr and not re.search(r"[A-Za-z]", expr):
@@ -245,11 +268,11 @@ def parse_wanted(text):
             if alt and re.search(r"[A-Za-z]", alt):
                 ko = ko or expr
                 expr = alt
-        ko = _label_get(block, WANTED_LABELS["ko"])
-        ctx = _label_get(block, WANTED_LABELS["ctx"])
-        rh = _label_get(block, WANTED_LABELS["rh"])
-        pron = _label_get(block, WANTED_LABELS["pron"])
-        ex = _label_get(block, WANTED_LABELS["ex"])
+        ko = _label_get(block, WANTED_LABELS["ko"], idx)
+        ctx = _label_get(block, WANTED_LABELS["ctx"], idx)
+        rh = _label_get(block, WANTED_LABELS["rh"], idx)
+        pron = _label_get(block, WANTED_LABELS["pron"], idx)
+        ex = _label_get(block, WANTED_LABELS["ex"], idx)
 
         if not expr:
             # verbose(2026-07) 는 값이 라벨 **다음 줄**에 온다
@@ -427,8 +450,14 @@ def enrich(expr, units, max_variants=2):
 
 
 def extras_only(data):
-    """백필로 덧쓸 필드만 골라낸다. 진도·본문은 절대 포함하지 않는다."""
-    return {k: data[k] for k in ("rhythm", "pron", "variants", "contextKo") if data.get(k)}
+    """백필로 덧쓸 필드만 골라낸다. 진도(stage·nextReview)는 절대 포함하지 않는다.
+
+    `ko` 도 넣는다 — 파서를 고쳐 뜻을 되찾아도 백필 대상이 아니면 기존 카드는 계속 비어 있다
+    (2026-08-20 번호 붙은 라벨 수정 때 실제로 걸렸다). 막힌 표현의 뜻은 원본 파일이 유일한
+    출처이고 앱에 수정 기능이 없으므로, 같은 값을 다시 쓰는 것이라 덮어써도 안전하다.
+    값이 있을 때만 필드를 만든다 — 배달 카드는 `ko` 가 "" 라 여기서 걸러진다.
+    """
+    return {k: data[k] for k in ("rhythm", "pron", "variants", "contextKo", "ko") if data.get(k)}
 
 
 def add_extras(data, pron, variants):

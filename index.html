@@ -845,7 +845,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-21-03";
+const BUILD = "2026-08-21-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3120,6 +3120,7 @@ document.getElementById("impText").addEventListener("paste", ev => {
 });
 
 let impParsed = [];
+let impSkipped = 0;   // 주요 표현이 아니라 목록에서 뺀 개수
 const impBg = document.getElementById("impBg");
 function impShow(step2) {
   document.getElementById("impStep1").style.display = step2 ? "none" : "";
@@ -3138,14 +3139,19 @@ document.getElementById("impParse").onclick = () => {
   }
   // 이미 들어온 문장은 빼둔다 (같은 노트를 두 번 붙여넣어도 안전하게)
   const known = new Set(expressions.map(x => (x.expression || "").trim().toLowerCase()));
-  // `thin` = 한국어 뜻이 없는 항목. 노트의 「다음 연습 시작 문장」처럼 **주요 표현이 아닌 것**이
-  // 여기 걸린다 (2026-08-21 Patrick 지적). 버리지 않고 **체크만 풀어둔다** — 원하면 켜서 넣는다.
-  impParsed = items.map(it => ({
-    ...it,
-    dup: known.has(it.expression.trim().toLowerCase()),
-    thin: !it.ko && !it.question,
-  }));
-  const fresh = impParsed.filter(i => !i.dup && !i.thin).length;
+  // `thin` = 뜻도 질문도 없는 항목. 노트의 「다음 연습 시작 문장」처럼 **주요 표현이 아닌 것**이
+  // 여기 걸린다. 처음엔 체크만 풀어뒀는데 Patrick이 "또 항목에 포함된다"고 했다 —
+  // **목록에서 아예 뺀다.** 몇 개를 뺐는지는 요약 줄에 표시해 조용히 사라지지 않게 한다 (2026-08-21).
+  const thin = items.filter(it => !it.ko && !it.question);
+  impSkipped = thin.length;
+  impParsed = items.filter(it => it.ko || it.question)
+    .map(it => ({ ...it, dup: known.has(it.expression.trim().toLowerCase()) }));
+  // 전부 걸러진 경우 — 「0개 인식」 화면을 띄우지 말고 이유를 말해준다.
+  if (!impParsed.length) {
+    toast(`뜻·질문이 있는 항목이 없습니다 (${impSkipped}개 전부 제외)`);
+    return;
+  }
+  const fresh = impParsed.filter(i => !i.dup).length;
   // 볼드가 통째로 날아간 붙여넣기를 잡는다. ChatGPT 화면에서 드래그로 복사하면
   // 렌더된 텍스트만 와서 `**`가 사라지고, 앱에서는 일반 강세가 전부 없어진다.
   // 복사 버튼으로 복사해야 마크다운이 보존된다 — 실제로 11건이 이 상태로 들어온 적 있다.
@@ -3158,8 +3164,9 @@ document.getElementById("impParse").onclick = () => {
   // 저장한 뒤 복습하다 발견하면 이미 늦으므로(2026-08-10 실제로 그랬다) 여기서 잡는다.
   const short = withR.filter(i => rhythmTail(i.rhythm, i.expression));
   document.getElementById("impSum").innerHTML =
-    `<b>${date}</b> · 항목 ${items.length}개 인식` +
-    (fresh < items.length ? ` · 이미 있는 것 ${items.length - fresh}개는 자동 해제` : "") +
+    `<b>${date}</b> · 항목 ${impParsed.length}개` +
+    (impSkipped ? ` · 주요 표현이 아닌 ${impSkipped}개 제외` : "") +
+    (fresh < impParsed.length ? ` · 이미 있는 것 ${impParsed.length - fresh}개는 자동 해제` : "") +
     (noRhythm
       ? `<div class="imp-warn">🚨 ${noRhythm}개는 <b>Rhythm Map 이 아예 없습니다</b> —
          이대로 저장하면 강세·끊어읽기 없이 평문으로만 들어가 <b>쉐도잉을 할 수 없습니다.</b>
@@ -3177,14 +3184,13 @@ document.getElementById("impParse").onclick = () => {
          <div class="imp-warn-sub">${short.map(i => esc(rhythmTail(i.rhythm, i.expression))).join("<br>")}</div></div>`
       : "");
   document.getElementById("impList").innerHTML = impParsed.map((it, i) => `
-    <label class="imp-item${it.dup || it.thin ? " dup" : ""}">
-      <input type="checkbox" data-i="${i}"${it.dup || it.thin ? "" : " checked"}>
+    <label class="imp-item${it.dup ? " dup" : ""}">
+      <input type="checkbox" data-i="${i}"${it.dup ? "" : " checked"}>
       <div class="imp-body">
         <div class="imp-q">${esc(it.question || it.questionKo || it.title)}</div>
         <div class="imp-fix">✅ ${esc(it.expression)}</div>
         ${it.wrong ? `<div class="imp-wrong">❌ ${esc(it.wrong)}</div>` : ""}
         ${it.dup ? `<div class="imp-dup">이미 있는 표현</div>` : ""}
-        ${!it.dup && it.thin ? `<div class="imp-dup">뜻·질문이 없는 항목 — 필요하면 직접 체크</div>` : ""}
       </div>
     </label>`).join("");
   impShow(true);

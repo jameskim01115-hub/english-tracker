@@ -843,7 +843,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-19-03";
+const BUILD = "2026-08-21-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2769,42 +2769,70 @@ document.getElementById("mSave").onclick = async () => {
 // 2026-08-17 이것 때문에 **항목 3개가 통째로 사라졌다**(2.1·6.1·7). 봇 쪽 지시문을 조이는 대신
 // 파서가 견딘다 — 새 표기가 나오면 여기에 한 줄 추가하면 된다.
 const IMP_LABELS = [
-  ["q",      /^오늘의\s*질문$/],
-  ["q",      /^Patrick['’']?s?\s+Question$/i],
-  ["wrong",  /^Patrick['’']?s?\s+Original\s+Answer$/i],
-  ["why",    /^어색한\s*부분.*$/],
-  ["fixed",  /^Natural\s+Corrected\s+Answer$/i],
-  ["fixed",  /^오늘\s*연습한\s*(?:확장\s*)?(?:문장|답변)$/],
-  ["fixed",  /^Patrick['’']?s?\s+Sentence$/i],
-  ["rhythm", /^Rhythm\s*Map$/i],
-  ["chunks", /^Key\s+Corrections$/i],
+  // 질문
+  ["q",      /^오늘의\s*질문/],
+  ["q",      /^Patrick['’']?s?\s+Question/i],
+  ["q",      /^Q\s*[.．]/],
+  // 내가 했던 말 (교정 전)
+  ["wrong",  /^Patrick['’']?s?\s+Original\s+Answer/i],
+  ["wrong",  /^내가\s*한\s*말/],
+  // 교정된 정답
+  ["fixed",  /^Natural\s+Corrected\s+Answer/i],
+  ["fixed",  /^오늘\s*연습한\s*(?:확장\s*)?(?:문장|답변)/],
+  ["fixed",  /^Patrick['’']?s?\s+Sentence/i],
+  ["fixed",  /^자연스러운\s*문장/],
+  // 리듬맵 · 한글 발음 · 한국어 뜻
+  ["rhythm", /^Rhythm\s*Map/i],
+  ["rhythm", /^리듬(?:맵)?/],
+  ["pron",   /^발음/],
+  ["ko",     /^뜻/],
+  // 해설 · 덩어리
+  ["why",    /^어색한\s*부분/],
+  ["why",    /^왜\s*고쳤나/],
+  ["chunks", /^Key\s+Corrections/i],
+  ["chunks", /^입에\s*붙일\s*표현/],
 ];
 
-// 라벨 줄에서 장식을 벗겨낸 「알맹이」를 만든다.
-// ChatGPT 는 섹션 제목을 굵게 하거나 `#`·`:`·이모지를 붙여 보낼 때가 있다. 정확 일치로만
-// 보면 그 순간 섹션 하나가 통째로 사라지는데 **에러도 경고도 없다** —
-// 2026-08-12 `Rhythm Map` 이 이렇게 빗나가 4건이 리듬 없이 저장됐다.
-// 앞의 `1.1` 같은 번호도 같이 뗀다(`1.1 오늘의 질문` 형태로 오는 노트가 있다).
-function labelKey(s) {
+// 항목 머리글의 키캡 이모지(1️⃣ 2️⃣ …). 2026-08-21 Patrick이 노트를 가독성 위주로 바꾸면서
+// 번호가 `1.1` 에서 이 형태로 바뀌었고, **항목이 하나도 안 잡혀 통째로 실패**했다.
+const KEYCAP_RE = /^\s*(\d)\uFE0F?\u20E3\s*/;
+// 라벨 줄 **앞쪽 장식만** 벗긴다 — 이모지(❌ ✅ 🔍 💬), 키캡, 불릿, 마크다운 제목, 앞번호.
+// **뒤쪽 내용은 절대 건드리지 않는다.** 예전 `labelKey()` 는 백틱·볼드를 줄 전체에서 지웠는데,
+// 라벨과 내용이 한 줄에 붙어 오는 형식(`❌ 내가 한 말 \`It's doing well…\``)에서는
+// 그게 내용까지 깎아버린다.
+function labelHead(s) {
   return String(s || "")
-    .replace(/^[\s>]*#{1,6}\s*/, "")        // 마크다운 제목
-    .replace(/^[\s>]*(?:\d+\.)+\d*\s*/, "") // 앞 번호 (1. / 1.1)
-    .replace(/^[-•*\s]+/, "")               // 불릿
-    .replace(/[*_`~]/g, "")                 // 볼드·기울임·백틱
-    .replace(/[^\S\n]+/g, " ")
-    .replace(/[:：]\s*$/, "")               // 끝의 콜론
+    .replace(/^[\s>]*#{1,6}\s*/, "")          // 마크다운 제목
+    .replace(KEYCAP_RE, "")                    // 1️⃣
+    .replace(/^[\s>]*(?:\d+\.)+\d*\s*/, "")   // 앞 번호 (1. / 1.1)
+    .replace(/^[\s>*\-•]+/, "")                // 불릿·볼드 시작
+    .replace(/^[^\p{L}\p{N}]+/u, "")           // 남은 앞 이모지·기호
     .trim();
 }
-// 라벨을 찾는다. `Rhythm Map: 내용` 처럼 한 줄에 붙어 와도 받아서 내용을 돌려준다.
+// 옛 이름 유지 — 다른 곳에서 쓰던 것과 호환.
+const labelKey = labelHead;
+
+// 라벨을 찾는다. 세 형태를 전부 받는다:
+//   ① 라벨만 있는 줄            `✅ 자연스러운 문장`
+//   ② `라벨: 내용`              `Rhythm Map: It's …`
+//   ③ **`라벨 내용` (콜론 없음)** `❌ 내가 한 말 \`It's doing well…\``  ← 2026-08-21 추가
 function matchLabel(line) {
-  const hit = IMP_LABELS.find(l => l[1].test(labelKey(line)));
-  if (hit) return { key: hit[0], inline: "" };
-  const m = String(line).match(/^(.{2,45}?)[:：]\s*(\S.*)$/);
-  if (m) {
-    const h2 = IMP_LABELS.find(l => l[1].test(labelKey(m[1])));
-    if (h2) return { key: h2[0], inline: m[2].trim() };
+  const head = labelHead(line);
+  for (const [key, re] of IMP_LABELS) {
+    const m = head.match(re);
+    if (!m) continue;
+    const rest = head.slice(m[0].length).replace(/^\s*[:：]\s*/, "").trim();
+    return { key, inline: rest };
   }
   return null;
+}
+// 영어와 한국어가 한 줄에 섞여 오는 경우 갈라준다 (질문 줄이 그렇다).
+// 첫 한글 글자를 경계로 본다 — 이 노트 형식에서는 영어가 항상 앞이다.
+function splitEnKo(s) {
+  const t = String(s || "").trim();
+  const i = t.search(/[가-힣]/);
+  if (i < 0) return { en: t, ko: "" };
+  return { en: t.slice(0, i).trim(), ko: t.slice(i).trim() };
 }
 const hasHangul = s => /[가-힣]/.test(s);
 // 노트의 한국어 줄은 `→ 어제는 일요일이었는데…` 처럼 화살표로 시작한다. 그대로 저장하면
@@ -2816,7 +2844,10 @@ const stripBullet = s => s.replace(/^(?:\*(?!\*)|[-•])\s*/, "").trim();
 // 강세 표기(`**`)를 쓰는 필드는 Rhythm Map 하나뿐이다. 정답·질문·뜻·덩어리는 평문이라
 // `*` 가 남으면 그대로 글자로 보인다 — 2026-08-10 ChatGPT 가 줄 전체를 볼드로 내보내면서
 // 붙여넣기 복원기가 그걸 `**...**` 로 되살렸고, 10건 전부에 `**` 가 박혀 들어왔다.
-const unbold = s => String(s || "").replace(/\*+/g, "").trim();
+// 백틱도 같이 벗긴다 (2026-08-21). 새 노트 형식이 영어 조각을 `이렇게` 감싸 보내는데,
+// 그대로 두면 카드의 「내가 썼던 것」·「왜 고쳤나」에 백틱이 글자로 박힌다.
+// **리듬맵은 이 함수를 타지 않는다**(`stripOuterBold` 를 쓴다) — 강세 표기는 그대로 살아야 한다.
+const unbold = s => String(s || "").replace(/[*`]+/g, "").trim();
 
 // 줄 전체가 볼드로 와도 안쪽 강세 표기는 살린다. 바깥 껍데기만 벗긴다 —
 // 그대로 두면 `**` 짝이 어긋나 `rhythmHtml()` 이 엉뚱한 구간을 볼드로 잡는다.
@@ -2850,6 +2881,11 @@ function plainFromRhythm(s) {
 function parseReviewNote(text) {
   const norm = String(text || "").replace(/\r\n?/g, "\n");
   let date = "";
+  // 머리글에 적힌 날짜를 읽는다 — `2026.08.21 (금)` 도, `… 복습 노트 — 2026.08.17` 도 받는다.
+  // **앞 5줄로 범위를 좁힌다.** 본문에 섞인 숫자를 날짜로 오인하면 카드가 엉뚱한 날짜에 쌓인다.
+  const km = norm.split("\n").slice(0, 5).join("\n")
+    .match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  if (km) date = `${km[1]}-${km[2].padStart(2, "0")}-${km[3].padStart(2, "0")}`;
   const dm = norm.match(/^\s*Date:\s*(.+)$/mi);
   if (dm) {
     const d = new Date(dm[1].trim());
@@ -2859,14 +2895,20 @@ function parseReviewNote(text) {
 
   const lines = norm.split("\n");
   const starts = [];
-  lines.forEach((l, i) => { if (/^\s*\d+\.\d+\s+\S/.test(l)) starts.push(i); });
+  // ① `1.1 제목`  ② `1️⃣ 제목`(키캡) — 둘 다 항목 시작으로 본다.
+  lines.forEach((l, i) => {
+    if (/^\s*\d+\.\d+\s+\S/.test(l) || KEYCAP_RE.test(l)) starts.push(i);
+  });
+  const hasKeycap = starts.length > 0 && lines.some(l => KEYCAP_RE.test(l));
 
   // **하위 번호가 없는 섹션도 항목이다.** `7. 오늘 마지막 표현` 처럼 `7.1` 없이 바로 내용이
   // 오는 섹션이 있는데, 예전엔 `\d+\.\d+` 만 항목으로 봐서 **통째로 사라졌다**(2026-08-17).
   // 자식이 있는 섹션(`1.` → `1.1`)은 제목이므로 제외한다 — 이 조건이 노트 끝의
   // 「오늘 꼭 가져갈 표현 5개」 같은 **번호 목록도 같이 걸러준다**(그 번호들은 본문에 자식이 있다).
   const hasChild = n => starts.some(i => new RegExp(`^\\s*${n}\\.\\d`).test(lines[i]));
-  lines.forEach((l, i) => {
+  // 키캡 형식 노트에는 적용하지 않는다 — 꼬리의 「내일 할 일 1. 2. 3.」 같은 번호 목록이
+  // 전부 항목으로 둔갑한다. 키캡이 이미 항목 경계를 명확히 준다.
+  if (!hasKeycap) lines.forEach((l, i) => {
     const m = l.match(/^\s*(\d+)\.\s+\S/);
     if (m && !hasChild(m[1])) starts.push(i);
   });
@@ -2876,7 +2918,7 @@ function parseReviewNote(text) {
   for (let i = 0; i < starts.length; i++) {
     const chunkLines = lines.slice(starts[i], i + 1 < starts.length ? starts[i + 1] : lines.length);
     // `1.1 제목` 과 `7. 제목` 둘 다 번호를 뗀다.
-    const head = chunkLines[0].replace(/^\s*\d+(?:\.\d+)*\.?\s+/, "").trim();
+    const head = chunkLines[0].replace(KEYCAP_RE, "").replace(/^\s*\d+(?:\.\d+)*\.?\s+/, "").trim();
 
     const sec = {};
     let cur = null;
@@ -2936,17 +2978,33 @@ function parseReviewNote(text) {
 
     const q = sec.q || [];
     const notes = [], chunks = [];
+    // 덩어리 줄은 형식이 여럿이다:
+    //   `덩어리 = 뜻`                       (옛 Key Corrections)
+    //   `` `run into a problem` — 문제가 생기다 → 예문 ``  (2026-08-21 입에 붙일 표현)
+    // 앞쪽 영어 조각만 뽑고 나머지는 해설로 넘긴다.
     for (const b of (sec.chunks || []).map(stripBullet)) {
-      const m = b.match(/^(.{2,60}?)\s*=\s*(.+)$/);
+      const m = b.match(/^[`"']?(.{2,60}?)[`"']?\s*(?:=|—|–|-{1,2}\s)\s*(.+)$/);
       if (m && !hasHangul(m[1])) chunks.push(m[1].trim());
       else notes.push(b);
     }
+    // 질문 줄에 영어와 한국어가 한 줄로 붙어 오는 형식을 갈라준다.
+    const qEn = [], qKo = [];
+    for (const line of q) {
+      const { en, ko } = splitEnKo(line);
+      if (en) qEn.push(en);
+      if (ko) qKo.push(ko);
+    }
+    // 한글 발음. 배달·막힌 표현 카드가 쓰던 `pron` 을 회화 교정에도 붙인다 (2026-08-21).
+    const pron = (sec.pron || []).filter(l => !/^```/.test(l)).map(stripOuterBold)
+      .filter(Boolean).join(" ");
     items.push({
       title: unbold(title),
-      question: stripArrow(unbold(q.find(l => !hasHangul(l)) || "")),
-      questionKo: stripArrow(unbold(q.find(l => hasHangul(l)) || "")),
+      question: stripArrow(unbold(qEn[0] || "")),
+      questionKo: stripArrow(unbold(qKo[0] || "")),
       expression,
-      ko: stripArrow(unbold(fixed.find(l => hasHangul(l)) || "")),
+      // 한국어 뜻은 `뜻` 라벨이 있으면 그걸, 없으면 예전처럼 정답 블록의 한글 줄을 쓴다.
+      ko: stripArrow(unbold((sec.ko || []).join(" ") || fixed.find(l => hasHangul(l)) || "")),
+      pron,
       wrong: unbold((sec.wrong || []).join(" ")),
       why: (sec.why || []).map(stripBullet).concat(notes).map(unbold).filter(Boolean).join("\n"),
       rhythm,
@@ -3090,6 +3148,9 @@ document.getElementById("impSave").onclick = async () => {
       question: it.question, questionKo: it.questionKo,
       ko: it.ko, wrong: it.wrong, why: it.why,
       rhythm: it.rhythm, chunks: it.chunks,
+      // 노트에 「발음」 줄이 있으면 같이 담는다 (2026-08-21). 카드의 발음 블록이 이걸 쓴다 —
+      // 빠뜨리면 파서가 뽑아놓고도 화면에 안 나온다.
+      pron: it.pron || "",
       source: SRC_REVIEW, slot: "", learnedDate: it.learnedDate,
       stage: 0, nextReview: addDays(today, INTERVALS[0]),
     };

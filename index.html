@@ -843,7 +843,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-21-01";
+const BUILD = "2026-08-21-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2821,8 +2821,15 @@ function matchLabel(line) {
   for (const [key, re] of IMP_LABELS) {
     const m = head.match(re);
     if (!m) continue;
-    const rest = head.slice(m[0].length).replace(/^\s*[:：]\s*/, "").trim();
-    return { key, inline: rest };
+    // 라벨을 감싼 **닫는 볼드**가 내용으로 남으면 안 된다 — 붙여넣기 복원기가 `**✅ 자연스러운 문장**`
+    // 처럼 만들어 오는데, 그대로 두면 정답이 `**` 한 개가 되고 **그 항목이 통째로 버려진다**
+    // (RHYTHM_MARK 가 `**` 를 리듬으로 오인 → expression 이 빈 문자열 → continue). 2026-08-21 실측.
+    const rest = head.slice(m[0].length)
+      .replace(/^\s*[:：]\s*/, "")
+      .replace(/^[*`~]+\s*/, "")
+      .trim();
+    // 장식만 남았으면 내용이 없는 것으로 본다.
+    return { key, inline: /[\p{L}\p{N}]/u.test(rest) ? rest : "" };
   }
   return null;
 }
@@ -2913,6 +2920,21 @@ function parseReviewNote(text) {
     if (m && !hasChild(m[1])) starts.push(i);
   });
   starts.sort((a, b) => a - b);
+
+  // ── 마지막 안전망 ──
+  // 머리글을 하나도 못 찾았는데 라벨은 보이는 경우. **같은 라벨이 다시 나오면 새 항목**으로 본다.
+  // 카드 하나에 정답·질문이 하나씩이라는 성질만 쓰므로, 머리글 형식이 또 바뀌어도 버틴다.
+  // (2026-08-21 Patrick: "어떻게 넣던 네가 필요한 부분을 찾아서 카드로 넣어라")
+  if (!starts.length) {
+    const seen = new Set();
+    lines.forEach((l, i) => {
+      const h = matchLabel(l);
+      if (!h) return;
+      if (seen.has(h.key)) { starts.push(i); seen.clear(); }
+      seen.add(h.key);
+    });
+    if (starts.length) starts.unshift(0);
+  }
 
   const items = [];
   for (let i = 0; i < starts.length; i++) {

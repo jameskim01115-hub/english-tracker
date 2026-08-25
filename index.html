@@ -845,7 +845,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-21-04";
+const BUILD = "2026-08-25-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2127,8 +2127,10 @@ function dueItems() {
 //
 // 2026-08-18 Patrick 이 15로 낮췄다가 **같은 날 20으로 되돌렸다** — 상한을 낮추면 하루는
 // 편해도 밀린 더미가 더 빨리 쌓인다는 계산을 보고 「복습은 매일 제대로, 새 표현을 천천히」로
-// 방향을 바꿨다. **다시 낮추자고 제안하지 말 것.** 유입은 `newCapToday()` 가 막는다.
-const DAILY_CAP = 20;
+// 방향을 바꿨다. 유입은 `newCapToday()` 가 막는다.
+// 2026-08-25 Patrick 이 20→25로 올렸다 — 봇 배달을 막힌 표현 업로드 시에만 오게 줄여
+// 하루 유입이 12.4개보다 낮아진 상태에서, 밀린 62개를 더 빨리 청산하려는 목적.
+const DAILY_CAP = 25;
 
 function planRebalance() {
   const due = dueItems();
@@ -2170,8 +2172,10 @@ function planRebalance() {
 // 「복습 먼저, 새 표현은 그 다음」이 자연히 강제된다.
 //
 // ⚠️ **반드시 `balanceReviews()` 뒤에 계산해야 한다.** 재배치 전에는 오늘 due 가 상한을
-// 넘긴 상태(실측 35개)라 항상 0이 나오고, 재배치 뒤에는 20개로 줄어 답이 뒤집힌다.
-const NEW_CAP_MAX = 5;
+// 넘긴 상태(실측 35개)라 항상 0이 나오고, 재배치 뒤에는 DAILY_CAP 개로 줄어 답이 뒤집힌다.
+// 2026-08-25 Patrick 이 5→7로 올렸다 (DAILY_CAP 20→25 와 함께). 봇 배달 축소로 유입이
+// 줄어든 상태에서 밀린 62개를 더 빨리 청산하려는 목적 — due가 낮은 날 하루 최대 7개까지 학습.
+const NEW_CAP_MAX = 7;
 
 function studiedToday() {
   return expressions.filter(e => e.studiedAt === today).length;

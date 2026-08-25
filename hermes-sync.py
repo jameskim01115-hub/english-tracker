@@ -13,6 +13,10 @@ Idempotent: doc id = sha1(source|date|expression). Existing docs are skipped
 (POST createDocument returns 409 ALREADY_EXISTS), so review progress made in
 the dashboard is never overwritten.
 
+Near-duplicate guard (2026-08-25): doc-id idempotency only catches byte-identical
+text. wanted_phrases and b2_vocab_log often teach the same real phrase a day or two
+apart with slightly different wording -- see is_near_duplicate() / DEDUP_DAYS.
+
 Deployed at: /root/english-sync/sync_english_to_firestore.py (cron hourly, :20)
 Local copy:  02_projects/english-tracker/hermes-sync.py -- edit here, then deploy.
 """
@@ -40,6 +44,15 @@ PROJECT = "english-tracker-cea9f"
 API_KEY = "AIzaSyBmHEyQPrTGd1dQ6wD_zlzVz7EQLBjsEx8"
 COLLECTION = "english_expressions"
 BACKFILL_DAYS = 7  # only sync items learned within this window
+
+# 근접 중복 방지 (2026-08-25 Patrick 요청). doc_id 멱등은 **완전히 같은 문자열**만 막는다 —
+# 막힌 표현(wanted)이 하루이틀 뒤 배달(delivered)로 문구만 바뀌어 다시 오거나, 회화 노트가
+# 같은 문장을 살짝 다른 표현으로 반복 추출하면 doc_id가 달라져 별개 카드로 계속 쌓였다
+# (실측: "settle up this month's company expenses" 가 wanted 8/17 · delivered 8/18 로 중복,
+# "Could we move this to Friday?" 류가 8/23 하루에 3장). 최근 DEDUP_DAYS 일 내 기존 표현과
+# 비교해 겹치면 새 카드를 만들지 않는다.
+DEDUP_DAYS = 5
+DEDUP_JACCARD = 0.6  # 단어 집합 겹침 비율. 관사 뺀 단어 기준(_loose 재사용)
 
 # Supertonic TTS 릴레이 (같은 서버의 english-tts 컨테이너, localhost로만 열려 있다).
 # 값은 index.html 의 TTS_SPEED / 기본 음성과 반드시 일치해야 한다 — 다르면 캐시가 안 맞는다.
@@ -332,6 +345,79 @@ def _has_hangul(s):
     return bool(re.search(r"[가-힣]", s or ""))
 
 
+def list_recent_expressions(token, cutoff):
+    """`cutoff`(YYYY-MM-DD) 이후 learnedDate 인 기존 문서의 (loose, expr, source, learned)
+    목록. 근접 중복 판정용.
+
+    전체 컬렉션이 아직 수백 건이라 한 번에 받아도 무리 없다 — 나중에 수천 건대가 되면
+    `learnedDate >= cutoff` 서버측 필터(structured query)로 바꿀 것.
+    """
+    out = []
+    page_token = None
+    url_base = FIRESTORE_URL
+    while True:
+        url = "%s?pageSize=300" % url_base
+        if page_token:
+            url += "&pageToken=%s" % page_token
+        req = urllib.request.Request(url, headers=api_headers(token), method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.load(r)
+        except Exception as e:
+            print("WARN dedup fetch failed (skipping dedup this run): %s" % e, file=sys.stderr)
+            return []
+        for d in data.get("documents", []):
+            f = d.get("fields", {})
+            learned = f.get("learnedDate", {}).get("stringValue", "")
+            source = f.get("source", {}).get("stringValue", "")
+            expr = f.get("expression", {}).get("stringValue", "")
+            if learned >= cutoff and expr:
+                loose = _loose(expr)
+                if loose:
+                    out.append((loose, expr, source, learned))
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+    return out
+
+
+def is_near_duplicate(expr, source, learned, recent):
+    """`expr` 이 최근 표현들과 근접 중복인가. 중복이면 (True, 매칭된 원문), 아니면 (False, "").
+
+    **(source, learnedDate, expr) 이 전부 같은 항목은 건너뛴다** — 그건 근접 중복이 아니라
+    매 실행마다 창 안의 파일을 통째로 재파싱해서 생기는 정상적인 재처리다. `create_doc()` 의
+    doc_id 멱등(409)이 이미 처리하므로, 여기서 먼저 걸러 「deduped」로 잘못 세면 안 된다.
+
+    완전 동일 문자열(다른 소스·다른 날짜)은 그보다 느슨한 두 기준으로 본다:
+    ① 포함 관계 — 짧은 쪽이 긴 쪽 안에 통째로 들어감 (예: "settle up expenses" ⊂
+       "I need to settle up expenses this month.")
+    ② 단어 집합 겹침 — 관사 뺀 단어 기준 자카드 유사도가 `DEDUP_JACCARD` 이상 (예: "move this
+       to Friday" ~ "push it to Friday"). **짧은 청크(2단어 이하)는 이 기준을 건너뛴다** —
+       "eat out"·"get on it" 같은 표현은 단어 하나만 겹쳐도 자카드가 쉽게 0.5를 넘어
+       무관한 표현끼리 오탐하기 쉽다.
+    """
+    loose = _loose(expr)
+    if not loose:
+        return False, ""
+    words = set(loose.split())
+    if not words:
+        return False, ""
+    for r_loose, r_expr, r_source, r_learned in recent:
+        if r_source == source and r_learned == learned and r_expr == expr:
+            continue  # 같은 (소스·날짜·원문) — 정상 재처리, 근접 중복 판정 대상 아님
+        if loose == r_loose or loose in r_loose or r_loose in loose:
+            return True, r_loose
+        if len(words) <= 2:
+            continue
+        r_words = set(r_loose.split())
+        if not r_words:
+            continue
+        overlap = len(words & r_words) / len(words | r_words)
+        if overlap >= DEDUP_JACCARD:
+            return True, r_loose
+    return False, ""
+
+
 def _is_en_line(s):
     """영어 리듬맵 줄인가. 한글이 없고, 라틴 단어가 둘 이상이며, 리듬 표기가 있어야 한다."""
     if not s or _has_hangul(s):
@@ -611,13 +697,23 @@ def main():
         if a == "--days" and i + 1 < len(sys.argv):
             days_deliv = max(BACKFILL_DAYS, int(sys.argv[i + 1]))
     cutoff_deliv = (today - timedelta(days=days_deliv)).isoformat()
-    created = skipped = patched = 0
+    created = skipped = patched = deduped = 0
 
     fresh = []   # 새로 만든 문서의 읽어줄 텍스트 — 음성을 미리 만들어 둔다
+
+    # 근접 중복 방지용 최근 표현 목록. 이번 실행에서 새로 만드는 것도 바로 추가해서
+    # wanted → delivered 순서로 같은 표현이 연달아 들어와도 걸러지게 한다.
+    dedup_cutoff = (today - timedelta(days=DEDUP_DAYS)).isoformat()
+    recent_loose = list_recent_expressions(token, dedup_cutoff)
 
     for learned, expr, ctx, ko, rhythm, pron, variants in parse_wanted(
             read(BASE + "/wanted_phrases.md")):
         if learned < cutoff or not expr:
+            continue
+        is_dup, matched = is_near_duplicate(expr, "hermes-wanted", learned, recent_loose)
+        if is_dup:
+            deduped += 1
+            print("DEDUP wanted %s: %r ~= %r" % (learned, expr, matched), file=sys.stderr)
             continue
         did = doc_id("hermes-wanted", learned, expr)
         data = {
@@ -642,6 +738,7 @@ def main():
         if create_doc(did, data, token):
             created += 1
             fresh.append(expr)
+            recent_loose.append((_loose(expr), expr, "hermes-wanted", learned))
         else:
             skipped += 1
             if backfill:
@@ -651,6 +748,11 @@ def main():
     lessons = {}
     for learned, slot, expr, meaning, example in parse_vocab(read(BASE + "/b2_vocab_log.md")):
         if learned < cutoff_deliv or not expr:
+            continue
+        is_dup, matched = is_near_duplicate(expr, "hermes-delivered", learned, recent_loose)
+        if is_dup:
+            deduped += 1
+            print("DEDUP delivered %s: %r ~= %r" % (learned, expr, matched), file=sys.stderr)
             continue
         if learned not in lessons:
             lessons[learned] = lesson_units(read_lesson(learned))
@@ -681,6 +783,7 @@ def main():
         if create_doc(did, data, token):
             created += 1
             fresh.extend([expr, example])
+            recent_loose.append((_loose(expr), expr, "hermes-delivered", learned))
         else:
             skipped += 1
             if backfill:
@@ -692,8 +795,8 @@ def main():
                 patched += patch_doc(did, fields, token, clear=["rhythm"])
 
     warmed = prewarm(fresh)
-    print("%s sync done: created=%d skipped=%d patched=%d tts_warmed=%d"
-          % (today.isoformat(), created, skipped, patched, warmed))
+    print("%s sync done: created=%d skipped=%d deduped=%d patched=%d tts_warmed=%d"
+          % (today.isoformat(), created, skipped, deduped, patched, warmed))
 
 
 if __name__ == "__main__":

@@ -845,7 +845,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-28-03";
+const BUILD = "2026-08-28-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2384,11 +2384,16 @@ function missOf(e) {
   if (typeof e.missCount === "number") return e.missCount;
   return typeof e.wrong === "number" ? e.wrong : 0;
 }
+// 가중치는 INTERVALS 에서 파생한다. 예전엔 6(당시 단계 수)이 두 군데 박혀 있었는데,
+// 2026-08-28 에 단계를 6 → 5 로 줄이면서 범위가 1.0~0.33 으로 눌렸다(의도는 1.0~0.2).
+// 동작이 깨지진 않고 출제 분포만 평평해지는 종류의 어긋남이라 조용해서 못 볼 뻔했다 —
+// 단계 수를 바꿀 때 같이 고쳐야 하는 곳이 여기라는 걸 상수로 못 박아 둔다.
 function weightOf(e) {
   if (isGraduated(e)) return 0.2;
+  const n = INTERVALS.length;
   const wrong = missOf(e);
-  const stage = Math.min(e.stage || 0, 5);
-  let w = (1 + wrong * 3) * ((6 - stage) / 6 + 0.3);
+  const stage = Math.min(e.stage || 0, n - 1);
+  let w = (1 + wrong * 3) * ((n - stage) / n + 0.3);
   if (!isStudied(e)) w *= 2.5;
   return w;
 }

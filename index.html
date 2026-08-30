@@ -847,7 +847,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-30-01";
+const BUILD = "2026-08-30-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1100,6 +1100,17 @@ function isReview(e) { return e.source === SRC_REVIEW; }
 // 막힌 표현에는 뜻이 아예 안 나왔고, 그 빈자리를 영어 상황 태그가 메우고 있었다
 // (2026-08-17 Patrick 지적 — 태그는 전부 제거했다).
 function meaningOf(e) { return e.meaning || e.ko || ""; }
+// `ko` 가 한국어 뜻이 아니라 **영어 발음 표기**인 카드를 걸러낸다.
+// 노트에 `뜻` 라벨이 없으면 파서가 정답 블록의 첫 한글 줄을 뜻으로 주워오는데,
+// 그 줄이 발음인 경우가 많다 (2026-08-30 실측: 회화 교정 106건 중 57건).
+// 판별: ①한글에 라틴문자·홑자모가 섞임(`뤠d`, `f이-ㄹ`, `-ㅋ`) ②`/` 청크 구분인데 조사가 없음.
+function looksPron(s) {
+  const t = String(s || "");
+  if (!t) return false;
+  if (/[A-Za-z]|[\u3131-\u314e]/.test(t)) return true;
+  const KO = /(을 |를 |은 |는 |에서|으로|해요|합니다|했|해야|그래서|예요|이에요|거예요|네요|죠\.|니다|어요|았|였|고 |도 |만 |에게|한테|부터|까지)/;
+  return /\//.test(t) && !KO.test(t);
+}
 function srcOf(e) {
   if (e.source === "hermes-wanted") return { cls: "wanted", label: "막힌 표현" };
   if (e.source === "hermes-delivered") return { cls: "delivered", label: "봇 배달" };
@@ -1847,7 +1858,7 @@ function exprCard(e, mode, dir) {
             <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
             <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
           </div>
-          ${isReview(e) && e.ko ? `<div class="ans-ko">${esc(e.ko)}</div>` : ""}
+          ${isReview(e) && e.ko && !looksPron(e.ko) ? `<div class="ans-ko">${esc(e.ko)}</div>` : ""}
         </div>`;
   } else {
     html += `

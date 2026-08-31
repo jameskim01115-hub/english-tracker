@@ -853,7 +853,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-08";
+const BUILD = "2026-08-31-09";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1879,6 +1879,9 @@ function exprCard(e, mode, dir) {
   // 한→영은 프롬프트로 쓸 한글(또는 상황)이 있을 때만. 없으면 영→한으로 내려간다.
   const pr = promptFor(e);
   const recall = dir === "ko2en" && pr.ok;
+  // 「오늘」 탭은 영어 밑에 뜻을 앞면에 띄운다. 그러면 뒷면 「뜻」 블록은 **같은 문장을 두 번**
+  // 보여주는 셈이라 그린다 (2026-08-31 Patrick 지적). 앞면에 이미 나왔으면 뒷면은 건너뛴다.
+  const koOnFront = mode === "new" && !!koTextOf(e);
 
   const slot = slotLabel(e.slot);
   let html = `
@@ -1934,7 +1937,7 @@ function exprCard(e, mode, dir) {
     // 한→영이면 ko 는 이미 앞면 프롬프트라 다시 띄우지 않는다 — 같은 문장이 두 번 나온다.
     // (정답 바로 밑에는 `.ans-ko` 로 따로 붙는다. 문장이 길면 앞면 프롬프트가 화면 밖으로
     //  밀려 정답을 읽을 때 뜻이 안 보인다 — 질문의 영문/한글 짝과 같은 이유다. 2026-08-30 Patrick)
-    if (koOf(e) && !(recall && pr.text === e.ko)) {
+    if (koOf(e) && !koOnFront && !(recall && pr.text === e.ko)) {
       html += `<div class="blk"><div class="blk-l">뜻</div>
         <div class="blk-mean">${esc(koOf(e))}</div></div>`;
     }
@@ -1947,7 +1950,7 @@ function exprCard(e, mode, dir) {
   // 1. 뜻 (한→영이면 이미 앞면에 썼으므로 생략)
   // 회화 교정은 위 `isReview` 블록에서 이미 그렸으므로 여기서 제외한다 — 안 그러면 두 번 나온다.
   const mean = isReview(e) ? "" : meaningOf(e);
-  if (mean && !recall) {
+  if (mean && !recall && !koOnFront) {
     html += `<div class="blk"><div class="blk-l">뜻</div>
       <div class="blk-mean">${esc(mean)}</div></div>`;
   }

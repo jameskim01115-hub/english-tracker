@@ -788,7 +788,6 @@
     <input id="mPron" placeholder="발음 — 한글 (예: 킾 미 / 인 더 루-ㅍ)">
     <input id="mMean" placeholder="뜻 — 한국어 번역 (예: 계속 상황 공유해줘)">
     <textarea id="mChunk" rows="3" placeholder="입에 붙일 표현 — 한 줄에 하나 (예: let you know — 알려주다)"></textarea>
-    <textarea id="mCtx" rows="2" placeholder="예문 / 어떤 상황에서 쓰는지 (선택)"></textarea>
     <div class="row">
       <button class="m-cancel" id="mCancel">취소</button>
       <button class="m-save" id="mSave">저장</button>
@@ -849,7 +848,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-03";
+const BUILD = "2026-08-31-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1010,9 +1009,9 @@ function parseContext(e) {
     return out;
   }
   const ctx = (e.context || "").trim();
-  // 직접 추가 카드는 회화 교정과 같은 구조로 저장된다 — 덩어리는 `chunks`, 예문은 `context`.
-  // **예전엔 `context` 가 어디에도 안 나왔다** (`hermes-delivered` 만 예문으로 갔다).
-  // Patrick 이 예문 칸에 넣은 내용이 저장은 되는데 카드에서 사라졌다 (2026-08-31 수정).
+  // 직접 추가 카드는 회화 교정과 같은 구조로 저장된다 — 조각은 `chunks`.
+  // **예문 입력 칸은 2026-08-31에 없앴다** (Patrick: 필요 없음). 하지만 그 전에 저장된
+  // 카드의 `context` 는 계속 보여준다 — 입력을 막는 것과 있던 내용을 숨기는 건 다른 문제다.
   if (e.source === "manual") {
     out.chunks = String(e.chunks || "").split("|").map(t => t.trim()).filter(Boolean);
     out.example = ctx;
@@ -2859,7 +2858,6 @@ document.getElementById("mSave").onclick = async () => {
   const pron = document.getElementById("mPron").value.trim();
   const mean = document.getElementById("mMean").value.trim();
   const chunkRaw = document.getElementById("mChunk").value.trim();
-  const ctx = document.getElementById("mCtx").value.trim();
   if (!expr) { toast("표현을 입력해주세요"); return; }
   if (!canWrite()) return;
   // 영어 칸에 리듬맵을 그대로 넣는다 (2026-08-12 Patrick). 안 갈라두면 `/` 와 `↘` 가
@@ -2879,7 +2877,7 @@ document.getElementById("mSave").onclick = async () => {
     pron,
     chunks: vlist.map(v => v.en).join(" | "),
     variants: vlist.length ? JSON.stringify(vlist) : "",
-    meaning: mean, context: ctx,
+    meaning: mean,
     source: "manual", slot: "", learnedDate: today,
     studied: true, studiedAt: today,
     stage: 0, nextReview: addDays(today, INTERVALS[0]),
@@ -2888,7 +2886,7 @@ document.getElementById("mSave").onclick = async () => {
   try {
     const ref = await db.collection(COL_EXPR).add(doc);
     expressions.unshift({ id: ref.id, ...doc });
-    ["mExpr", "mPron", "mMean", "mChunk", "mCtx"].forEach(id => document.getElementById(id).value = "");
+    ["mExpr", "mPron", "mMean", "mChunk"].forEach(id => document.getElementById(id).value = "");
     modalBg.classList.remove("show");
     toast("저장 완료 — 내일부터 복습에 나옵니다");
     rerenderActive();

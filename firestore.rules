@@ -27,6 +27,13 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // 앱에서 지운 표현의 「무덤」. 문서 id = 지워진 표현의 id.
+    // 동기화(hermes-sync.py)가 이 목록을 먼저 읽고, 여기 있는 id 는 다시 만들지 않는다.
+    // 없으면 봇 카드는 원본 파일에 남아 있는 한 매시 다시 살아난다 (2026-08-31).
+    match /english_deleted/{expression} {
+      allow read, write: if isSignedIn();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

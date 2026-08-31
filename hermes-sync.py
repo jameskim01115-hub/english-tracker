@@ -70,6 +70,14 @@ FIRESTORE_URL = (
     "https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/%s"
     % (PROJECT, COLLECTION)
 )
+# 앱에서 지운 표현의 「무덤」. 문서 id = 지워진 표현의 id.
+# doc_id 가 sha1(소스|날짜|표현) 이라, 지우면 「없는 것」이 되어 다음 실행에서 그대로
+# 다시 만들어졌다. 원본(wanted_phrases.md)에서 지운 게 아니기 때문이다 (2026-08-31).
+DELETED_COLLECTION = "english_deleted"
+DELETED_URL = (
+    "https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/%s"
+    % (PROJECT, DELETED_COLLECTION)
+)
 
 # 이 API 키에는 HTTP 리퍼러 제한이 걸려 있다 (2026-08-10, 유출 대비 조치).
 # 브라우저가 아닌 이 스크립트는 Referer 를 안 보내서 그대로 두면
@@ -379,6 +387,31 @@ def list_recent_expressions(token, cutoff):
         if not page_token:
             break
     return out
+
+
+def list_tombstones(token):
+    """앱에서 삭제한 문서 id 집합.
+
+    **실패하면 예외를 올린다 — 빈 집합으로 넘어가면 안 된다.** 그러면 지운 카드가
+    그 실행에서 전부 되살아난다. 한 시간 뒤 크론이 다시 돈다.
+    """
+    ids = set()
+    page_token = None
+    while True:
+        url = "%s?pageSize=300" % DELETED_URL
+        if page_token:
+            url += "&pageToken=%s" % page_token
+        req = urllib.request.Request(url, headers=api_headers(token), method="GET")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.load(r)
+        for d in data.get("documents", []):
+            name = d.get("name", "")
+            if name:
+                ids.add(name.rsplit("/", 1)[-1])
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+    return ids
 
 
 def is_near_duplicate(expr, source, learned, recent):
@@ -706,6 +739,15 @@ def main():
     dedup_cutoff = (today - timedelta(days=DEDUP_DAYS)).isoformat()
     recent_loose = list_recent_expressions(token, dedup_cutoff)
 
+    # 지운 카드를 다시 만들지 않기 위한 무덤 목록. 읽기에 실패하면 이번 실행을 포기한다 —
+    # 빈 집합으로 진행하면 Patrick 이 지운 카드가 전부 되살아난다.
+    try:
+        tombstones = list_tombstones(token)
+    except Exception as e:
+        print("FATAL tombstone fetch failed — aborting run: %s" % e, file=sys.stderr)
+        return 1
+    tombstoned = 0
+
     for learned, expr, ctx, ko, rhythm, pron, variants in parse_wanted(
             read(BASE + "/wanted_phrases.md")):
         if learned < cutoff or not expr:
@@ -716,6 +758,9 @@ def main():
             print("DEDUP wanted %s: %r ~= %r" % (learned, expr, matched), file=sys.stderr)
             continue
         did = doc_id("hermes-wanted", learned, expr)
+        if did in tombstones:
+            tombstoned += 1
+            continue
         data = {
             "expression": expr, "meaning": "", "context": ctx, "ko": ko,
             "source": "hermes-wanted", "slot": "", "learnedDate": learned,
@@ -759,6 +804,9 @@ def main():
         rhythm, pron, ctx_ko, variants = enrich(expr, lessons[learned])
 
         did = doc_id("hermes-delivered", learned, expr)
+        if did in tombstones:
+            tombstoned += 1
+            continue
         data = {
             "expression": expr, "meaning": meaning, "context": example, "ko": "",
             "source": "hermes-delivered", "slot": slot, "learnedDate": learned,
@@ -795,9 +843,11 @@ def main():
                 patched += patch_doc(did, fields, token, clear=["rhythm"])
 
     warmed = prewarm(fresh)
-    print("%s sync done: created=%d skipped=%d deduped=%d patched=%d tts_warmed=%d"
-          % (today.isoformat(), created, skipped, deduped, patched, warmed))
+    print("%s sync done: created=%d skipped=%d deduped=%d tombstoned=%d patched=%d tts_warmed=%d"
+          % (today.isoformat(), created, skipped, deduped, tombstoned, patched, warmed))
 
 
 if __name__ == "__main__":
-    main()
+    # **반환값을 종료 코드로 넘긴다.** 예전엔 그냥 `main()` 이라 중단(return 1)이
+    # 크론 입장에서 성공으로 보였다 — 조용히 실패하는 구조였다 (2026-08-31).
+    sys.exit(main() or 0)

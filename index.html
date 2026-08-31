@@ -853,7 +853,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-05";
+const BUILD = "2026-08-31-06";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1126,6 +1126,12 @@ function ansKoOf(e) {
   if (isReview(e)) return koOf(e);
   return e.source === "manual" ? meaningOf(e) : "";
 }
+// 화면에 띄울 한국어 뜻. `meaning` 이 우선이고, 없으면 `ko` 를 쓰되 **발음이면 버린다.**
+// 「오늘 탭」처럼 소스를 가리지 않고 뜻을 보여줘야 하는 자리에서 쓴다.
+function koTextOf(e) {
+  if (e.meaning) return e.meaning;
+  return looksPron(e.ko) ? "" : (e.ko || "");
+}
 function pronOf(e) {
   if (e.pron) return e.pron;
   return looksPron(e.ko) ? e.ko : "";
@@ -1137,7 +1143,20 @@ function koOf(e) {
 function looksPron(s) {
   const t = String(s || "");
   if (!t) return false;
-  if (/[A-Za-z]|[\u3131-\u314e]/.test(t)) return true;
+  // 홑자모는 음차에만 나온다 — `f이-ㄹ`, `위-ㅋ`, `언더r테이킹`.
+  if (/[\u3131-\u314e]/.test(t)) return true;
+  // **라틴 「단어」는 음차의 근거가 아니다.** 진짜 번역에도 고유명사·용어가 섞인다
+  // (`Ascent가 …`, `cause = 사건을 일으키다`, `Neil이 …`). 2026-08-30에 라틴 유무로만
+  // 갈랐다가 멀쩡한 번역 21건을 발음으로 오판해 한→영 프롬프트가 통째로 사라졌다.
+  // 음차의 진짜 지문은 **1~2글자 라틴 조각이 한글에 딱 붙는 것**이다 (`뤠d`, `f이`, `아으L`).
+  const isHan = c => !!c && /[가-힣]/.test(c);
+  const re = /[A-Za-z]+/g;
+  let m;
+  while ((m = re.exec(t))) {
+    if (m[0].length > 2) continue;                     // 온전한 영어 단어
+    if (/[0-9]/.test(t[m.index - 1] || "")) continue;  // 숫자 뒤 단위 — `8km를`
+    if (isHan(t[m.index - 1]) || isHan(t[m.index + m[0].length])) return true;
+  }
   const KO = /(을 |를 |은 |는 |에서|으로|해요|합니다|했|해야|그래서|예요|이에요|거예요|네요|죠\.|니다|어요|았|였|고 |도 |만 |에게|한테|부터|까지)/;
   return /\//.test(t) && !KO.test(t);
 }
@@ -1901,6 +1920,7 @@ function exprCard(e, mode, dir) {
         <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
         <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
       </div>
+      ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
       <div class="tap-hint">${mode === "review" || mode === "practice"
         ? "탭해서 뜻 확인 → 소리 내어 3번 말하기"
         : "탭해서 자세히 보기"}</div>

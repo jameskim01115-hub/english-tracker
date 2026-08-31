@@ -853,7 +853,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-06";
+const BUILD = "2026-08-31-07";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3151,7 +3151,11 @@ function parseReviewNote(text) {
     // 갈라 쓰지 않으면 먼저 나온 평문만 잡고 **리듬이 통째로 버려진다.**
     const fixedAll = fixed.filter(l => !hasHangul(l));
     const rhIdx = fixedAll.findIndex(l => RHYTHM_MARK.test(l));
-    const fixedRh = rhIdx >= 0 ? fixedAll[rhIdx] : "";
+    // **리듬 줄이 여러 개면 전부 이어 붙인다.** 예전엔 `fixedAll[rhIdx]` 로 첫 줄만 썼다 —
+    // ChatGPT 가 정답을 문장마다 줄바꿈해 보내는 형식(3~4줄)에서 **2번째 줄부터 통째로 사라졌다.**
+    // 화면에도 안 나오고 TTS 도 첫 문장만 읽는데, 카드가 멀쩡해 보여서 알아채기 어렵다
+    // (2026-08-31 Patrick: 「이게 전체 문장이거든」 — 3줄짜리가 1줄로 들어와 있었다).
+    const fixedRh = fixedAll.filter(l => RHYTHM_MARK.test(l)).join(" ");
     // **평문은 리듬 줄보다 앞에 있을 때만 쓴다.** 뒤에 오는 영어 줄은 정답이 아니라,
     // `포인트`·`추가 예문` 처럼 라벨로 인식되지 않은 해설 구간이 `fixed` 에 계속 쌓인 것이다 —
     // 앞뒤를 안 가리고 골랐더니 4.1 정답이 `I have to solve the problem.`(틀린 원문)로 바뀌었다.
@@ -3211,8 +3215,9 @@ function parseReviewNote(text) {
       .filter(Boolean).join(" ");
     // 정답 블록에 섞여 온 한글 줄을 「뜻」과 「발음」으로 가른다.
     const koCands = fixed.filter(l => hasHangul(l));
-    const koLine = koCands.find(l => !looksPron(l)) || "";
-    const pronLine = koCands.find(l => looksPron(l)) || "";
+    // 정답이 여러 줄이면 뜻·발음도 줄 수만큼 온다. **`find` 로 첫 줄만 집으면 나머지가 버려진다.**
+    const koLine = koCands.filter(l => !looksPron(l)).join(" ");
+    const pronLine = koCands.filter(l => looksPron(l)).join(" ");
 
     items.push({
       title: unbold(title),

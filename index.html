@@ -787,7 +787,7 @@
     <input id="mExpr" placeholder="영어 — 리듬맵 그대로 (예: **Keep** me / in the **LOOP** ↓)">
     <input id="mPron" placeholder="발음 — 한글 (예: 킾 미 / 인 더 루-ㅍ)">
     <input id="mMean" placeholder="뜻 — 한국어 번역 (예: 계속 상황 공유해줘)">
-    <textarea id="mChunk" rows="3" placeholder="덩어리 — 한 줄에 하나 (예: let you know — 알려주다)"></textarea>
+    <textarea id="mChunk" rows="3" placeholder="입에 붙일 표현 — 한 줄에 하나 (예: let you know — 알려주다)"></textarea>
     <textarea id="mCtx" rows="2" placeholder="예문 / 어떤 상황에서 쓰는지 (선택)"></textarea>
     <div class="row">
       <button class="m-cancel" id="mCancel">취소</button>
@@ -849,7 +849,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-01";
+const BUILD = "2026-08-31-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1962,8 +1962,9 @@ function exprCard(e, mode, dir) {
   if (vars.length) {
     // 라벨이 소스마다 다르다 — 배달은 「같은 뜻을 다르게」, 회화 교정은 「입에 붙일 표현」이다.
     // 두 개는 성격이 달라 같은 이름을 쓰면 안 된다.
-    const vLabel = isReview(e) ? "입에 붙일 표현"
-      : e.source === "manual" ? "덩어리로 외우기" : "이렇게도 말해요";
+    // 직접 추가도 회화 교정과 같은 이름을 쓴다 — 성격이 같다(통째로 입에 붙일 조각 + 뜻).
+    // 뜻은 `.v-ko` 로 영문 바로 밑에 작게 깔린다 (예문·발음 블록과 같은 규격).
+    const vLabel = (isReview(e) || e.source === "manual") ? "입에 붙일 표현" : "이렇게도 말해요";
     html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">보기 (${vars.length})</span></div>
       <ul class="why-list var-list">${vars.map(v => `<li>
         <div class="v-en"><span>${rhythmHtml(v.en)}</span>

@@ -849,7 +849,7 @@ const COL_EXPR = "english_expressions";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-02";
+const BUILD = "2026-08-31-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1965,8 +1965,11 @@ function exprCard(e, mode, dir) {
     // 직접 추가도 회화 교정과 같은 이름을 쓴다 — 성격이 같다(통째로 입에 붙일 조각 + 뜻).
     // 뜻은 `.v-ko` 로 영문 바로 밑에 작게 깔린다 (예문·발음 블록과 같은 규격).
     const vLabel = (isReview(e) || e.source === "manual") ? "입에 붙일 표현" : "이렇게도 말해요";
-    html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">보기 (${vars.length})</span></div>
-      <ul class="why-list var-list">${vars.map(v => `<li>
+    // 직접 추가는 Patrick 이 손으로 적은 짧은 목록이라 **기본으로 펼친다** — 복습할 때
+    // 바로 보이길 원했다 (2026-08-31). 회화 교정은 자동 생성이라 길어서 접어둔 채 둔다.
+    const vOpen = e.source === "manual";
+    html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">${vOpen ? "접기" : `보기 (${vars.length})`}</span></div>
+      <ul class="why-list var-list${vOpen ? " open" : ""}">${vars.map(v => `<li>
         <div class="v-en"><span>${rhythmHtml(v.en)}</span>
           <button class="spk sm" data-say="${esc(v.en)}" title="듣기">🔊</button></div>
         ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}

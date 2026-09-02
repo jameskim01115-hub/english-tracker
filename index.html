@@ -118,6 +118,11 @@
     border-radius: 16px; padding: 14px;
     font-weight: 800; font-size: 14.5px; color: var(--green);
   }
+  .retry-btn {
+    margin-top: 10px; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+    background: var(--card2); border: 1px solid var(--line); color: var(--text);
+    font: inherit; font-size: 13px; font-weight: 700;
+  }
   .allDone.show { display: block; animation: pop .5s cubic-bezier(.2,1.4,.4,1); }
   @keyframes pop { 0% { transform: scale(.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
@@ -860,7 +865,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-02-03";
+const BUILD = "2026-09-02-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3548,10 +3553,23 @@ function showSlow() {
 // 화면이 막혔을 때 이유를 그 자리에 적는다. 토스트는 사라져서 못 보고 지나간다.
 function showStuck(reason) {
   const msg = `<div class="empty"><b>화면을 못 불러왔습니다.</b><br>${esc(reason)}<br>`
-    + `<span style="font-size:12px;color:var(--dim)">새로고침해도 그대로면 알려주세요</span></div>`;
+    + `<button class="retry-btn" onclick="retryBoot()">다시 시도</button></div>`;
   ["newList", "dueList"].forEach(id => {
     const el = document.getElementById(id);
-    if (el && el.querySelector(".loading")) el.innerHTML = msg;
+    if (el && (el.querySelector(".loading") || el.querySelector(".empty"))) el.innerHTML = msg;
+  });
+}
+
+// 막힌 상태에서 되살리기. 로그인이 안 됐으면 로그인부터, 됐으면 데이터만 다시 받는다.
+function retryBoot() {
+  ["newList", "dueList"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="loading">불러오는 중…</div>`;
+  });
+  if (auth.currentUser) { init(); return; }
+  auth.signInAnonymously().catch(err => {
+    console.error(err);
+    showStuck(`로그인 실패 (${esc(err && err.code || "unknown")})`);
   });
 }
 
@@ -3627,9 +3645,14 @@ async function checkUpdate() {
   } catch (e) { /* 오프라인 등 — 조용히 넘어간다 */ }
 }
 checkUpdate();
+// 맥 웹앱은 창을 며칠씩 열어둔다. 한 번 막히면 예전엔 수동 새로고침 전까지 영원히
+// 「불러오는 중」이었다 — 다시 볼 때마다 스스로 되살린다 (2026-09-02).
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") checkUpdate();
+  if (document.visibilityState !== "visible") return;
+  checkUpdate();
+  if (!booted) retryBoot();
 });
+window.addEventListener("online", () => { if (!booted) retryBoot(); });
 
 // 자정을 넘겨도 켜져 있으면 날짜 갱신
 setInterval(() => {

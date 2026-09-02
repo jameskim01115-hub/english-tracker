@@ -73,7 +73,7 @@
   .day-progress .num { font-size: 13px; font-weight: 800; color: var(--gold); min-width: 30px; text-align: right; }
 
   /* ───── habit strip (컴팩트) ───── */
-  .routines { display: flex; gap: 7px; margin-top: 12px; }
+  .routines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 7px; margin-top: 12px; }
   .r-item {
     flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
     cursor: pointer; user-select: none; -webkit-user-select: none;
@@ -85,11 +85,17 @@
     transition: transform .12s ease, background .25s, border-color .25s;
   }
   .r-item:active .r-dot { transform: scale(0.92); }
+  /* 1줄 = 영어(5), 2줄 = 몸·생활(5) */
   .r-item[data-k="podcast"]  .r-dot { background: linear-gradient(135deg,#3b2a17,#2a1d10); }
-  .r-item[data-k="words"]    .r-dot { background: linear-gradient(135deg,#17303b,#102028); }
-  .r-item[data-k="office"]   .r-dot { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
+  .r-item[data-k="expr"]     .r-dot { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
   .r-item[data-k="review"]   .r-dot { background: linear-gradient(135deg,#1b3327,#12231b); }
   .r-item[data-k="speaking"] .r-dot { background: linear-gradient(135deg,#2c1e3d,#1e1529); }
+  .r-item[data-k="stretch"]  .r-dot { background: linear-gradient(135deg,#17303b,#102028); }
+  .r-item[data-k="workout"]  .r-dot { background: linear-gradient(135deg,#3b1f22,#281416); }
+  .r-item[data-k="pushup"]   .r-dot { background: linear-gradient(135deg,#3a2b14,#261c0d); }
+  .r-item[data-k="minilog"]  .r-dot { background: linear-gradient(135deg,#233a2b,#16261c); }
+  .r-item[data-k="vitamin"]  .r-dot { background: linear-gradient(135deg,#332a3f,#211a29); }
+  .r-item[data-k="sleep"]    .r-dot { background: linear-gradient(135deg,#1c2440,#131829); }
   .r-lb { font-size: 10px; font-weight: 700; color: var(--sub); text-align: center; line-height: 1.25; }
   .r-item.done .r-dot { border-color: rgba(62,207,142,.5); filter: grayscale(.5); opacity: .62; }
   .r-item.done .r-dot::after {
@@ -659,7 +665,7 @@
     </div>
     <div class="day-progress">
       <div class="bar"><div class="fill" id="pFill"></div></div>
-      <div class="num" id="pNum">0/5</div>
+      <div class="num" id="pNum">0/10</div>
     </div>
     <div class="routines" id="routines"></div>
     <div class="allDone" id="allDone">🎉 오늘 습관 전부 완료! 달력에 동그라미 쾅.</div>
@@ -853,7 +859,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-08-31-09";
+const BUILD = "2026-09-02-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -898,14 +904,31 @@ const DEFAULT_SRV_VOICE = SRV_PREFIX + "Emma";
 // 아래쪽에 두면 TDZ(선언 전 접근)로 스크립트 전체가 죽는다 — 실제로 겪었다.
 const SRV_LABEL = { F: "여성", M: "남성" };
 
-// 5개 일일 루틴
+// 10개 일일 루틴 — 앞 5개는 영어, 뒤 5개는 몸·생활. 화면에서 5개씩 두 줄로 나온다.
+//
+// **키(k)는 Firestore 에 그대로 저장된다. 이미 쓴 키의 이름을 바꾸지 말 것** —
+// 바꾸면 그 키로 기록된 과거 완료가 통째로 사라진다. legacy 는 예전 키를 이어받기 위한 것이다
+// (2026-09-02: 「단어 3개」+「막힌 표현」 → 「오늘 표현」 하나로 합치면서 필요해졌다).
 const ROUTINES = [
-  { k: "podcast",  icon: "🎧", short: "팟캐스트",  name: "유튜브 팟캐스트 1개" },
-  { k: "words",    icon: "📬", short: "단어 3개",  name: "오늘의 단어 3개" },
-  { k: "office",   icon: "📝", short: "막힌 표현", name: "막힌 표현 공부" },
-  { k: "review",   icon: "🔁", short: "복습",      name: "복습" },
-  { k: "speaking", icon: "🗣️", short: "말하기",   name: "ChatGPT 음성 대화" },
+  { k: "podcast",  icon: "🎧",  short: "팟캐스트",  name: "유튜브 팟캐스트 1개" },
+  { k: "expr",     icon: "📝",  short: "오늘 표현", name: "오늘의 표현 공부", legacy: ["words", "office"] },
+  { k: "review",   icon: "🔁",  short: "복습",      name: "복습" },
+  { k: "speaking", icon: "🗣️",  short: "말하기",    name: "ChatGPT 음성 대화" },
+  { k: "stretch",  icon: "🤸",  short: "스트레칭",  name: "스트레칭" },
+  { k: "workout",  icon: "🏋️",  short: "홈트",      name: "홈트레이닝" },
+  { k: "pushup",   icon: "💪",  short: "푸쉬업",    name: "푸쉬업" },
+  { k: "minilog",  icon: "📔",  short: "미니로그",  name: "미니로그 쓰기" },
+  { k: "vitamin",  icon: "💊",  short: "비타민",    name: "비타민 챙겨 먹기" },
+  { k: "sleep",    icon: "🌙",  short: "11시 취침", name: "밤 11시 취침" },
 ];
+
+// 그 날 그 루틴을 했는가. 새 키가 아직 없으면 예전 키로 물러나 본다.
+// 새 키에 값이 있으면(해제한 false 포함) 그것이 최종이다 — 안 그러면 해제가 먹지 않는다.
+function routineDone(tasks, r) {
+  if (tasks[r.k] !== undefined) return !!tasks[r.k];
+  return (r.legacy || []).some(k => tasks[k]);
+}
+function doneCount(tasks) { return ROUTINES.filter(r => routineDone(tasks, r)).length; }
 
 // 망각 곡선 간격(일). stage = 성공한 복습 횟수. stage N을 달성하면 INTERVALS[N]일 뒤 재등장.
 //
@@ -1641,7 +1664,7 @@ async function loadAllExpressions() {
 }
 async function saveDay(date) {
   const d = dayData[date] || { tasks: {} };
-  d.completedCount = ROUTINES.filter(r => d.tasks[r.k]).length;
+  d.completedCount = doneCount(d.tasks);
   d.total = ROUTINES.length;
   await db.collection(COL_DAYS).doc(date).set({
     ...d, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1682,7 +1705,7 @@ function renderRoutines() {
   const tasks = todayTasks();
   box.innerHTML = "";
   for (const r of ROUTINES) {
-    const done = !!tasks[r.k];
+    const done = routineDone(tasks, r);
     const item = document.createElement("div");
     item.className = "r-item" + (done ? " done" : "");
     item.dataset.k = r.k;
@@ -1698,7 +1721,7 @@ async function toggleRoutine(key, card) {
   if (!canWrite()) return;
   const d = dayData[today] || (dayData[today] = { tasks: {} });
   d.tasks = d.tasks || {};
-  const wasDone = !!d.tasks[key];
+  const wasDone = routineDone(d.tasks, ROUTINES.find(r => r.k === key));
 
   if (wasDone) {
     if (!confirm("완료를 취소할까요?")) return;
@@ -1714,7 +1737,7 @@ async function toggleRoutine(key, card) {
   card.parentElement.classList.add("done");
   setTimeout(() => { renderRoutines(); renderCalendar(); renderStreak(); }, 350);
 
-  if (ROUTINES.filter(r => d.tasks[r.k]).length === ROUTINES.length) {
+  if (doneCount(d.tasks) === ROUTINES.length) {
     setTimeout(() => {
       confetti();
       haptic([80, 60, 120]);
@@ -1727,18 +1750,23 @@ async function toggleRoutine(key, card) {
 
 function updateProgress() {
   const tasks = todayTasks();
-  const n = ROUTINES.filter(r => tasks[r.k]).length;
+  const n = doneCount(tasks);
   document.getElementById("pFill").style.width = (n / ROUTINES.length * 100) + "%";
   document.getElementById("pNum").textContent = `${n}/${ROUTINES.length}`;
   document.getElementById("allDone").classList.toggle("show", n === ROUTINES.length);
 }
 
 // ═══════════════ RENDER: STREAK ═══════════════
+// 루틴 개수가 바뀌기 전에 저장된 날은 그 날의 기준(저장해 둔 total)으로 판정한다.
+// 안 그러면 5개 시절에 완주한 날들이 오늘 갑자기 「부분 완료」로 강등된다 (2026-09-02).
 function dayStatus(iso) {
   const d = dayData[iso];
   if (!d || !d.tasks) return 0;
-  const n = ROUTINES.filter(r => d.tasks[r.k]).length;
-  if (n >= ROUTINES.length) return 2;
+  // 오늘은 항상 지금 기준으로 본다 — 저장된 total 은 마지막 저장 시점의 것이다.
+  const legacy = iso !== today && d.total && d.total !== ROUTINES.length;
+  const n = legacy ? (d.completedCount || 0) : doneCount(d.tasks);
+  const total = legacy ? d.total : ROUTINES.length;
+  if (n >= total) return 2;
   if (n >= 1) return 1;
   return 0;
 }

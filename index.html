@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-02-05";
+const BUILD = "2026-09-02-06";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1297,14 +1297,15 @@ function underlineKey(expr, chunks) {
 }
 
 // ═══════════════ TTS ═══════════════
-let voices = [];
-function loadVoices() {
-  try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
-  if (document.getElementById("voiceSel")) paintVoices();
-}
-if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
-
-// macOS/iOS의 장난 음성들. 목록에서 아예 뺀다.
+// **이 정규식들은 loadVoices() 위에 있어야 한다.** 아래 loadVoices() 는 선언되자마자
+// 실행되고 그 안에서 paintVoices() → enVoices() 가 이 값들을 읽는다. 밑에 두면 TDZ
+// (선언 전 접근)로 **스크립트 전체가 죽어 앱이 빈 껍데기가 된다.**
+//
+// 이게 조용히 숨어 있던 이유: `voices.filter(v => ... NOVELTY_VOICE.test(v.name))` 는
+// 음성 목록이 비어 있으면 콜백을 한 번도 안 돌려 TDZ에 닿지 않는다. 브라우저 대부분은
+// 첫 호출에서 빈 배열을 주고 나중에 onvoiceschanged 로 채워주므로 멀쩡히 넘어간다.
+// **맥 웹앱처럼 첫 호출부터 시스템 음성이 바로 들어오는 환경에서만 죽는다** —
+// 그래서 아이폰·브라우저는 멀쩡한데 맥에서만 「불러오는 중」이 영원히 돌았다 (2026-09-02).
 const NOVELTY_VOICE = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Eddy|Flo|Fred|Good News|Grandma|Grandpa|Hysterical|Jester|Junior|Kathy|Organ|Pipe Organ|Princess|Ralph|Reed|Rocko|Sandy|Shelley|Superstar|Trinoids|Whisper|Wobble|Zarvox)\b/i;
 
 // macOS/iOS 언어가 한국어면 음성 이름도 한글로 온다 — "Ava(프리미엄)", "Zoe(고급)".
@@ -1312,6 +1313,19 @@ const NOVELTY_VOICE = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Eddy|Fl
 const PREMIUM_RE = /premium|프리미엄/i;
 const ENHANCED_RE = /enhanced|고급/i;
 const GOOD_VOICE_RE = /premium|프리미엄|enhanced|고급|natural/i;
+
+let voices = [];
+function loadVoices() {
+  try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+  if (document.getElementById("voiceSel")) paintVoices();
+}
+// 음성 목록은 부가 기능이다. 여기서 무슨 일이 나든 **앱 전체를 죽이면 안 된다.**
+if ("speechSynthesis" in window) {
+  try { loadVoices(); } catch (e) { console.error("loadVoices 실패 — 음성 없이 계속한다", e); }
+  speechSynthesis.onvoiceschanged = () => {
+    try { loadVoices(); } catch (e) { console.error(e); }
+  };
+}
 
 // Samantha·Alex 같은 구형 compact 음성은 기계음이 난다.
 // Apple Premium/Enhanced, Google, Microsoft Natural 계열을 우선한다.

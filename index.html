@@ -73,15 +73,16 @@
   .day-progress .num { font-size: 13px; font-weight: 800; color: var(--gold); min-width: 30px; text-align: right; }
 
   /* ───── habit strip (컴팩트) ───── */
-  .routines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 7px; margin-top: 12px; }
+  .routines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px 7px; margin-top: 12px; }
   .r-item {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
     cursor: pointer; user-select: none; -webkit-user-select: none;
   }
+  /* 세로는 가로의 절반. 10칸 두 줄이 예전 5칸 한 줄과 비슷한 높이로 끝난다 (2026-09-02). */
   .r-dot {
-    position: relative; width: 100%; aspect-ratio: 1;
-    border-radius: 17px; background: var(--card); border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center; font-size: 21px;
+    position: relative; width: 100%; aspect-ratio: 2 / 1;
+    border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
     transition: transform .12s ease, background .25s, border-color .25s;
   }
   .r-item:active .r-dot { transform: scale(0.92); }
@@ -99,10 +100,10 @@
   .r-lb { font-size: 10px; font-weight: 700; color: var(--sub); text-align: center; line-height: 1.25; }
   .r-item.done .r-dot { border-color: rgba(62,207,142,.5); filter: grayscale(.5); opacity: .62; }
   .r-item.done .r-dot::after {
-    content: "✓"; position: absolute; top: -4px; right: -4px;
-    width: 19px; height: 19px; border-radius: 999px;
+    content: "✓"; position: absolute; top: -5px; right: -4px;
+    width: 16px; height: 16px; border-radius: 999px;
     background: var(--green); color: #08130d;
-    font-size: 11px; font-weight: 900;
+    font-size: 10px; font-weight: 900;
     display: flex; align-items: center; justify-content: center;
     border: 2px solid var(--bg); filter: none;
   }
@@ -859,7 +860,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-02-01";
+const BUILD = "2026-09-02-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.

@@ -654,6 +654,18 @@ ssh hermes "python3 /root/english-sync/sync_english_to_firestore.py --backfill -
 
 ## 절대 규칙
 
+**최상위(top-level)에서 실행되는 코드 위로 그 코드가 읽는 `const` 를 올려둘 것.**
+`loadVoices()` 가 선언 직후 실행되는데 그 안에서 쓰는 `NOVELTY_VOICE` 가 아래에 있어
+**스크립트 전체가 ReferenceError 로 죽고 앱이 빈 껍데기가 된 적이 있다 (2026-09-02).**
+화면에는 「불러오는 중」만 영원히 돌고 에러도 안내도 없다.
+- **간헐적으로 보인다**: `voices.filter(v => NOVELTY_VOICE.test(...))` 는 목록이 비면
+  콜백을 안 돌려 TDZ에 안 닿는다. 첫 호출부터 음성이 들어오는 **맥 웹앱에서만** 죽었고
+  아이폰·브라우저는 멀쩡했다. 「한 기기에서만 안 된다」가 곧 환경 탓은 아니다
+- 부가 기능(음성 등)의 초기 실행은 `try/catch` 로 감싼다. 앱을 죽이면 안 된다
+- head 의 Firebase SDK 3개도 같은 급의 단일 실패점이다 — `onerror` 와 전역 error 핸들러가
+  이유를 화면에 적게 해뒀다. **이 안전망을 지우지 말 것**
+
+
 **M Building Firebase 프로젝트(`m-building-fbe46`)를 여기에 연결하지 않는다.** 2026-08-07에 두 앱이 프로젝트를 공유해 M Building 임차인 데이터가 공개 노출된 사고가 있었다. `index.html`과 `hermes-sync.py` 양쪽에 가드가 있으니 우회하지 말 것.
 
 **이 프로젝트에 민감한 데이터를 넣지 않는다.** 화면 로그인이 없고 익명 인증만 걸려 있어, 앱 소스를 읽고 흉내내는 접근은 막지 못한다. 영어 학습 기록 수준만 담는다.

@@ -193,6 +193,7 @@ def build_ssml(marked, azure_voice, speed):
     | `**소문자**` (일반 강세) | `<emphasis level="moderate">` |
     | `/` (청크) | `<break time="180ms"/>` |
     | `↘` `↓` (하강) | 마침표 — 문장 경계가 살아야 억양이 내려간다 |
+    | `↘↗` (하강+상승) | 쉼표 — 도입부 끝. 문장은 계속된다 |
     | `→` `↗` | 삭제 (억양 유지, 소리에는 영향 없음) |
     """
     peaks = []            # 원문의 볼드가 피크였는지 기억해 둔다 (소문자화 전에)
@@ -200,6 +201,9 @@ def build_ssml(marked, azure_voice, speed):
         peaks.append(bool(re.fullmatch(r"[A-Z][A-Z' ]*", m.group(1))))
 
     t = unstress_caps(marked.replace(BR, ""))
+    # `↘↗` 는 「내렸다가 끝만 올림」 — 문장이 안 끝난 자리다. 쉼표로 옮긴다.
+    # `↘` 규칙보다 먼저 걸러야 한다. 뒤에 두면 마침표가 박혀 문장이 두 동강 난다.
+    t = re.sub(r"↘↗", ",", t)
     t = re.sub(r"[↘↓]", ".", t)
     t = re.sub(r"[→↗]", " ", t)
     # 청크 `/` 는 태그를 만들기 **전에** 자리표시자로 바꾼다.

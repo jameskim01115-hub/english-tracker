@@ -105,7 +105,7 @@ Patrick은 쉐도잉을 문장 전체로 한다. 앱이 정답을 리듬 표기�
    | 기호 | 쓰는 자리 |
    |---|---|
    | `→` | 담담히 이어갈 때. **기본값** |
-   | `↗` | 나열 첫 항목 · 선택의문 A · 여운(`I'm hoping ↗`) · Yes/No 의문문 끝 · 되묻기 |
+   | `↗` | 나열 첫 항목 · 선택의문 A · **`but` 등 반전 예고 앞** · 여운(`I'm hoping ↗`) · Yes/No 의문문 끝 · 되묻기 |
    | `↘` | 문장 끝 (평서문 · Wh-의문문 · 일반 지시) |
    | `↓` | 못 박는 결론·결정·강한 지시. **아껴 쓴다** |
    | `↘↗` | 문장 앞 도입부 끝(`Honestly,` `When I ~,`) · 말끝 흐리기(`I guess`) |
@@ -114,6 +114,9 @@ Patrick은 쉐도잉을 문장 전체로 한다. 앱이 정답을 리듬 표기�
    - `and` 앞은 **나열인지 먼저 본다** — 목록으로 바꿔 말할 수 있으면 앞 항목이 `↗`.
      `I took some pictures ↗ / and posted them on MARketplace. ↘` (나열)
      `I was in a RUSH → / and left my phone at home. ↘` (원인·결과라 `→`)
+   - `but`은 문장 안에서 이어지면 **거의 항상 `↗`** — 반전이 온다는 신호 자체가 표시다.
+     `I usually get a little stressed every day, ↗ / but today wasn't too BAD. ↘`
+     새 문장을 여는 `But`이면 해당 없음.
 
 한 줄로 이어서 쓴다. 문장이 바뀌어도 줄을 바꾸지 않는다.
 **Original 의 단어를 바꾸거나 빼지 않는다** — 표기만 입힌다. 단어가 달라지면 앱이

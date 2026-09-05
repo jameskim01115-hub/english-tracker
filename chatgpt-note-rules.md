@@ -62,15 +62,20 @@ Natural Corrected Answer 를 낼 때, Rhythm Map 은 **정답의 모든 문장**
 ② 문장 앞에 떼어놓은 도입부인가? → ↘↗
    콤마가 찍히는 자리가 대부분 여기다.
    This morning, / Honestly, / When I was cleaning at home, / If it rains,
-③ 나열·선택·여운인가? → ↗
+③ 나열·선택·반전 예고·여운인가? → ↗
    나열 첫 항목 — fixing A ↗ and replacing B
    선택의문 A — coffee ↗ or tea
+   반전 예고 — but(문장 안에서 이어질 때, though·yet·however도 같음)은 앞이 항상 ↗
+     I usually get a little stressed every day, ↗ / but today wasn't too BAD. ↘
+     새 문장을 여는 But이면 해당 없음 — 그 경우 앞 청크는 ①을 그대로 따른다
    여운 표현 뒤 — I'm hoping ↗ / I'm thinking ↗ / I was wondering ↗
    목록 3개 이상 — coffee ↗, tea ↗, and juice ↘
 ④ 나머지 중간 청크 → →
-   that·because·so 로 이어지는 앞 절도 여기다.
+   디폴트가 아니라 「①②③을 다 확인했는데도 안 걸렸다」는 뜻이다.
+   that·because·so(결과)로 이어지는 앞 절, 한 사건의 단순한 흐름이 여기 해당한다.
+   접속사 종류로 기계적으로 정하지 말고 의미 관계를 볼 것.
 
-and·or 갈림길 — 여기서 제일 자주 틀린다.
+and·but·or 갈림길 — 여기서 제일 자주 틀린다.
 `and` 가 보이면 접속사라고 바로 ④로 넘기지 말 것. 먼저 나열인지 본다.
 판정법: and 앞뒤를 목록으로 바꿔 말할 수 있나?
   가능 → 나열이므로 앞 항목 ↗
@@ -78,6 +83,7 @@ and·or 갈림길 — 여기서 제일 자주 틀린다.
   불가능 → 한 사건의 흐름이므로 →
     I was in a RUSH → / and left my phone at home. ↘
   두 번째는 목록이 아니라 원인과 결과다. 그래서 →.
+`but`은 and처럼 나눠 볼 필요 없다 — 문장 안에서 이어지는 but은 거의 항상 ↗다.
 
 [정답은 리듬맵으로만 쓴다]
 
@@ -133,6 +139,7 @@ I just **relaxed** at **HOME** → / and **created** an application / to help me
 - **중간 청크에 `↘`·`↓` 가 찍혀 있지 않은가?** (문장당 마지막 1개만)
 - 문장 앞 도입부(`Honestly,` `This morning,` `When I ~,`)가 `↘↗` 인가?
 - `and` 앞이 나열이면 `↗` 인가? (목록으로 바꿔 말할 수 있으면 나열)
+- `but` 앞인가? 문장 안에서 이어지면 거의 항상 `↗` (새 문장을 여는 `But`이면 해당 없음)
 - 정답·질문·덩어리 줄이 **통째로 굵게** 돼 있지 않은가? (그러면 화면에 `**` 가 글자로 남는다)
 - 한국어 뜻 줄에 `뜻:`, 한글 발음 줄에 `발음:` 라벨이 붙어 있는가?
   (없으면 발음이 「뜻」 자리로 들어간다 — 2026-08-30에 106건 중 57건이 그 상태였다)

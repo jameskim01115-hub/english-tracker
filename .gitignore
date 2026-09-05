@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 __pycache__/
 *.pyc
+
+# 원본은 .md, PDF는 ChatGPT 첨부용 산출물이라 커밋 안 함 (2026-09-05)
+korean-phonetic-guide-v3.4.pdf

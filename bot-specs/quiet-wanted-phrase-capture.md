@@ -75,8 +75,10 @@ For a pattern note from Patrick:
 2026-08-14 이전 항목들이 실제로 그렇다.
 
 - **`Rhythm` 과 청크(`/`)·강세(볼드) 위치를 그대로 맞춘다.** 눈으로 따라 읽을 수 있어야 한다.
-- 한글 발음 규칙은 `patrick-korean-pronunciation-guide-v2.md` 를 따른다
+- 한글 발음 규칙은 `patrick-korean-pronunciation-guide-v3.4.md` 를 따른다
   (f·v·z·r·s·L·d·t 표시 유지, 장음 `-`, s클러스터에 `으` 금지, 모음 사이 T는 ㄹ 등).
+  저장소 사본: [korean-phonetic-guide-v3.4.md](../korean-phonetic-guide-v3.4.md)
+  (2026-09-05 v2→v3.4 갱신 — 서버 5개 파일도 같이 반영, 아래 「서버 동기화」 참조)
 - 단어 하나여도 넣는다.
 
 ### `- Examples:` 줄 (2026-08-17 추가)
@@ -145,6 +147,22 @@ Original 이 Patrick의 한국어 입력에서 나온 게 아니라 이미 영�
 
 긴 형식(`Original wanted expression:` / `Korean meaning:` / `Study focus:`)도 계속 유효하다.
 동기화 스크립트가 두 형식을 모두 읽는다.
+
+## 서버 동기화 (2026-09-05)
+
+**이 저장소 사본은 자동으로 서버에 반영되지 않는다** — 실제로 2026-09-04~05에 로컬만
+v2→v2.2로 두 번 고치는 동안 서버(Hermes VPS)의 `patrick-english-coaching` 스킬은
+계속 v1 화살표 규칙 그대로였다(`but` 반전 예고 없음). 발견한 즉시 수동으로 맞췄다:
+
+- 서버 `references/quiet-wanted-phrase-capture.md`(억양 화살표 절)를 이 문서의 v2.2 내용으로 교체
+- 발음 가이드도 v2/v3.3 → v3.4로 갱신 — `patrick-english-coaching`·`patrick-chief-of-staff`
+  두 스킬의 참조 파일 6개, 새 가이드 파일 2곳에 배포
+- 옛 버전은 `*.superseded-20260905` 로 이름만 바꿔 보존(삭제 안 함), 수정 전 6개 파일은
+  `.claude-backup-20260905-*/`에 백업
+- **컨테이너는 재시작하지 않았다** — 스킬 마크다운만 교체, 다음 실행부터 자동 반영
+
+**교훈**: 이 봇 스펙 파일을 고칠 때마다 "서버에도 반영했는가"를 자문할 것. 로컬 저장소가
+최신이라고 서버가 최신인 건 아니다.
 
 ## Pitfalls
 

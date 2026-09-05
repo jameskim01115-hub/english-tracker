@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-02";
+const BUILD = "2026-09-05-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1380,36 +1380,41 @@ function voiceKey() {
   return DEFAULT_SRV_VOICE;   // 기본은 서버 음성 — 기기와 무관하게 같은 품질이 나온다
 }
 
-// 문장 단위로 쪼갠다(마침표·물음표·느낌표 기준). TTS 서버는 문장이 여러 개라도
-// 한 번에 이어 읽어 쉬는 자리가 거의 안 들렸다 — 쉐도잉도, 뜻 파악도 힘들다는 지적
-// (2026-09-05). 문장마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
-function splitSentences(t) {
+// 문장·쉼표 단위로 쪼갠다. 마침표·물음표·느낌표는 문장 경계(리듬 표기의 `↘`·`↓`에
+// 해당) — 길게 쉰다. 쉼표는 도입부 끝(`↘↗`) 등 문장 안의 짧은 쉼 — 짧게만 쉰다.
+// TTS 서버가 한 번에 이어 읽으면 쉬는 자리가 거의 안 들렸다 — 쉐도잉도, 뜻 파악도
+// 힘들다는 지적 (2026-09-05). 조각마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
+const SENTENCE_GAP_MS = 200;   // 문장 사이 무음
+const COMMA_GAP_MS = 100;      // 쉼표 사이 무음 — 문장보다 짧게
+function splitBySound(t) {
   const s = String(t || "").trim();
   if (!s) return [];
-  const m = s.match(/[^.!?]+(?:[.!?]+|$)/g);
-  return (m || [s]).map(x => x.trim()).filter(Boolean);
+  const parts = s.match(/[^,.!?]+[,.!?]*/g) || [s];
+  return parts.map(p => p.trim()).filter(Boolean).map(p => ({
+    text: p,
+    gap: /[.!?]$/.test(p) ? SENTENCE_GAP_MS : (/,$/.test(p) ? COMMA_GAP_MS : 0),
+  }));
 }
-const SENTENCE_GAP_MS = 420;   // 문장 사이 무음. 너무 길면 늘어지고 짧으면 예전과 같다
 
 let audioEl = null;
 let speakGapTimer = null;
 function speakServer(text, voice, btn) {
-  const sentences = splitSentences(plain(text));
-  if (!sentences.length) return;
+  const segs = splitBySound(plain(text));
+  if (!segs.length) return;
   if (!audioEl) audioEl = new Audio();
   try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
   clearTimeout(speakGapTimer);
   const done = () => { if (btn) btn.classList.remove("on"); };
   let i = 0;
   const playNext = () => {
-    if (i >= sentences.length) { done(); return; }
-    const s = sentences[i++];
+    if (i >= segs.length) { done(); return; }
+    const seg = segs[i++];
     audioEl.onended = () => {
-      if (i < sentences.length) speakGapTimer = setTimeout(playNext, SENTENCE_GAP_MS);
+      if (i < segs.length) speakGapTimer = setTimeout(playNext, seg.gap);
       else done();
     };
     audioEl.onerror = () => { done(); speakDevice(text, btn); };  // 서버가 죽어도 소리는 나게
-    audioEl.src = `${TTS_URL}?t=${encodeURIComponent(s)}&v=${voice}&s=${TTS_SPEED}`;
+    audioEl.src = `${TTS_URL}?t=${encodeURIComponent(seg.text)}&v=${voice}&s=${TTS_SPEED}`;
     const p = audioEl.play();
     if (p && p.catch) p.catch(() => { done(); speakDevice(text, btn); });
   };
@@ -1418,8 +1423,8 @@ function speakServer(text, voice, btn) {
 }
 
 function speakDevice(text, btn) {
-  const sentences = splitSentences(plain(text));
-  if (!sentences.length) return;
+  const segs = splitBySound(plain(text));
+  if (!segs.length) return;
   if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
   try {
     speechSynthesis.cancel();
@@ -1427,13 +1432,14 @@ function speakDevice(text, btn) {
     const done = () => { if (btn) btn.classList.remove("on"); };
     let i = 0;
     const playNext = () => {
-      if (i >= sentences.length) { done(); return; }
-      const u = new SpeechSynthesisUtterance(sentences[i++]);
+      if (i >= segs.length) { done(); return; }
+      const seg = segs[i++];
+      const u = new SpeechSynthesisUtterance(seg.text);
       u.lang = "en-US";
       u.rate = DEVICE_RATE;
       if (v) u.voice = v;
       u.onend = () => {
-        if (i < sentences.length) speakGapTimer = setTimeout(playNext, SENTENCE_GAP_MS);
+        if (i < segs.length) speakGapTimer = setTimeout(playNext, seg.gap);
         else done();
       };
       u.onerror = done;

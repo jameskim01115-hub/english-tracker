@@ -68,6 +68,9 @@ NEURAL_VOICES = {
     # F0 가 Patrick 음역(105~112Hz) 한가운데다. 긴 설명문에는 이쪽이 맞을 수 있다.
     "Christopher": "en-US-ChristopherNeural",   # 106.7Hz ★4
     "Steffan":     "en-US-SteffanNeural",       # 117.6Hz ★4
+    # Andrew과 같은 화자, 피치만 낮춘 버전 (2026-09-05, PuckLow와 같은 레시피).
+    # Brian 대신 목록에 올린다. PITCH_SHIFT 에 등록해야 synth() 가 적용한다.
+    "AndrewLow":   "en-US-AndrewNeural",
 }
 
 # ══════════════ Kokoro-82M (로컬 ONNX) ══════════════
@@ -120,9 +123,24 @@ def kokoro_engine():
     return _kokoro
 
 
+# Andrew과 같은 화자, 피치만 낮춘 버전. PuckLow와 같은 레시피(-1세미톤, R2, 포먼트 끔)
+# — PuckLow 튜닝에서 검증된 값을 그대로 재사용한다.
+ANDREW_LOW_SEMITONES = -1
+
 # 피치를 낮추는 음성 → 몇 세미톤인지. cache_key() 가 이 값을 캐시 키에 넣어야
-# PUCK_LOW_SEMITONES 를 바꿨을 때 옛 캐시가 계속 나오는 걸 막는다.
-PITCH_SHIFT = {"PuckLow": PUCK_LOW_SEMITONES}
+# 세미톤 값을 바꿨을 때 옛 캐시가 계속 나오는 걸 막는다. Kokoro·Neural 양쪽 다 쓴다.
+PITCH_SHIFT = {"PuckLow": PUCK_LOW_SEMITONES, "AndrewLow": ANDREW_LOW_SEMITONES}
+
+
+def pitch_shift_audio(audio, sr, semitones):
+    """오디오 배열의 피치를 낮춘다(rubberband). PuckLow 튜닝(2026-09-05)에서 고른 설정:
+    R2 엔진(기본) + **포먼트 보존 끔**. `-F`를 켜면 오히려 처리한 티가 나고 어색했다.
+    R3(`-3`, 고품질·CPU 더 씀)도 시도했지만 R2보다 낫지 않았다 — 이미 합성된 음성이라
+    실제 녹음과는 다른가보다. 세미톤을 과하게 주면(-1.5) 실제 MP3 경로에서 에코처럼
+    울렸다(스펙트로그램 확인) — 처리 강도를 낮게(-1) 유지할 것.
+    """
+    import pyrubberband as pyrb   # 지연 임포트 — 없어도 다른 음성은 계속 살아야 한다
+    return pyrb.pitch_shift(np.asarray(audio), sr, semitones, rbargs={})
 
 
 def kokoro_synth(text, voice, speed):
@@ -132,12 +150,7 @@ def kokoro_synth(text, voice, speed):
         audio, sr = k.create(text, voice=KOKORO_VOICES[voice], speed=speed, lang="en-us")
     semitones = PITCH_SHIFT.get(voice)
     if semitones:
-        import pyrubberband as pyrb   # 지연 임포트 — 없어도 다른 음성은 계속 살아야 한다
-        # 4가지 조합(R2/R3 × 포먼트 보존 유무)을 직접 들려주고 골랐다 — R2 엔진(기본) +
-        # **포먼트 보존 끔**이 가장 자연스러웠다. `-F`를 켜면 오히려 처리한 티가 나고
-        # 어색하게 들렸다(2026-09-05 Patrick). R3(`-3`, 고품질·CPU 더 씀)도 시도했지만
-        # R2보다 낫지 않았다 — 이미 합성된 음성이라 원 녹음과 다른가보다.
-        audio = pyrb.pitch_shift(np.asarray(audio), sr, semitones, rbargs={})
+        audio = pitch_shift_audio(audio, sr, semitones)
     buf = io.BytesIO()
     sf.write(buf, np.asarray(audio), sr, format="MP3")
     return buf.getvalue()
@@ -380,7 +393,7 @@ def rate_ok(ip, azure=False):
 def cache_key(text, voice, speed, use_ssml):
     """캐시 키. 음성 이름이 엔진을 구분하므로(F1..M5 vs Emma..) 엔진을 따로 넣지 않아도 안 겹친다.
     다만 같은 음성·같은 문장이라도 SSML 유무로 소리가 다르므로 그건 키에 넣는다.
-    PITCH_SHIFT 세미톤 값도 넣는다 — 안 그러면 PUCK_LOW_SEMITONES 를 튜닝할 때마다
+    PITCH_SHIFT 세미톤 값도 넣는다 — 안 그러면 세미톤 값을 튜닝할 때마다
     옛 캐시가 계속 나와서 값을 바꾼 걸 못 알아챈다."""
     pitch = PITCH_SHIFT.get(voice)
     tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{text}"
@@ -396,8 +409,20 @@ def synth(text, voice, speed, use_ssml=False):
 
     if voice in NEURAL_VOICES or voice in KOKORO_VOICES:
         # Neural 은 네트워크 호출이라 락을 잡지 않는다. Kokoro 는 자기 락을 쓴다.
-        data = (kokoro_synth(text, voice, speed) if voice in KOKORO_VOICES
-                else neural_synth(text, voice, speed, use_ssml))
+        if voice in KOKORO_VOICES:
+            data = kokoro_synth(text, voice, speed)   # 피치 시프트가 필요하면 내부에서 처리
+        else:
+            data = neural_synth(text, voice, speed, use_ssml)
+            semitones = PITCH_SHIFT.get(voice)
+            if semitones:
+                # edge-tts/Azure 는 원본 오디오 배열을 안 주고 mp3 바이트만 준다 —
+                # 디코딩(soundfile이 libsndfile 1.1+ 로 mp3 읽기 지원) → 피치 시프트 →
+                # 다시 mp3 인코딩. AndrewLow 용 (2026-09-05, PuckLow와 같은 레시피).
+                audio, sr = sf.read(io.BytesIO(data), dtype="float32")
+                audio = pitch_shift_audio(audio, sr, semitones)
+                buf = io.BytesIO()
+                sf.write(buf, np.asarray(audio), sr, format="MP3")
+                data = buf.getvalue()
         tmp = path + ".tmp"
         with open(tmp, "wb") as f:
             f.write(data)

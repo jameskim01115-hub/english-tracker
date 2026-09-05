@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-10";
+const BUILD = "2026-09-05-11";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -910,9 +910,10 @@ const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
 // 서버는 아직 그 이름들을 받아준다 — 예전 `localStorage.et_voice` 선택이 깨지지 않게 하려는 것이고,
 // 문제가 생기면 이 목록에 한 줄 되돌리면 즉시 복구된다. 목록에 다시 추가하지 말 것.
 // 2026-09-05: Echo를 목록에서 빼고 PuckSlow(속도만 0.85 고정)로 바꿨다가,
-// 다시 PuckLow(피치만 -1.5세미톤, R2 엔진·포먼트 보존 끔)로 교체했다 — Patrick이
-// 자기 목소리 톤("레·미 중간")에 맞춰 4라운드 청취 비교로 직접 고른 값이다.
-// PuckSlow 매핑은 서버에 남겨둬서 예전 선택값도 계속 동작한다.
+// 다시 PuckLow(피치만 -1세미톤, R2 엔진·포먼트 보존 끔)로 교체했다 — Patrick이
+// 자기 목소리 톤("레·미 중간")에 맞춰 실제 MP3로 여러 라운드 비교해 고른 값이다.
+// Brian도 같은 레시피로 만든 AndrewLow로 교체했다.
+// PuckSlow·Brian 매핑은 서버에 남겨둬서 예전 선택값도 계속 동작한다.
 const SRV_VOICES = [
   { v: "Emma",        g: "F", n: "Emma ★5" },
   { v: "Puck",        g: "M", n: "Puck ★5" },
@@ -920,7 +921,7 @@ const SRV_VOICES = [
   { v: "Christopher", g: "M", n: "Christopher" },
   { v: "Steffan",     g: "M", n: "Steffan" },
   { v: "Andrew",      g: "M", n: "Andrew" },
-  { v: "Brian",       g: "M", n: "Brian" },
+  { v: "AndrewLow",   g: "M", n: "Andrew 낮게" },
 ];
 const SRV_PREFIX = "srv:";
 // Emma(여성)·Puck(남성)을 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
@@ -1440,7 +1441,7 @@ const SAY_VOICES_F = [
 const SAY_VOICES_M = [
   { v: "Puck", n: "Puck", top: true },     // 2026-08-19 두 라운드 연속 ★5
   // 2026-09-05: Echo 대신 PuckSlow(속도 고정)를 넣었다가 PuckLow로 교체 — Puck과
-  // 같은 화자에 피치만 -1.5세미톤(R2 엔진·포먼트 보존 끔). 속도는 이 탭의 속도 칩을
+  // 같은 화자에 피치만 -1세미톤(R2 엔진·포먼트 보존 끔). 속도는 이 탭의 속도 칩을
   // 그대로 따른다(PuckSlow와 달리 서버가 강제하지 않는다).
   { v: "PuckLow", n: "Puck 낮게" },
   // ★4 로 남은 둘 (2026-08-19 Patrick 요청으로 추가). 낭독체라 「책 읽는 느낌」 평이 붙었지만
@@ -1450,7 +1451,8 @@ const SAY_VOICES_M = [
   // 2026-08-19 Patrick 요청으로 되살렸다. 처음엔 "맘에 안 든다"고 뺐지만
   // 블라인드에서는 둘 다 ★4였다 — 이름을 가리면 평가가 달랐던 사례.
   { v: "Andrew",      n: "Andrew" },       // 114.8Hz ★4
-  { v: "Brian",       n: "Brian" },        // 121.8Hz ★4
+  // 2026-09-05: Brian 대신 — Andrew와 같은 화자, PuckLow와 같은 레시피로 피치만 낮춘 버전.
+  { v: "AndrewLow",   n: "Andrew 낮게" },
 ];
 // 이산 5단계로 고정한다. 연속 슬라이더로 두면 캐시 키가 sha1(voice|speed|text) 라
 // 값마다 새로 생성돼 캐시가 무의미해진다.

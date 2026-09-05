@@ -81,8 +81,15 @@ NEURAL_VOICES = {
 KOKORO_DIR = os.environ.get("KOKORO_DIR", "/kokoro")
 KOKORO_VOICES = {
     "Puck": "am_puck",    # 106Hz — 두 라운드 연속 ★5
-    "Echo": "am_echo",    # 110Hz — Patrick 추가 지정
+    "Echo": "am_echo",    # 110Hz — Patrick 추가 지정. 2026-09-05 목록에서는 뺐다(PuckSlow로 대체)
+                            # — 예전 `srv:Echo` 선택값이 와도 죽지 않게 매핑은 남겨둔다.
+    # Puck과 같은 화자(am_puck), 속도만 고정으로 늦춘 버전. Kokoro API에 피치 조절이
+    # 없어(Kokoro.create 시그니처 확인, 2026-09-05) 톤 자체는 못 낮추고 속도만 조절한다.
+    # **클라이언트가 보낸 speed를 무시하고 서버가 강제로 0.85를 쓴다** — 어디서 골라도
+    # (설정 기본 음성·발음 탭 등) 항상 같은 속도로 나오게 하려는 것.
+    "PuckSlow": "am_puck",
 }
+PUCK_SLOW_SPEED = 0.85
 _kokoro = None
 _kokoro_lock = threading.Lock()
 
@@ -459,6 +466,10 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             speed = 1.0
         speed = round(speed, 2)
+        # PuckSlow는 클라이언트가 뭘 보내든 무시하고 고정 속도를 쓴다 — 어느 화면에서
+        # 골라도(설정 기본 음성·발음 탭 등) 항상 같은 속도로 나오게 하려는 것.
+        if voice == "PuckSlow":
+            speed = PUCK_SLOW_SPEED
 
         # 캐시에 이미 있으면 레이트 리밋을 적용하지 않는다
         cached = os.path.exists(os.path.join(CACHE, f"{cache_key(text, voice, speed, use_ssml)}.mp3"))

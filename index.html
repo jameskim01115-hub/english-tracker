@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-01";
+const BUILD = "2026-09-05-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1114,8 +1114,16 @@ function capsToStress(s) {
   });
 }
 
+// 문장이 끝나는 자리(마침표·물음표·느낌표 + 그 뒤 화살표)마다 줄을 바꾼다.
+// 예전엔 문장이 몇 개든 한 줄로 붙어 나왔다 — 가독성도 떨어지고, 쉐도잉할 때
+// 어디서 쉬어야 하는지 안 보인다는 지적 (2026-09-05). `↘↗`(도입부 끝, 문장 안 끝남)는
+// 여기 안 걸린다 — 그 앞에 `.?!` 가 없기 때문에 자동으로 제외된다.
+// 문장 끝 뒤에 더 내용이 있을 때만 끊는다(`(?=\S)`) — 문장 하나짜리 정답의 끝에는 안 붙는다.
+function splitSentenceLines(s) {
+  return String(s || "").replace(/([.?!]\s*(?:↘↗|[→↘↓↗]))\s+(?=\S)/g, "$1\n");
+}
 function rhythmHtml(s) {
-  let h = esc(capsToStress(s));
+  let h = esc(capsToStress(splitSentenceLines(s)));
   // **소문자** = 일반 강세, **대문자** = 문장의 피크. Patrick 표기 규칙이다.
   h = h.replace(/\*\*(.+?)\*\*/g, (m, inner) =>
     /[A-Z]{2,}/.test(inner) && inner === inner.toUpperCase()
@@ -1132,6 +1140,9 @@ function rhythmHtml(s) {
   // 짝이 안 맞는 `**` 를 벗긴다. 봇이 볼드를 안 닫고 보내는 일이 있고
   // (`… 쏘우 **롱`), 그대로 두면 **별표가 글자로 화면에 박힌다** (2026-08-18 Patrick 지적).
   h = h.replace(/\*\*/g, "");
+  // 위에서 넣은 줄바꿈 표시(`\n`)를 실제 개행으로 바꾼다. capsToStress·화살표 치환이
+  // 전부 끝난 뒤에 해야 한다 — 앞에서 하면 정규식들이 줄바꿈을 사이에 두고 어긋난다.
+  h = h.replace(/\n/g, "<br>");
   return h;
 }
 
@@ -1369,37 +1380,67 @@ function voiceKey() {
   return DEFAULT_SRV_VOICE;   // 기본은 서버 음성 — 기기와 무관하게 같은 품질이 나온다
 }
 
+// 문장 단위로 쪼갠다(마침표·물음표·느낌표 기준). TTS 서버는 문장이 여러 개라도
+// 한 번에 이어 읽어 쉬는 자리가 거의 안 들렸다 — 쉐도잉도, 뜻 파악도 힘들다는 지적
+// (2026-09-05). 문장마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
+function splitSentences(t) {
+  const s = String(t || "").trim();
+  if (!s) return [];
+  const m = s.match(/[^.!?]+(?:[.!?]+|$)/g);
+  return (m || [s]).map(x => x.trim()).filter(Boolean);
+}
+const SENTENCE_GAP_MS = 420;   // 문장 사이 무음. 너무 길면 늘어지고 짧으면 예전과 같다
+
 let audioEl = null;
+let speakGapTimer = null;
 function speakServer(text, voice, btn) {
-  const t = plain(text);
-  if (!t) return;
+  const sentences = splitSentences(plain(text));
+  if (!sentences.length) return;
   if (!audioEl) audioEl = new Audio();
   try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
+  clearTimeout(speakGapTimer);
   const done = () => { if (btn) btn.classList.remove("on"); };
-  audioEl.onended = done;
-  audioEl.onerror = () => { done(); speakDevice(text, btn); };   // 서버가 죽어도 소리는 나게
-  audioEl.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
+  let i = 0;
+  const playNext = () => {
+    if (i >= sentences.length) { done(); return; }
+    const s = sentences[i++];
+    audioEl.onended = () => {
+      if (i < sentences.length) speakGapTimer = setTimeout(playNext, SENTENCE_GAP_MS);
+      else done();
+    };
+    audioEl.onerror = () => { done(); speakDevice(text, btn); };  // 서버가 죽어도 소리는 나게
+    audioEl.src = `${TTS_URL}?t=${encodeURIComponent(s)}&v=${voice}&s=${TTS_SPEED}`;
+    const p = audioEl.play();
+    if (p && p.catch) p.catch(() => { done(); speakDevice(text, btn); });
+  };
   if (btn) btn.classList.add("on");
-  const p = audioEl.play();
-  if (p && p.catch) p.catch(() => { done(); speakDevice(text, btn); });
+  playNext();
 }
 
 function speakDevice(text, btn) {
-  const t = plain(text);
-  if (!t) return;
+  const sentences = splitSentences(plain(text));
+  if (!sentences.length) return;
   if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
   try {
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = "en-US";
-    u.rate = DEVICE_RATE;
     const v = pickVoice();
-    if (v) u.voice = v;
-    if (btn) {
-      btn.classList.add("on");
-      u.onend = u.onerror = () => btn.classList.remove("on");
-    }
-    speechSynthesis.speak(u);
+    const done = () => { if (btn) btn.classList.remove("on"); };
+    let i = 0;
+    const playNext = () => {
+      if (i >= sentences.length) { done(); return; }
+      const u = new SpeechSynthesisUtterance(sentences[i++]);
+      u.lang = "en-US";
+      u.rate = DEVICE_RATE;
+      if (v) u.voice = v;
+      u.onend = () => {
+        if (i < sentences.length) speakGapTimer = setTimeout(playNext, SENTENCE_GAP_MS);
+        else done();
+      };
+      u.onerror = done;
+      speechSynthesis.speak(u);
+    };
+    if (btn) btn.classList.add("on");
+    playNext();
   } catch (e) { toast("음성 재생 실패"); }
 }
 
@@ -2333,7 +2374,10 @@ function dueItems() {
 // 방향을 바꿨다. 유입은 `newCapToday()` 가 막는다.
 // 2026-08-25 Patrick 이 20→25로 올렸다 — 봇 배달을 막힌 표현 업로드 시에만 오게 줄여
 // 하루 유입이 12.4개보다 낮아진 상태에서, 밀린 62개를 더 빨리 청산하려는 목적.
-const DAILY_CAP = 25;
+// 2026-09-05 Patrick 이 25→15로 내렸다 — 그 백로그 청산은 끝났고, 지금은 25개가
+// 매일 하기엔 부담이라 지속 가능한 선으로 낮춘 것. 상한을 낮춰도 총량(밀린 것)은
+// 안 줄고 뒤로 밀릴 뿐이지만, **하루 부담을 줄이는 게 지금 목적**이다.
+const DAILY_CAP = 15;
 
 function planRebalance() {
   const due = dueItems();
@@ -2395,7 +2439,10 @@ function planRebalance() {
 // 공식이고, MAX 는 복습이 가벼운 날에만 닿는 천장이다 (MAX 6 은 due 13 이하에서만 작동).
 // 5단계 기준 평형점은 하루 신규 3.6개 · 복습 18개로 잡히므로 MAX 6 은 평형에서 아예 안 닿는다
 // — 쉬는 날 뒤 밀린 것을 빨리 따라잡게 해주는 용도다.
-const NEW_CAP_MAX = 6;
+// 2026-09-05 Patrick 이 신규 목표를 3개/일로 낮췄다 (DAILY_CAP 25→15 와 같은 이유).
+// 6 → 3 이면 평형에서도 가끔 닿을 수 있는 천장이라 — 그래도 「쉬는 날 뒤 따라잡기」
+// 용도는 유지된다. 실제 유입은 여전히 `(DAILY_CAP - due) / 2` 공식이 정한다.
+const NEW_CAP_MAX = 3;
 
 function studiedToday() {
   return expressions.filter(e => e.studiedAt === today).length;

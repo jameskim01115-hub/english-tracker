@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-06";
+const BUILD = "2026-09-05-07";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1383,17 +1383,16 @@ function voiceKey() {
 // 문장·쉼표 단위로 쪼갠다. 마침표·물음표·느낌표는 문장 경계(리듬 표기의 `↘`·`↓`에
 // 해당) — 길게 쉰다. 쉼표는 도입부 끝(`↘↗`) 등 문장 안의 짧은 쉼 — 짧게만 쉰다.
 // TTS 서버가 한 번에 이어 읽으면 쉬는 자리가 거의 안 들렸다 — 쉐도잉도, 뜻 파악도
-// 힘들다는 지적 (2026-09-05). 조각마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
+// 힘들다는 지적 (2026-09-05). 문장마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
+// **쉼표는 나누지 않는다** — 오디오 요청을 새로 전환하는 데만 캐시 히트 기준 ~200ms가
+// 걸려(`tts-server/README.md`), 타이머를 아무리 줄여도(10ms) 그 아래로는 못 내려간다.
+// 쉼표 안 억양은 TTS 엔진의 자연스러운 처리에 맡긴다 (Patrick 확인, 2026-09-05).
 const SENTENCE_GAP_MS = 80;    // 문장 사이 무음
-const COMMA_GAP_MS = 10;       // 쉼표 사이 무음 — 문장보다 짧게
 function splitBySound(t) {
   const s = String(t || "").trim();
   if (!s) return [];
-  const parts = s.match(/[^,.!?]+[,.!?]*/g) || [s];
-  return parts.map(p => p.trim()).filter(Boolean).map(p => ({
-    text: p,
-    gap: /[.!?]$/.test(p) ? SENTENCE_GAP_MS : (/,$/.test(p) ? COMMA_GAP_MS : 0),
-  }));
+  const parts = s.match(/[^.!?]+(?:[.!?]+|$)/g) || [s];
+  return parts.map(p => p.trim()).filter(Boolean).map(p => ({ text: p, gap: SENTENCE_GAP_MS }));
 }
 
 let audioEl = null;

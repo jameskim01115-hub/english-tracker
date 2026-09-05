@@ -88,8 +88,16 @@ KOKORO_VOICES = {
     # **클라이언트가 보낸 speed를 무시하고 서버가 강제로 0.85를 쓴다** — 어디서 골라도
     # (설정 기본 음성·발음 탭 등) 항상 같은 속도로 나오게 하려는 것.
     "PuckSlow": "am_puck",
+    # Puck과 같은 화자, **피치만** rubberband로 낮춘 버전 (2026-09-05, Patrick 요청).
+    # 속도는 클라이언트가 고른 값을 그대로 쓴다 — PuckSlow와 달리 강제하지 않는다.
+    "PuckLow": "am_puck",
 }
 PUCK_SLOW_SPEED = 0.85
+# 몇 세미톤 내릴지. -1(엔진 R2·포먼트 보존 O) → 톤은 맞는데 어색하다는 평 →
+# 포먼트 보존을 끄니 훨씬 자연스러웠다(R2·포먼트 보존 X) → -1.5로 미세조정, 최종 확정
+# (2026-09-05, Patrick 4라운드 청취 비교). 값을 바꾸면 cache_key() 가 이 값을 키에
+# 넣으므로 이전 캐시와 자동으로 구분된다.
+PUCK_LOW_SEMITONES = -1.5
 _kokoro = None
 _kokoro_lock = threading.Lock()
 
@@ -108,11 +116,24 @@ def kokoro_engine():
     return _kokoro
 
 
+# 피치를 낮추는 음성 → 몇 세미톤인지. cache_key() 가 이 값을 캐시 키에 넣어야
+# PUCK_LOW_SEMITONES 를 바꿨을 때 옛 캐시가 계속 나오는 걸 막는다.
+PITCH_SHIFT = {"PuckLow": PUCK_LOW_SEMITONES}
+
+
 def kokoro_synth(text, voice, speed):
     """Kokoro 로 mp3 바이트를 만든다. 24kHz float32 → mp3."""
     k = kokoro_engine()
     with _kokoro_lock:      # ONNX 세션 하나를 공유하므로 직렬화한다
         audio, sr = k.create(text, voice=KOKORO_VOICES[voice], speed=speed, lang="en-us")
+    semitones = PITCH_SHIFT.get(voice)
+    if semitones:
+        import pyrubberband as pyrb   # 지연 임포트 — 없어도 다른 음성은 계속 살아야 한다
+        # 4가지 조합(R2/R3 × 포먼트 보존 유무)을 직접 들려주고 골랐다 — R2 엔진(기본) +
+        # **포먼트 보존 끔**이 가장 자연스러웠다. `-F`를 켜면 오히려 처리한 티가 나고
+        # 어색하게 들렸다(2026-09-05 Patrick). R3(`-3`, 고품질·CPU 더 씀)도 시도했지만
+        # R2보다 낫지 않았다 — 이미 합성된 음성이라 원 녹음과 다른가보다.
+        audio = pyrb.pitch_shift(np.asarray(audio), sr, semitones, rbargs={})
     buf = io.BytesIO()
     sf.write(buf, np.asarray(audio), sr, format="MP3")
     return buf.getvalue()
@@ -354,8 +375,11 @@ def rate_ok(ip, azure=False):
 
 def cache_key(text, voice, speed, use_ssml):
     """캐시 키. 음성 이름이 엔진을 구분하므로(F1..M5 vs Emma..) 엔진을 따로 넣지 않아도 안 겹친다.
-    다만 같은 음성·같은 문장이라도 SSML 유무로 소리가 다르므로 그건 키에 넣는다."""
-    tag = f"{voice}|{speed}|{'ssml|' if use_ssml else ''}{text}"
+    다만 같은 음성·같은 문장이라도 SSML 유무로 소리가 다르므로 그건 키에 넣는다.
+    PITCH_SHIFT 세미톤 값도 넣는다 — 안 그러면 PUCK_LOW_SEMITONES 를 튜닝할 때마다
+    옛 캐시가 계속 나와서 값을 바꾼 걸 못 알아챈다."""
+    pitch = PITCH_SHIFT.get(voice)
+    tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{text}"
     return hashlib.sha1(tag.encode("utf-8")).hexdigest()
 
 

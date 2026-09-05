@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-04";
+const BUILD = "2026-09-05-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1385,7 +1385,7 @@ function voiceKey() {
 // TTS 서버가 한 번에 이어 읽으면 쉬는 자리가 거의 안 들렸다 — 쉐도잉도, 뜻 파악도
 // 힘들다는 지적 (2026-09-05). 조각마다 따로 재생해 그 사이에 진짜 무음 구간을 넣는다.
 const SENTENCE_GAP_MS = 150;   // 문장 사이 무음
-const COMMA_GAP_MS = 50;       // 쉼표 사이 무음 — 문장보다 짧게
+const COMMA_GAP_MS = 25;       // 쉼표 사이 무음 — 문장보다 짧게
 function splitBySound(t) {
   const s = String(t || "").trim();
   if (!s) return [];

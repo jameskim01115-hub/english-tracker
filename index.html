@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-05-12";
+const BUILD = "2026-09-06-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1139,6 +1139,11 @@ function splitSentenceLines(s) {
 }
 function rhythmHtml(s) {
   let h = esc(capsToStress(splitSentenceLines(s)));
+  // `**` 짝이 안 맞으면(홀수 개) 하나가 저장 과정에서 사라진 것이다 — 그 지점부터
+  // 뒤 문장 전체의 볼드/비볼드가 뒤집혀서 보인다(2026-09-06 실제 사례). 뒤집힌 채
+  // 그리는 것보다 전부 평문으로 보여주는 게 낫다 — 강세는 틀리지만 최소한 안 뒤집힌다.
+  // 가져오기 미리보기가 저장 전에 이미 경고하지만, 그 전에 들어간 옛 카드도 있다.
+  if ((h.match(/\*\*/g) || []).length % 2 === 1) h = h.replace(/\*\*/g, "");
   // **소문자** = 일반 강세, **대문자** = 문장의 피크. Patrick 표기 규칙이다.
   h = h.replace(/\*\*(.+?)\*\*/g, (m, inner) =>
     /[A-Z]{2,}/.test(inner) && inner === inner.toUpperCase()
@@ -3470,6 +3475,13 @@ document.getElementById("impParse").onclick = () => {
   // 리듬이 정답을 다 못 덮으면 뒷문장이 평문으로 붙는다 — 쉐도잉을 문장 전체로 못 한다.
   // 저장한 뒤 복습하다 발견하면 이미 늦으므로(2026-08-10 실제로 그랬다) 여기서 잡는다.
   const short = withR.filter(i => rhythmTail(i.rhythm, i.expression));
+  // `**` 짝이 안 맞으면(홀수 개) 하나가 붙여넣기 중 사라진 것이다 — 그 지점부터
+  // 뒤 문장 전체의 볼드/비볼드가 뒤집혀서 저장된다. 2026-09-06 실제 사례로 발견:
+  // "Actually," 앞 짧은 볼드 하나가 사라져서 "tually, ↘↗ / I'm " 전체가 대신
+  // 볼드로 잡히고, 그 뒤로도 계속 뒤집힌 채 저장됐다. `pron` 도 같은 방식으로 깨질 수 있다.
+  const unbalanced = impParsed.filter(i =>
+    ((i.rhythm.match(/\*\*/g) || []).length % 2 === 1) ||
+    ((i.pron || "").match(/\*\*/g) || []).length % 2 === 1);
   document.getElementById("impSum").innerHTML =
     `<b>${date}</b> · 항목 ${impParsed.length}개` +
     (impSkipped ? ` · 주요 표현이 아닌 ${impSkipped}개 제외` : "") +
@@ -3483,6 +3495,11 @@ document.getElementById("impParse").onclick = () => {
       ? `<div class="imp-warn">⚠️ 리듬맵에 <b>**볼드**</b>가 하나도 없습니다 —
          ChatGPT에서 <b>드래그 대신 복사 버튼</b>으로 복사했는지 확인하세요.
          드래그로 복사하면 강세 표시가 사라집니다.</div>`
+      : "") +
+    (unbalanced.length
+      ? `<div class="imp-warn">🚨 ${unbalanced.length}개는 <b>볼드(**) 짝이 안 맞습니다</b> —
+         붙여넣기 중 하나가 사라져서 그 지점부터 뒤 문장 전체의 강세가 뒤집혀 저장됩니다.
+         ChatGPT에서 <b>복사 버튼</b>으로 다시 복사해 붙여넣어보세요.</div>`
       : "") +
     (short.length
       ? `<div class="imp-warn">⚠️ ${short.length}개는 <b>뒷문장에 리듬 표기가 없습니다</b> —

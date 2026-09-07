@@ -896,7 +896,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-07-04";
+const BUILD = "2026-09-07-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3457,7 +3457,10 @@ function restoreBoldOnPaste(el) {
 // 「표현 직접 추가」 영어 칸(mExpr)에 이 5줄을 통째로 붙여넣으면 4칸에 자동으로 나눠 채운다 —
 // 예전엔 줄마다 잘라서 칸에 따로 붙여넣어야 했다. 이 형식이 아니면(리듬 줄이 없으면) 손대지 않는다.
 function autoFillManualAdd(marked) {
-  const lines = marked.split(/\n+/).map(l => l.replace(/^[•*\-]\s*/, "").trim()).filter(Boolean);
+  // 불릿만 벗긴다. `*(?!\*)` — 뒤에 별표가 또 오면(`**Sor**ry…`) 볼드 여는 표시라 손대지 않는다.
+  // 예전 `[•*\-]`는 문자 하나만 봐서 `**Sor**` 의 첫 `*`를 불릿으로 오인해 `*Sor**ry`를
+  // 남겼다 — 리듬 줄 맨 앞에 별표 한 개가 글자로 박혔다 (2026-09-07 Patrick 실측).
+  const lines = marked.split(/\n+/).map(l => l.replace(/^(?:•|-|\*(?!\*))\s*/, "").trim()).filter(Boolean);
   const rhythmLine = lines.find(l => !hasHangul(l) && RHYTHM_MARK.test(l));
   if (!rhythmLine) return false;
   const hangul = lines.filter(l => hasHangul(l));

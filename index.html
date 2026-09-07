@@ -895,7 +895,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-07-02";
+const BUILD = "2026-09-07-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3429,18 +3429,27 @@ function htmlToMarked(html) {
     .trim();
 }
 
-document.getElementById("impText").addEventListener("paste", ev => {
-  const html = ev.clipboardData && ev.clipboardData.getData("text/html");
-  if (!html) return;                      // 평문 붙여넣기는 기본 동작 그대로
-  const marked = htmlToMarked(html);
-  if (!marked || marked.indexOf("**") < 0) return;   // 살릴 볼드가 없으면 손대지 않는다
-  ev.preventDefault();
-  const el = ev.target;
-  const s = el.selectionStart, e = el.selectionEnd;
-  el.value = el.value.slice(0, s) + marked + el.value.slice(e);
-  el.selectionStart = el.selectionEnd = s + marked.length;
-  toast("굵은 글씨를 강세 표시로 복원했습니다");
-});
+// 볼드(강세) 복원 붙여넣기. 「회화 복습 노트 가져오기」(impText) 전용이었는데,
+// 「표현 직접 추가」의 영어(mExpr)·발음(mPron) 칸도 리듬 표기를 쓰면서
+// 똑같이 드래그·복사로 볼드가 사라지는 문제를 겪었다(2026-09-07 Patrick 지적) —
+// 소스를 가리지 않고 같은 로직을 공유한다.
+function restoreBoldOnPaste(el) {
+  el.addEventListener("paste", ev => {
+    const html = ev.clipboardData && ev.clipboardData.getData("text/html");
+    if (!html) return;                      // 평문 붙여넣기는 기본 동작 그대로
+    const marked = htmlToMarked(html);
+    if (!marked || marked.indexOf("**") < 0) return;   // 살릴 볼드가 없으면 손대지 않는다
+    ev.preventDefault();
+    const s = el.selectionStart, e = el.selectionEnd;
+    // input(mExpr·mPron)은 한 줄이라 htmlToMarked가 넣은 줄바꿈을 공백으로 정리한다 —
+    // 그대로 두면 값에는 남지만 한 줄짜리 input에는 아무 표시도 안 돼 혼란스럽다.
+    const flat = el.tagName === "INPUT" ? marked.replace(/\s*\n+\s*/g, " ") : marked;
+    el.value = el.value.slice(0, s) + flat + el.value.slice(e);
+    el.selectionStart = el.selectionEnd = s + flat.length;
+    toast("굵은 글씨를 강세 표시로 복원했습니다");
+  });
+}
+["impText", "mExpr", "mPron"].forEach(id => restoreBoldOnPaste(document.getElementById(id)));
 
 let impParsed = [];
 let impSkipped = 0;   // 주요 표현이 아니라 목록에서 뺀 개수

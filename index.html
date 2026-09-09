@@ -403,6 +403,31 @@
     font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
   }
 
+  /* 응용(재사용) — 진도 점과 같은 규격이되 색만 다르다(보라). 복습과 다른 축이라는 표시. */
+  .use-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .use-dots { display: flex; gap: 3px; }
+  .use-dots i { width: 15px; height: 4px; border-radius: 2px; background: #2a3040; }
+  .use-dots i.on { background: var(--purple); }
+  .use-n { font-size: 11px; color: var(--dim); }
+  .use-sit {
+    margin-top: 8px; padding: 10px 12px; border-radius: 11px;
+    font-size: 14px; font-weight: 800; color: var(--purple); line-height: 1.4;
+    background: rgba(199,146,234,.10); border: 1px solid rgba(199,146,234,.28);
+  }
+  .use-sit small {
+    display: block; margin-top: 4px;
+    font-size: 11px; font-weight: 700; color: var(--sub); line-height: 1.45;
+  }
+  .btn-use {
+    width: 100%; margin-top: 8px; padding: 10px; border-radius: 11px;
+    background: var(--card2); color: #b6bdcd; border: 1px solid var(--line);
+    font-size: 12.5px; font-weight: 800; cursor: pointer; font-family: inherit;
+  }
+  .btn-use.ready {
+    background: rgba(199,146,234,.14); color: var(--purple);
+    border-color: rgba(199,146,234,.38);
+  }
+
   .empty {
     text-align: center; color: var(--sub); font-size: 13px;
     background: var(--card); border: 1px dashed var(--line);
@@ -896,7 +921,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-02";
+const BUILD = "2026-09-09-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1208,6 +1233,42 @@ function isStudied(e) { return e.studied === true || (e.stage || 0) > 0; }
 function isGraduated(e) { return (e.stage || 0) >= INTERVALS.length; }
 const SRC_REVIEW = "chatgpt-review";
 function isReview(e) { return e.source === SRC_REVIEW; }
+
+// ═══════════════ 응용(재사용) 훈련 ═══════════════
+// 같은 표현을 **다른 상황에서 새 문장으로** 한 번 더 꺼내 쓰는 연습 (2026-09-09 추가).
+// 복습(SRS)이 같은 문장을 그대로 인출하는 것이라면, 이쪽은 문장을 새로 만드는 쪽이다.
+// Patrick 이 정한 학습 원칙에서 나왔다 — 「하루 20개 새 표현보다 5개를 5번 꺼내 쓰는 게 낫다」.
+//
+// 지켜야 할 세 가지:
+//   1. **타이핑을 넣지 않는다.** 「내 문장」 입력을 넣었다가 부담된다고 뺀 전례가 있다
+//      (표현마다 작문은 시간이 너무 걸린다). 여기서는 입으로 말하고 앱은 세기만 한다.
+//   2. **앱이 예시 문장을 주지 않는다.** 상황만 던지고 문장은 Patrick 이 만든다 —
+//      원칙이 「내가 답을 먼저 주지 않고 Patrick 이 만들어야 함」이다. 예시를 주면
+//      그걸 읽고 마는 연습이 되어 「이렇게도 말해요」 블록과 다를 게 없어진다.
+//   3. **복습 일정(stage·nextReview)을 건드리지 않는다.** SRS 부담과 분리해야
+//      복습 상한(DAILY_CAP)을 안 넘긴다.
+//
+// ⚠️ 이건 2026-08-17 에 없앤 **「이럴 때」(영어 상황 태그)가 아니다.** 그건 봇의
+// `- Context:` 앞부분을 카드에 그대로 띄우던 것이라 한국어 뜻 자리를 잡아먹었다.
+// 이건 카드 데이터와 무관한 **한국어 연습 프롬프트**이고, 무작위로 뽑아 새 문장을
+// 만들게 하는 용도다. `e.context` 에서 가져오지 말 것 — 가져오는 순간 그 규칙 위반이 된다.
+const USE_TARGET = 3;   // 원칙: 「그날 최소 3번 다른 문맥에서 재사용」. 5회까지는 계속 셀 수 있다
+const USE_SITUATIONS = [
+  "공항에서", "호텔 체크인 중", "식당에서", "택시 안에서",
+  "은행 창구에서", "병원 접수에서", "쇼핑몰에서", "온라인 주문 문의 중",
+  "테넌트와 통화 중", "직원에게 지시할 때", "업체와 가격 협상 중",
+  "관공서 민원 창구에서", "회의 중 확인할 때", "친구와 약속 잡을 때",
+];
+function usedOf(e) { return Math.max(0, Number(e.usedCount) || 0); }
+// 목표(3회)를 넘겨도 계속 셀 수 있게 둔다 — 원칙상 5개 상황까지 쓰면 더 좋다.
+function useCountTxt(n) {
+  return n > USE_TARGET ? `${USE_TARGET}/${USE_TARGET} +${n - USE_TARGET}` : `${n}/${USE_TARGET}`;
+}
+// 같은 상황이 연달아 두 번 나오면 「다른 상황에서」가 성립하지 않는다.
+function pickSituation(prev) {
+  const pool = USE_SITUATIONS.filter(s => s !== prev);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 // 한국어 뜻은 소스마다 다른 필드에 담긴다 — 봇 배달·직접 추가는 `meaning`,
 // 막힌 표현·회화 교정은 `ko` 다 (`hermes-sync.py` 가 그렇게 넣는다).
 // **화면마다 `e.meaning` 을 직접 보지 말고 이걸 쓸 것.** 예전엔 각자 `meaning` 만 보다가
@@ -1960,7 +2021,10 @@ document.getElementById("calNext").onclick = () => { calCursor.setMonth(calCurso
 
 // ═══════════════ 표현 카드 — 모든 화면이 같은 규격을 쓴다 ═══════════════
 // 뒷면 블록 순서 고정 (2026-08-17 Patrick 확정):
-//   뜻 → 예문(리듬) → 발음 → 덩어리 → 이렇게도 말해요(접힘) → 진도 → 액션
+//   뜻 → 예문(리듬) → 발음 → 덩어리 → 이렇게도 말해요(접힘) → 진도 → 응용 → 액션
+// 「응용」은 2026-09-09 에 진도 **바로 뒤**로 들어갔다. 진도(같은 문장 인출)와 짝을 이루는
+// 다른 축(새 문장 만들기)이라 나란히 두는 게 맞고, 액션 앞이라 「채점하기 직전에 한 번 더
+// 써본다」는 순서가 된다. 앞쪽 학습 블록들 사이에 끼우면 카드 읽는 흐름이 끊긴다.
 // 「이럴 때」(영어 상황 태그)는 2026-08-17 Patrick 지시로 **전부 제거**했다.
 // 카드·게임·목록 어디에도 다시 넣지 말 것 — 그 자리는 한국어 뜻이 대신한다.
 // 데이터가 없는 블록만 빠지고, 순서와 라벨은 절대 바뀌지 않는다.
@@ -2163,6 +2227,19 @@ function exprCard(e, mode, dir) {
     <div class="prog-row"><div class="stage-dots">${dots}</div>
     <div class="prog-next">${esc(nextTxt)}</div></div></div>`;
 
+  // 5-2. 응용 — 학습을 시작한 카드에만 나온다. 아직 안 배운 표현은 응용할 것이 없다.
+  // 연습 모드(practice)는 기록을 일절 건드리지 않는 것이 규칙이라 여기서도 뺀다.
+  if ((mode === "review" || mode === "browse") && isStudied(e)) {
+    const uc = usedOf(e);
+    const uDots = Array.from({ length: USE_TARGET },
+      (_, i) => `<i class="${i < uc ? "on" : ""}"></i>`).join("");
+    html += `<div class="blk"><div class="blk-l">응용 — 다른 상황에서 쓰기</div>
+      <div class="use-row"><div class="use-dots">${uDots}</div>
+      <div class="use-n">${useCountTxt(uc)}</div></div>
+      <div class="use-sit" hidden></div>
+      <button class="btn-use">${uc ? "다른 상황에서 또 써보기" : "다른 상황에서 써보기"}</button></div>`;
+  }
+
   // 6. 액션
   if (mode === "review") {
     html += `<div class="fc-btns">
@@ -2222,6 +2299,42 @@ function exprCard(e, mode, dir) {
   }
   const btnStudy = card.querySelector(".btn-study");
   if (btnStudy) btnStudy.addEventListener("click", ev => { ev.stopPropagation(); markStudied(e, card); });
+  // 응용 — 두 단계다. ① 상황을 던진다 ② 입으로 말한 뒤 확인하면 +1.
+  // **한 번에 세지 않는 이유**: 한 탭으로 올라가면 문장을 만들지 않고 버튼만 연타하게 된다.
+  // 두 단계 사이에 「실제로 말하는 시간」이 들어가야 이 기능이 의미가 있다.
+  const btnUse = card.querySelector(".btn-use");
+  if (btnUse) {
+    const sitBox = card.querySelector(".use-sit");
+    btnUse.addEventListener("click", async ev => {
+      ev.stopPropagation();
+      if (btnUse.dataset.armed !== "1") {
+        const sit = pickSituation(sitBox.dataset.last || "");
+        sitBox.dataset.last = sit;
+        sitBox.innerHTML = `${esc(sit)}<small>이 상황에 맞게 이 표현으로 한 문장 — 소리 내어 말해보세요</small>`;
+        sitBox.hidden = false;
+        btnUse.dataset.armed = "1";
+        btnUse.textContent = "말했어요";
+        btnUse.classList.add("ready");
+        return;
+      }
+      if (!canWrite()) return;
+      const n = usedOf(e) + 1;
+      e.usedCount = n;
+      btnUse.dataset.armed = "";
+      btnUse.textContent = "다른 상황에서 또 써보기";
+      btnUse.classList.remove("ready");
+      sitBox.hidden = true;
+      // 카드를 다시 그리지 않고 점·숫자만 갱신한다 — 다시 그리면 열어둔 접힘 블록이 닫히고
+      // 복습 중이면 카드가 뒤집힌 상태까지 풀린다.
+      card.querySelectorAll(".use-dots i").forEach((d, i) => d.classList.toggle("on", i < n));
+      const nBox = card.querySelector(".use-n");
+      if (nBox) nBox.textContent = useCountTxt(n);
+      haptic(40);
+      toast(n >= USE_TARGET ? `응용 ${n}회 — 이 표현은 입에 붙었습니다` : `응용 ${useCountTxt(n)}`);
+      saveCache();
+      await saveExpr(e.id, { usedCount: n });
+    });
+  }
   const btnDel = card.querySelector(".btn-del");
   if (btnDel) btnDel.addEventListener("click", async ev => {
     ev.stopPropagation();
@@ -2941,6 +3054,7 @@ const FILTERS = [
   { k: "review",    label: "회화 교정" },
   { k: "manual",    label: "직접 추가" },
   { k: "new",       label: "미학습" },
+  { k: "unused",    label: "응용 0회" },
   { k: "grad",      label: "졸업" },
 ];
 function renderFilters() {
@@ -2958,6 +3072,9 @@ function renderBank() {
   else if (bankFilter === "review") items = items.filter(isReview);
   else if (bankFilter === "manual") items = items.filter(e => e.source === "manual");
   else if (bankFilter === "new") items = items.filter(e => !isStudied(e));
+  // 학습을 시작했는데 아직 한 번도 다른 상황에 안 써본 것. 미학습은 제외한다 —
+  // 그건 「응용을 안 한 것」이 아니라 아직 배우지도 않은 것이라 목록만 어지럽힌다.
+  else if (bankFilter === "unused") items = items.filter(e => isStudied(e) && !usedOf(e));
   else if (bankFilter === "grad") items = items.filter(isGraduated);
   if (q) items = items.filter(e =>
     (e.expression || "").toLowerCase().includes(q) ||

@@ -411,12 +411,19 @@
   .use-n { font-size: 11px; color: var(--dim); }
   .use-sit {
     margin-top: 8px; padding: 10px 12px; border-radius: 11px;
-    font-size: 14px; font-weight: 800; color: var(--purple); line-height: 1.4;
     background: rgba(199,146,234,.10); border: 1px solid rgba(199,146,234,.28);
   }
-  .use-sit small {
-    display: block; margin-top: 4px;
-    font-size: 11px; font-weight: 700; color: var(--sub); line-height: 1.45;
+  .use-sit-s { font-size: 14px; font-weight: 800; color: var(--purple); line-height: 1.4; }
+  .use-sit-i { margin-top: 3px; font-size: 12.5px; font-weight: 600; color: var(--sub); line-height: 1.45; }
+  /* 쓸 표현. 상황과 같은 상자에 두되 선으로 갈라 「상황 / 쓸 것」이 한눈에 구분되게 한다. */
+  .use-sit-p {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(199,146,234,.22);
+    font-size: 14.5px; font-weight: 700; color: #e8ecf5; line-height: 1.45;
+  }
+  .use-sit-l {
+    display: block; margin-bottom: 3px;
+    font-size: 10.5px; font-weight: 800; color: var(--dim);
+    letter-spacing: .5px; text-transform: uppercase;
   }
   .btn-use {
     width: 100%; margin-top: 8px; padding: 10px; border-radius: 11px;
@@ -921,7 +928,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-03";
+const BUILD = "2026-09-09-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1242,9 +1249,15 @@ function isReview(e) { return e.source === SRC_REVIEW; }
 // 지켜야 할 세 가지:
 //   1. **타이핑을 넣지 않는다.** 「내 문장」 입력을 넣었다가 부담된다고 뺀 전례가 있다
 //      (표현마다 작문은 시간이 너무 걸린다). 여기서는 입으로 말하고 앱은 세기만 한다.
-//   2. **앱이 예시 문장을 주지 않는다.** 상황만 던지고 문장은 Patrick 이 만든다 —
-//      원칙이 「내가 답을 먼저 주지 않고 Patrick 이 만들어야 함」이다. 예시를 주면
-//      그걸 읽고 마는 연습이 되어 「이렇게도 말해요」 블록과 다를 게 없어진다.
+//   2. **「쓸 표현」은 주고 「문장」은 안 준다.** 상황 + 그 상황에 넣어 쓸 조각까지만
+//      보여주고, 완성된 문장은 Patrick 이 만든다. 원칙이 「내가 답을 먼저 주지 않고
+//      Patrick 이 만들어야 함」인데, 여기서 답은 **완성 문장**이지 조각이 아니다 —
+//      원칙의 예시 자체가 `Just to double-check,` 를 고정해두고 뒤를 바꾸는 형태다
+//      (`~ is breakfast included?` / `~ do you need the original copy?`).
+//      2026-09-09 최초 구현 때는 상황만 던지고 조각도 안 줬는데, Patrick 이 그 자리에
+//      주요 표현을 넣자고 했다 — 무엇을 써야 할지 안 보이면 연습이 성립하지 않는다.
+//      **완성된 예시 문장을 넣지는 말 것.** 그러면 읽고 마는 연습이 되어
+//      「이렇게도 말해요」 블록과 다를 게 없어진다.
 //   3. **복습 일정(stage·nextReview)을 건드리지 않는다.** SRS 부담과 분리해야
 //      복습 상한(DAILY_CAP)을 안 넘긴다.
 //
@@ -1253,11 +1266,31 @@ function isReview(e) { return e.source === SRC_REVIEW; }
 // 이건 카드 데이터와 무관한 **한국어 연습 프롬프트**이고, 무작위로 뽑아 새 문장을
 // 만들게 하는 용도다. `e.context` 에서 가져오지 말 것 — 가져오는 순간 그 규칙 위반이 된다.
 const USE_TARGET = 3;   // 원칙: 「그날 최소 3번 다른 문맥에서 재사용」. 5회까지는 계속 셀 수 있다
+// **장소만 주면 안 된다.** 처음엔 「병원 접수에서」 같은 장소만 던졌는데 Patrick 이
+// 「너무 단순하고 애매하다」고 했다 — 장소만으로는 무슨 말을 해야 할지가 안 정해진다.
+// 그래서 `it`(무엇을 하려는지)를 같이 준다. 여기서 중요한 건 **내용이 아니라 의도**다:
+// 「확인하려고 · 부탁하려고 · 되물으려고 · 짚으려고」처럼 의도로 적어야 카드의 표현이
+// 무엇이든 갖다 붙일 수 있다. 상황 내용을 너무 구체적으로 박으면(「우산을 두고 왔는데」)
+// 무작위로 뽑힌 표현과 안 맞아 연습이 성립하지 않는다.
+// 목록은 Patrick 의 실제 생활(마닐라 임대업·직원 관리·여행·일상) 기준이다.
 const USE_SITUATIONS = [
-  "공항에서", "호텔 체크인 중", "식당에서", "택시 안에서",
-  "은행 창구에서", "병원 접수에서", "쇼핑몰에서", "온라인 주문 문의 중",
-  "테넌트와 통화 중", "직원에게 지시할 때", "업체와 가격 협상 중",
-  "관공서 민원 창구에서", "회의 중 확인할 때", "친구와 약속 잡을 때",
+  { at: "병원 접수에서",         it: "예약 시간이 맞는지 확인하려고" },
+  { at: "공항 수하물 데스크에서", it: "가방이 안 나온 상황을 설명하려고" },
+  { at: "호텔 체크인 중",        it: "조식이 포함인지 물어보려고" },
+  { at: "식당에서",             it: "주문에서 빠진 것을 말하려고" },
+  { at: "택시 안에서",           it: "목적지를 다시 확인하려고" },
+  { at: "은행 창구에서",         it: "필요한 서류가 뭔지 물어보려고" },
+  { at: "관공서 민원 창구에서",   it: "처리가 왜 늦어지는지 물어보려고" },
+  { at: "테넌트와 통화 중",      it: "밀린 임대료를 언제 낼 수 있는지 확인하려고" },
+  { at: "테넌트와 통화 중",      it: "수리 일정을 다시 잡으려고" },
+  { at: "직원에게 지시할 때",     it: "오늘까지 끝내달라고 부탁하려고" },
+  { at: "직원과 면담 중",        it: "왜 늦어졌는지 물어보려고" },
+  { at: "업체와 가격 협상 중",    it: "견적이 너무 높다고 말하려고" },
+  { at: "업체와 통화 중",        it: "약속한 날짜를 못 지킨 것을 짚으려고" },
+  { at: "회의 중",              it: "상대 말을 못 알아들어 되물으려고" },
+  { at: "회의 중",              it: "결정을 다음으로 미루자고 제안하려고" },
+  { at: "친구와 약속 잡을 때",    it: "시간을 바꿔달라고 부탁하려고" },
+  { at: "온라인 주문 문의 중",    it: "환불이 되는지 물어보려고" },
 ];
 function usedOf(e) { return Math.max(0, Number(e.usedCount) || 0); }
 // 목표(3회)를 넘겨도 계속 셀 수 있게 둔다 — 원칙상 5개 상황까지 쓰면 더 좋다.
@@ -1265,8 +1298,10 @@ function useCountTxt(n) {
   return n > USE_TARGET ? `${USE_TARGET}/${USE_TARGET} +${n - USE_TARGET}` : `${n}/${USE_TARGET}`;
 }
 // 같은 상황이 연달아 두 번 나오면 「다른 상황에서」가 성립하지 않는다.
-function pickSituation(prev) {
-  const pool = USE_SITUATIONS.filter(s => s !== prev);
+// 같은 장소가 의도만 다르게 두 개 있으므로(테넌트 통화·회의) 장소까지 묶어 비교한다.
+function situationKey(s) { return `${s.at}|${s.it}`; }
+function pickSituation(prevKey) {
+  const pool = USE_SITUATIONS.filter(s => situationKey(s) !== prevKey);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 // 한국어 뜻은 소스마다 다른 필드에 담긴다 — 봇 배달·직접 추가는 `meaning`,
@@ -2039,6 +2074,18 @@ function variantsOf(e) {
     return Array.isArray(v) ? v.filter(x => x && x.en) : [];
   } catch (err) { return []; }
 }
+// 응용 훈련에서 「이 표현으로 말해보세요」에 쓸 조각. 3단 폴백이다 —
+// 실측(2026-09-09, 학습 시작한 121장): 입에 붙일 표현 39 · 덩어리만 21 · 둘 다 없음 61.
+// **폴백이 없으면 절반이 빈 상자가 된다.** 문장뿐인 카드는 문장 자체를 패턴으로 쓴다
+// (「I'd love to go to Spain」 → 식당 상황 → 「I'd love to try the pasta」 처럼 옮겨 쓴다).
+function usePhrases(e) {
+  const v = variantsOf(e).map(x => String(x.en || "").trim()).filter(Boolean);
+  if (v.length) return v;
+  const c = String(e.chunks || "").split("|").map(s => s.trim()).filter(Boolean);
+  if (c.length) return c;
+  const one = String(e.expression || "").trim();
+  return one ? [one] : [];
+}
 // 정답 표시. 회화 교정은 Rhythm Map 표기 그대로 — 평문을 따로 또 보여주지 않는다.
 // Rhythm Map 이 정답 전체를 덮지 못할 때 남는 뒷부분을 돌려준다.
 // ChatGPT 가 첫 문장까지만 리듬 표기를 해 보내는 일이 잦다. 그대로 두면 화면에는
@@ -2309,8 +2356,16 @@ function exprCard(e, mode, dir) {
       ev.stopPropagation();
       if (btnUse.dataset.armed !== "1") {
         const sit = pickSituation(sitBox.dataset.last || "");
-        sitBox.dataset.last = sit;
-        sitBox.innerHTML = `${esc(sit)}<small>이 상황에 맞게 이 표현으로 한 문장 — 소리 내어 말해보세요</small>`;
+        sitBox.dataset.last = situationKey(sit);
+        // 쓸 표현은 **순환**시킨다(무작위 아님) — 3회 하는 동안 조각을 골고루 훑게 하려는 것.
+        // 무작위면 같은 조각만 세 번 나올 수 있다.
+        const phrases = usePhrases(e);
+        const pi = Number(btnUse.dataset.pi || 0);
+        btnUse.dataset.pi = String(pi + 1);
+        const phrase = phrases.length ? phrases[pi % phrases.length] : "";
+        sitBox.innerHTML =
+          `<div class="use-sit-s">${esc(sit.at)}</div><div class="use-sit-i">${esc(sit.it)}</div>` +
+          (phrase ? `<div class="use-sit-p"><span class="use-sit-l">이 표현으로</span>${rhythmHtml(phrase)}</div>` : "");
         sitBox.hidden = false;
         btnUse.dataset.armed = "1";
         btnUse.textContent = "말했어요";

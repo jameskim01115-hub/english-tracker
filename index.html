@@ -936,7 +936,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-07";
+const BUILD = "2026-09-09-08";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3398,6 +3398,23 @@ function splitEnKo(s) {
   return { en: t.slice(0, i).trim(), ko: t.slice(i).trim() };
 }
 const hasHangul = s => /[가-힣]/.test(s);
+// 응용 문장 줄(`영어 — 한국어`)을 가른다. **`splitEnKo` 를 그대로 쓰면 안 된다** —
+// 영어 문장 안에도 `—` 가 들어오기 때문이다. 실제로 이렇게 깨졌다 (2026-09-09):
+//   `You asked for the FSIC copy — here it is. — FSIC 사본 달라고 하셨죠, 여기 있습니다.`
+//   → 첫 한글(`사`)에서 잘라 영어 쪽에 `— FSIC` 가 붙고 한국어에서 `FSIC` 가 사라졌다.
+// 그래서 **구분자로 먼저 나눈 뒤, 한글이 있는 마지막 조각**을 한국어로 잡는다.
+// 구분자가 없으면(두 줄 형식 등) 예전대로 `splitEnKo` 로 내려간다.
+function splitUseLine(line) {
+  const parts = String(line || "").split(/\s+[—–-]\s+/);
+  for (let i = parts.length - 1; i > 0; i--) {
+    const left = parts.slice(0, i).join(" — ");
+    const right = parts.slice(i).join(" — ");
+    if (hasHangul(right) && !hasHangul(left) && /[A-Za-z]/.test(left)) {
+      return { en: left.trim(), ko: right.trim() };
+    }
+  }
+  return splitEnKo(line);
+}
 // 노트의 한국어 줄은 `→ 어제는 일요일이었는데…` 처럼 화살표로 시작한다. 그대로 저장하면
 // 카드의 「뜻」이 화살표로 시작한다 — 표기 기호지 내용이 아니므로 벗긴다.
 const stripArrow = s => String(s || "").replace(/^\s*[→⇒➡]\s*/, "").trim();
@@ -3438,11 +3455,17 @@ function plainFromRhythm(s) {
     .replace(/\s*[→↗]\s*/g, " ")
     .replace(/\s+\/\s+/g, " ")
     .replace(/\s+([,.])/g, "$1")
+    // `↘↗` 가 **원래 쉼표 뒤에** 오면 쉼표가 둘이 된다 —
+    // `my email too, ↘↗ /` → `my email too,, ` (2026-09-09 실제 노트에서 발견).
+    .replace(/,(?:\s*,)+/g, ",")
     .replace(/,\s*\./g, ".")
     .replace(/\.\s*\./g, ".")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/[.\s]*$/, ".");
+    // 끝을 마침표로 맺되 **이미 `?`·`!` 로 끝나면 그대로 둔다.**
+    // 예전엔 무조건 붙여서 `do you need the brand too?.` 가 됐다 (TTS 도 그걸 읽는다).
+    .replace(/[.\s]*$/, "")
+    .replace(/([^.?!])$/, "$1.");
 }
 
 function parseReviewNote(text) {
@@ -3598,8 +3621,8 @@ function parseReviewNote(text) {
       for (const raw of (sec.uses || []).map(stripBullet)) {
         const line = unbold(String(raw).replace(/^`+|`+$/g, "")).trim();
         if (!line) continue;
-        const { en, ko } = splitEnKo(line);
-        // `영어 — 한국어` 의 구분자가 영어 쪽 꼬리에 남는다. 문장부호는 살리고 구분자만 뗀다.
+        const { en, ko } = splitUseLine(line);
+        // 구분자가 영어 쪽 꼬리에 남는 경우가 있다. 문장부호는 살리고 구분자만 뗀다.
         const enClean = stripArrow(en).replace(/\s*[—–|:：]\s*$/, "").trim();
         if (enClean && ko) { flush(); uses.push({ en: enClean, ko: stripArrow(ko) }); }
         else if (enClean) { flush(); pend = enClean; }

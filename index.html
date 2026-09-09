@@ -425,6 +425,14 @@
     font-size: 10.5px; font-weight: 800; color: var(--dim);
     letter-spacing: .5px; text-transform: uppercase;
   }
+  /* 말한 뒤 공개하는 모범 문장. 초록으로 「정답」임을 표시한다(카드의 정답 블록과 같은 색 계열). */
+  .use-sit-a {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(62,207,142,.25);
+    font-size: 14.5px; font-weight: 700; color: #cfe9dc; line-height: 1.5;
+    display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+  }
+  .use-sit-a .use-sit-l { flex-basis: 100%; color: var(--green); opacity: .8; }
+  .use-sit-a > span:not(.use-sit-l) { flex: 1; min-width: 0; }
   .btn-use {
     width: 100%; margin-top: 8px; padding: 10px; border-radius: 11px;
     background: var(--card2); color: #b6bdcd; border: 1px solid var(--line);
@@ -928,7 +936,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-06";
+const BUILD = "2026-09-09-07";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2082,6 +2090,16 @@ function variantsOf(e) {
 // 실측(2026-09-09, 학습 시작한 121장): 입에 붙일 표현 39 · 덩어리만 21 · 둘 다 없음 61.
 // **폴백이 없으면 절반이 빈 상자가 된다.** 문장뿐인 카드는 문장 자체를 패턴으로 쓴다
 // (「I'd love to go to Spain」 → 식당 상황 → 「I'd love to try the pasta」 처럼 옮겨 쓴다).
+// 응용 문장 — 노트가 표현마다 「같은 표현을 다른 상황에 옮겨 쓴 문장」을 3개 준다 (2026-09-09).
+// 이게 있으면 응용 훈련이 **복습 카드와 같은 구조**가 된다: 한국어를 보고 말한 뒤 영어를 공개.
+// 없으면(2026-09-09 이전 카드 121장) 화행 힌트만 주는 예전 방식으로 내려간다.
+function useCasesOf(e) {
+  if (!e || !e.useCases) return [];
+  try {
+    const v = typeof e.useCases === "string" ? JSON.parse(e.useCases) : e.useCases;
+    return Array.isArray(v) ? v.filter(x => x && x.en) : [];
+  } catch (err) { return []; }
+}
 function usePhrases(e) {
   const v = variantsOf(e).map(x => String(x.en || "").trim()).filter(Boolean);
   if (v.length) return v;
@@ -2358,22 +2376,34 @@ function exprCard(e, mode, dir) {
     const sitBox = card.querySelector(".use-sit");
     btnUse.addEventListener("click", async ev => {
       ev.stopPropagation();
+      const cases = useCasesOf(e);
       if (btnUse.dataset.armed !== "1") {
-        const sit = pickSituation(sitBox.dataset.last || "");
-        sitBox.dataset.last = situationKey(sit);
         // **표현은 한 바퀴(3회) 도는 동안 고정한다.** Patrick 의 방식이
         // 「한 표현 × 여러 상황」이기 때문이다 — `Just to double-check,` 를 고정해두고
         // `~ is breakfast included?` · `~ do you need the original copy?` ·
         // `~ is the meeting still at three?` 처럼 뒤만 바꿔 말한다.
         // 탭마다 다른 조각을 주면 「여러 표현 × 한 상황씩」이 되어 정반대가 된다
         // (2026-09-09 최초 구현이 그랬다 — Patrick 지적으로 바로잡음).
-        // 목표 3회를 채우고 더 돌면 그때 다음 조각으로 넘어간다.
         const phrases = usePhrases(e);
         const cycle = Math.floor(usedOf(e) / USE_TARGET);
         const phrase = phrases.length ? phrases[cycle % phrases.length] : "";
-        sitBox.innerHTML =
-          `<div class="use-sit-s">${esc(sit.at)}</div><div class="use-sit-i">${esc(sit.it)}</div>` +
-          (phrase ? `<div class="use-sit-p"><span class="use-sit-l">이 표현으로</span>${rhythmHtml(phrase)}</div>` : "");
+        const phraseHtml = phrase
+          ? `<div class="use-sit-p"><span class="use-sit-l">이 표현으로</span>${rhythmHtml(phrase)}</div>` : "";
+        if (cases.length) {
+          // 노트가 준 응용 문장이 있으면 **복습 카드와 같은 구조**로 간다 —
+          // 한국어를 프롬프트로 띄우고, 말한 뒤에 영어를 공개한다.
+          // 회차마다 다른 문장을 쓴다(3개면 3회가 전부 다른 상황이 된다).
+          const c = cases[usedOf(e) % cases.length];
+          btnUse.dataset.ci = String(usedOf(e) % cases.length);
+          sitBox.innerHTML =
+            `<div class="use-sit-s">${esc(c.ko || "이 표현을 다른 상황에서 한 문장")}</div>` + phraseHtml;
+        } else {
+          // 옛 카드(노트에 응용 문장이 없던 시절) — 화행 힌트만 준다.
+          const sit = pickSituation(sitBox.dataset.last || "");
+          sitBox.dataset.last = situationKey(sit);
+          sitBox.innerHTML =
+            `<div class="use-sit-s">${esc(sit.at)}</div><div class="use-sit-i">${esc(sit.it)}</div>` + phraseHtml;
+        }
         sitBox.hidden = false;
         btnUse.dataset.armed = "1";
         btnUse.textContent = "말했어요";
@@ -2384,9 +2414,20 @@ function exprCard(e, mode, dir) {
       const n = usedOf(e) + 1;
       e.usedCount = n;
       btnUse.dataset.armed = "";
-      btnUse.textContent = "다른 상황에서 또 써보기";
+      btnUse.textContent = cases.length ? "다음 상황으로" : "다른 상황에서 또 써보기";
       btnUse.classList.remove("ready");
-      sitBox.hidden = true;
+      if (cases.length) {
+        // **정답을 남겨둔다.** 말한 뒤 모범 문장과 비교하는 것이 이 훈련의 절반이다.
+        // 상자를 닫아버리면 자기가 만든 문장이 맞았는지 확인할 기회가 없다.
+        const c = cases[Number(btnUse.dataset.ci || 0)] || cases[0];
+        sitBox.insertAdjacentHTML("beforeend",
+          `<div class="use-sit-a"><span class="use-sit-l">모범 문장</span>${rhythmHtml(c.en)}` +
+          `<button class="spk sm" data-say="${esc(plain(c.en))}" title="듣기">🔊</button></div>`);
+        const spk = sitBox.querySelector(".use-sit-a [data-say]");
+        if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); speak(spk.dataset.say, spk); });
+      } else {
+        sitBox.hidden = true;
+      }
       // 카드를 다시 그리지 않고 점·숫자만 갱신한다 — 다시 그리면 열어둔 접힘 블록이 닫히고
       // 복습 중이면 카드가 뒤집힌 상태까지 풀린다.
       card.querySelectorAll(".use-dots i").forEach((d, i) => d.classList.toggle("on", i < n));
@@ -3299,6 +3340,11 @@ const IMP_LABELS = [
   ["why",    /^왜\s*고쳤나/],
   ["chunks", /^Key\s+Corrections/i],
   ["chunks", /^입에\s*붙일\s*표현/],
+  // 응용 문장 (2026-09-09). 같은 표현을 다른 상황에 옮겨 쓴 문장 3개 — 카드의 응용 훈련이 쓴다.
+  // **`chunks` 뒤에 둔다.** 「입에 붙일 표현」과 성격이 비슷해 앞에 두면 그쪽을 가로챌 수 있다.
+  ["uses",   /^응용\s*문장/],
+  ["uses",   /^응용\s*연습/],
+  ["uses",   /^다른\s*상황(?:에서)?/],
 ];
 
 // 항목 머리글의 키캡 이모지(1️⃣ 2️⃣ …). 2026-08-21 Patrick이 노트를 가독성 위주로 바꾸면서
@@ -3540,6 +3586,27 @@ function parseReviewNote(text) {
         vlist.push({ en, ko: am ? am[1].trim() : tail, ex: am ? am[2].trim() : "" });
       } else notes.push(b);
     }
+    // 응용 문장 — 같은 표현을 다른 상황에 옮겨 쓴 문장들. 카드의 응용 훈련이 프롬프트로 쓴다.
+    // **형식을 하나로 못 박지 않는다** — 노트 형식은 Patrick 이 언제든 바꾸고 파서가 맞춰야 한다.
+    // 세 가지를 전부 받는다:
+    //   ① `English — 한국어` 한 줄      ② `English` 다음 줄에 `한국어`      ③ 영어만
+    // 영어만 온 것도 버리지 않는다 — 한국어가 없으면 카드가 영어를 프롬프트로 쓴다.
+    const uses = [];
+    {
+      let pend = "";
+      const flush = () => { if (pend) { uses.push({ en: pend, ko: "" }); pend = ""; } };
+      for (const raw of (sec.uses || []).map(stripBullet)) {
+        const line = unbold(String(raw).replace(/^`+|`+$/g, "")).trim();
+        if (!line) continue;
+        const { en, ko } = splitEnKo(line);
+        // `영어 — 한국어` 의 구분자가 영어 쪽 꼬리에 남는다. 문장부호는 살리고 구분자만 뗀다.
+        const enClean = stripArrow(en).replace(/\s*[—–|:：]\s*$/, "").trim();
+        if (enClean && ko) { flush(); uses.push({ en: enClean, ko: stripArrow(ko) }); }
+        else if (enClean) { flush(); pend = enClean; }
+        else if (ko && pend) { uses.push({ en: pend, ko: stripArrow(ko) }); pend = ""; }
+      }
+      flush();
+    }
     // 질문 줄에 영어와 한국어가 한 줄로 붙어 오는 형식을 갈라준다.
     const qEn = [], qKo = [];
     for (const line of q) {
@@ -3579,6 +3646,8 @@ function parseReviewNote(text) {
       // 앱은 JSON 문자열로 읽는다 (`variantsOf`). 비었으면 필드를 만들지 않는다 —
       // 빈 배열 문자열을 넣으면 블록이 「있는데 비어 있는」 상태가 된다.
       variants: vlist.length ? JSON.stringify(vlist) : "",
+      // `variants` 와 같은 이유로 JSON 문자열이다 (문장에 `|`·`/` 가 들어가 구분자를 못 쓴다).
+      useCases: uses.length ? JSON.stringify(uses) : "",
       wrong: unbold((sec.wrong || []).join(" ")),
       why: (sec.why || []).map(stripBullet).concat(notes).map(unbold).filter(Boolean).join("\n"),
       rhythm,
@@ -3750,6 +3819,10 @@ document.getElementById("impParse").onclick = () => {
   const short = withR.filter(i => rhythmTail(i.rhythm, i.expression));
   // 이미 위에서 healBoldPairs() 로 자동 복구했다 — 여기서는 몇 건이 복구됐는지만 센다.
   const unbalanced = impParsed.filter(i => i.healed);
+  // 응용 문장이 몇 개 잡혔는지. 파싱된 JSON 문자열을 다시 세는 게 아니라 개수만 본다.
+  const useCounts = impParsed.map(i => { try { return JSON.parse(i.useCases || "[]").length; } catch { return 0; } });
+  const useN = useCounts.filter(n => n > 0).length;
+  const useTotal = useCounts.reduce((a, b) => a + b, 0);
   document.getElementById("impSum").innerHTML =
     `<b>${date}</b> · 항목 ${impParsed.length}개` +
     (impSkipped ? ` · 주요 표현이 아닌 ${impSkipped}개 제외` : "") +
@@ -3772,6 +3845,13 @@ document.getElementById("impParse").onclick = () => {
     (unbalanced.length
       ? ` · 볼드 짝이 안 맞던 ${unbalanced.length}개는 자동으로 복구됨`
       : "") +
+    // 응용 문장은 새 규격이라 **인식됐는지 여기서 확인할 수 있어야 한다.** 조용히 0개면
+    // Patrick 은 노트에 써 보냈는데 왜 카드에 안 나오는지 알 길이 없다.
+    (useN
+      ? ` · 응용 문장 ${useTotal}개 인식 (${useN}개 항목)`
+      : `<div class="imp-warn">💡 <b>응용 문장</b>이 인식되지 않았습니다 — 없어도 저장은 되지만,
+         있으면 카드의 <b>응용 훈련</b>에서 한국어를 보고 말한 뒤 모범 문장을 볼 수 있습니다.
+         노트에 <b>「응용 문장」</b> 섹션(영어 — 한국어 3줄)을 넣어보세요.</div>`) +
     (short.length
       ? `<div class="imp-warn">⚠️ ${short.length}개는 <b>뒷문장에 리듬 표기가 없습니다</b> —
          노트를 만든 AI가 첫 문장만 표기해 보낸 것입니다. 정답 전체에 강세·청크를 붙여
@@ -3812,6 +3892,9 @@ document.getElementById("impSave").onclick = async () => {
       // 빠뜨리면 파서가 뽑아놓고도 화면에 안 나온다.
       pron: it.pron || "",
       variants: it.variants || "",
+      // 응용 훈련이 쓰는 문장들 (2026-09-09). 파서만 고치고 여기를 빠뜨리면
+      // 뽑아놓고도 저장이 안 돼 화면에 안 나온다 — `pron` 때 실제로 겪은 실수다.
+      useCases: it.useCases || "",
       source: SRC_REVIEW, slot: "", learnedDate: it.learnedDate,
       stage: 0, nextReview: addDays(today, INTERVALS[0]),
     };

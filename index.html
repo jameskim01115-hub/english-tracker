@@ -936,7 +936,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-08";
+const BUILD = "2026-09-09-09";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1269,52 +1269,32 @@ function isReview(e) { return e.source === SRC_REVIEW; }
 //   3. **복습 일정(stage·nextReview)을 건드리지 않는다.** SRS 부담과 분리해야
 //      복습 상한(DAILY_CAP)을 안 넘긴다.
 //
-// ⚠️ 이건 2026-08-17 에 없앤 **「이럴 때」(영어 상황 태그)가 아니다.** 그건 봇의
-// `- Context:` 앞부분을 카드에 그대로 띄우던 것이라 한국어 뜻 자리를 잡아먹었다.
-// 이건 카드 데이터와 무관한 **한국어 연습 프롬프트**이고, 무작위로 뽑아 새 문장을
-// 만들게 하는 용도다. `e.context` 에서 가져오지 말 것 — 가져오는 순간 그 규칙 위반이 된다.
+// ⚠️ 상황 프롬프트를 `e.context` 에서 끌어오지 말 것. 2026-08-17 에 없앤
+// 「이럴 때」(영어 상황 태그)가 바로 그 필드였다 — 되살리는 순간 그 규칙 위반이 된다.
+// 프롬프트는 아래 이유로 `useCases` 에서만 온다.
+//
+// 🚫 **앱이 상황을 지어내지 말 것. 세 번 시도해서 세 번 다 틀렸다 (전부 2026-09-09).**
+//   1차 — 장소만: 「병원 접수에서」 → Patrick: 「너무 단순하고 애매하다」
+//   2차 — 장소+의도: 「병원 접수에서 / 예약 시간이 맞는지 확인하려고」
+//         → `run the water`(물을 틀다) 와 붙어 **말이 안 되는 조합**이 나왔다
+//   3차 — 화행(확인·부탁·설명…): 「부탁할 때 / 상대에게 해달라고 요청하기」
+//         → `I'd like some rest`(쉬고 싶다) 와 붙었다. 이건 **내 희망을 말하는** 표현이라
+//           남에게 요청하는 상황에 넣을 수 없다. Patrick: 「좀 어색하지 않아?」
+//
+// 3차 때 「화행은 표현 내용과 독립이라 무엇을 뽑아도 성립한다」고 적었는데 **그게 틀렸다.**
+// 표현은 그 자체로 기능을 갖는다 — `Could you ~`는 부탁, `I'd like ~`는 희망 표명,
+// `Just to double-check`는 확인이다. 축을 무엇으로 잡든 **무작위로 짝지으면 충돌한다.**
+// 어떤 상황이 이 표현에 맞는지는 **그 표현을 만든 맥락을 아는 쪽**만 안다 = 노트를 쓴 AI.
+//
+// 그래서 상황은 `useCases`(노트가 표현마다 준 응용 문장)에서만 온다.
+// 그게 없는 카드(2026-09-09 이전 121장)는 **상황을 주지 않는다.** 틀린 상황을 주느니
+// 안 주는 게 낫다 — 표현만 보여주고 상황은 Patrick 이 고른다. 원래 방식에서도
+// 공항→식당→병원을 고른 건 Patrick 이었다.
 const USE_TARGET = 3;   // 원칙: 「그날 최소 3번 다른 문맥에서 재사용」. 5회까지는 계속 셀 수 있다
-// ⚠️ **장소를 축으로 삼지 말 것.** 두 번 실패하고 얻은 결론이다.
-//   1차: 장소만 던졌다(「병원 접수에서」) → Patrick: 「너무 단순하고 애매하다」
-//   2차: 장소 + 의도로 구체화했다(「병원 접수에서 / 예약 시간이 맞는지 확인하려고」)
-//        → **`run the water`(물을 틀다) 가 걸렸다.** 병원 접수에서 예약 시간을 확인하며
-//        물을 트는 문장은 만들 수 없다. Patrick 이 바로 지적했다.
-//
-// 원인은 **표현에 두 종류가 있다**는 것이다. `Just to double-check` 처럼 어디에나 붙는
-// 것이 있고, `run the water` 처럼 내용이 묶인 것이 있다. 장소를 바꾸는 순간 후자는
-// 모순이 된다. 상황과 표현을 각각 무작위로 뽑아 붙이는 한 이 충돌은 계속 난다.
-//
-// 그래서 축을 **「말의 목적」(화행)** 으로 바꿨다. 목적은 표현의 내용과 독립이라
-// 무엇을 뽑아도 성립한다 — `run the water` 조차 전부 붙는다:
-//   확인: Should I run the water first? / 부탁: Could you run the water for a minute?
-//   설명: I ran the water and it came out brown. / 불만: I ran the water and it's still cold.
-// **장소는 일부러 비워둔다.** Patrick 의 원래 방식(공항→식당→직원→병원)에서 장소를
-// 고르는 것은 Patrick 이었다. 앱이 정해주면 지금 같은 충돌이 난다.
-const USE_SITUATIONS = [
-  { at: "확인할 때",       it: "맞는지 한 번 더 짚어 물어보기" },
-  { at: "부탁할 때",       it: "상대에게 해달라고 요청하기" },
-  { at: "설명할 때",       it: "무슨 일이 있었는지 상황을 알려주기" },
-  { at: "거절할 때",       it: "정중하게 어렵다고 말하기" },
-  { at: "제안할 때",       it: "이렇게 하자고 먼저 꺼내기" },
-  { at: "사과할 때",       it: "늦어지거나 잘못된 것을 사과하기" },
-  { at: "재촉할 때",       it: "언제 되는지 다시 물어 앞당기기" },
-  { at: "되물을 때",       it: "못 알아들어서 다시 말해달라고 하기" },
-  { at: "일정을 바꿀 때",   it: "미루거나 앞당기자고 말하기" },
-  { at: "불만을 말할 때",   it: "문제가 있다고 짚어서 말하기" },
-  { at: "고맙다고 할 때",   it: "도와준 것에 대해 인사하기" },
-  { at: "조건을 달 때",     it: "~하면 ~하겠다고 단서를 붙이기" },
-];
 function usedOf(e) { return Math.max(0, Number(e.usedCount) || 0); }
 // 목표(3회)를 넘겨도 계속 셀 수 있게 둔다 — 원칙상 5개 상황까지 쓰면 더 좋다.
 function useCountTxt(n) {
   return n > USE_TARGET ? `${USE_TARGET}/${USE_TARGET} +${n - USE_TARGET}` : `${n}/${USE_TARGET}`;
-}
-// 같은 상황이 연달아 두 번 나오면 「다른 상황에서」가 성립하지 않는다.
-// 같은 장소가 의도만 다르게 두 개 있으므로(테넌트 통화·회의) 장소까지 묶어 비교한다.
-function situationKey(s) { return `${s.at}|${s.it}`; }
-function pickSituation(prevKey) {
-  const pool = USE_SITUATIONS.filter(s => situationKey(s) !== prevKey);
-  return pool[Math.floor(Math.random() * pool.length)];
 }
 // 한국어 뜻은 소스마다 다른 필드에 담긴다 — 봇 배달·직접 추가는 `meaning`,
 // 막힌 표현·회화 교정은 `ko` 다 (`hermes-sync.py` 가 그렇게 넣는다).
@@ -2398,11 +2378,12 @@ function exprCard(e, mode, dir) {
           sitBox.innerHTML =
             `<div class="use-sit-s">${esc(c.ko || "이 표현을 다른 상황에서 한 문장")}</div>` + phraseHtml;
         } else {
-          // 옛 카드(노트에 응용 문장이 없던 시절) — 화행 힌트만 준다.
-          const sit = pickSituation(sitBox.dataset.last || "");
-          sitBox.dataset.last = situationKey(sit);
+          // 옛 카드(노트에 응용 문장이 없던 시절) — **상황을 지어내지 않는다.**
+          // 위 주석의 3연속 실패 참조. 표현만 주고 상황은 Patrick 이 고른다.
           sitBox.innerHTML =
-            `<div class="use-sit-s">${esc(sit.at)}</div><div class="use-sit-i">${esc(sit.it)}</div>` + phraseHtml;
+            `<div class="use-sit-s">다른 상황에서 한 문장</div>` +
+            `<div class="use-sit-i">상황은 직접 고르세요 — 이 표현을 넣어 소리 내어 말해보기</div>` +
+            phraseHtml;
         }
         sitBox.hidden = false;
         btnUse.dataset.armed = "1";

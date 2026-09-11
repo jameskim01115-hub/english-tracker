@@ -3731,16 +3731,22 @@ function autoFillManualAdd(marked) {
   // 불릿만 벗긴다. `*(?!\*)` — 뒤에 별표가 또 오면(`**Sor**ry…`) 볼드 여는 표시라 손대지 않는다.
   // 예전 `[•*\-]`는 문자 하나만 봐서 `**Sor**` 의 첫 `*`를 불릿으로 오인해 `*Sor**ry`를
   // 남겼다 — 리듬 줄 맨 앞에 별표 한 개가 글자로 박혔다 (2026-09-07 Patrick 실측).
+  //
+  // **문장 2개 이상을 한 카드로 묶어 붙여넣는 것도 정상 사용이다** — 따로 붙여넣으면 볼드가
+  // 안 살아서(2026-09-11 Patrick 확인) 짝을 이루는 문장들을 통째로 붙여넣는다. 예전엔
+  // `.find()`로 첫 번째 리듬/발음/뜻 줄만 집어 **두 번째 문장의 발음 줄이 뜻 자리로
+  // 잘못 들어갔다.** 이제 리듬·발음·뜻 각각 **전부 모아 줄 순서대로** 합친다 — 문장이
+  // 하나뿐이면 지금까지와 동작이 같다.
   const lines = marked.split(/\n+/).map(l => l.replace(/^(?:•|-|\*(?!\*))\s*/, "").trim()).filter(Boolean);
-  const rhythmLine = lines.find(l => !hasHangul(l) && RHYTHM_MARK.test(l));
-  if (!rhythmLine) return false;
+  const rhythmLines = lines.filter(l => !hasHangul(l) && RHYTHM_MARK.test(l));
+  if (!rhythmLines.length) return false;
   const hangul = lines.filter(l => hasHangul(l));
-  const pronLine = hangul.find(l => looksPron(l));
-  const meanLine = hangul.find(l => l !== pronLine && !/[—–]/.test(l));
-  const chunkLines = lines.filter(l => hasHangul(l) && /[—–]/.test(l) && l !== meanLine);
-  document.getElementById("mExpr").value = rhythmLine;
-  if (pronLine) document.getElementById("mPron").value = pronLine;
-  if (meanLine) document.getElementById("mMean").value = meanLine;
+  const pronLines = hangul.filter(l => looksPron(l));
+  const meanLines = hangul.filter(l => !looksPron(l) && !/[—–]/.test(l));
+  const chunkLines = lines.filter(l => hasHangul(l) && /[—–]/.test(l));
+  document.getElementById("mExpr").value = rhythmLines.join("\n");
+  if (pronLines.length) document.getElementById("mPron").value = pronLines.join("\n");
+  if (meanLines.length) document.getElementById("mMean").value = meanLines.join("\n");
   if (chunkLines.length) document.getElementById("mChunk").value = chunkLines.join("\n");
   return true;
 }

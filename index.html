@@ -987,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-12-02";
+const BUILD = "2026-09-12-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3430,6 +3430,19 @@ function splitEnKo(s) {
   return { en: t.slice(0, i).trim(), ko: t.slice(i).trim() };
 }
 const hasHangul = s => /[가-힣]/.test(s);
+// **한글이 「들어 있는 줄」과 「한국어 줄」은 다르다.** 정답 블록에서 뜻·발음을 골라낼 때
+// `hasHangul` 로 가르면, 영어 문장 안에 한글이 한 조각만 섞여도 그 줄이 통째로 정답에서
+// 빠진다 — 실제로 노트에 `I can s위치 to?` (한글 IME 오타)가 섞여 **정답 첫 문장이
+// 사라지고 그 줄이 「발음」으로 둔갑했다** (2026-09-12 Patrick: 「왜 자꾸 한 줄만 나와」).
+// 그래서 **한글이 라틴 글자보다 많거나 같을 때만** 한국어 줄로 본다. 발음(`디s 모-r닝`)·
+// 뜻(`Ascent가 …`)은 그대로 한국어로 잡히고, 영어 문장에 섞인 한글 조각은 정답에 남는다.
+function isKoLine(s) {
+  const t = String(s || "");
+  const han = (t.match(/[가-힣]/g) || []).length;
+  if (!han) return false;
+  const lat = (t.match(/[A-Za-z]/g) || []).length;
+  return han >= lat;
+}
 // 응용 문장 줄(`영어 — 한국어`)을 가른다. **`splitEnKo` 를 그대로 쓰면 안 된다** —
 // 영어 문장 안에도 `—` 가 들어오기 때문이다. 실제로 이렇게 깨졌다 (2026-09-09):
 //   `You asked for the FSIC copy — here it is. — FSIC 사본 달라고 하셨죠, 여기 있습니다.`
@@ -3587,7 +3600,7 @@ function parseReviewNote(text) {
     const fixed = sec.fixed || [];
     // 정답 자리에 **평문과 리듬맵이 둘 다** 오는 노트가 있다 (`Patrick's Sentence` 형태).
     // 갈라 쓰지 않으면 먼저 나온 평문만 잡고 **리듬이 통째로 버려진다.**
-    const fixedAll = fixed.filter(l => !hasHangul(l));
+    const fixedAll = fixed.filter(l => !isKoLine(l));
     const rhIdx = fixedAll.findIndex(l => RHYTHM_MARK.test(l));
     // **리듬 줄이 여러 개면 전부 이어 붙인다.** 예전엔 `fixedAll[rhIdx]` 로 첫 줄만 썼다 —
     // ChatGPT 가 정답을 문장마다 줄바꿈해 보내는 형식(3~4줄)에서 **2번째 줄부터 통째로 사라졌다.**
@@ -3605,7 +3618,7 @@ function parseReviewNote(text) {
     // 두 문장짜리 답변을 ChatGPT 가 두 줄로 나눠 보내기도 해서 전부 이어 붙인다 —
     // `[0]` 만 쓰던 시절엔 뒷문장의 강세·청크가 통째로 사라졌다.
     let rhythm = (sec.rhythm || [])
-      .filter(l => !/^```/.test(l) && !hasHangul(l))
+      .filter(l => !/^```/.test(l) && !isKoLine(l))
       .map(l => stripOuterBold(l.replace(/^`+|`+$/g, "")))
       .filter(Boolean)
       .join(" ");
@@ -3673,7 +3686,7 @@ function parseReviewNote(text) {
     const pron = (sec.pron || []).filter(l => !/^```/.test(l)).map(stripOuterBold)
       .filter(Boolean).join(" ");
     // 정답 블록에 섞여 온 한글 줄을 「뜻」과 「발음」으로 가른다.
-    const koCands = fixed.filter(l => hasHangul(l));
+    const koCands = fixed.filter(l => isKoLine(l));
     // 정답이 여러 줄이면 뜻·발음도 줄 수만큼 온다. **`find` 로 첫 줄만 집으면 나머지가 버려진다.**
     const koLine = koCands.filter(l => !looksPron(l)).join(" ");
     const pronLine = koCands.filter(l => looksPron(l)).join(" ");

@@ -14,7 +14,12 @@
   // 안내도, 에러도, 재시도도 없다. 맥 웹앱에서 실제로 그렇게 멈췄다 (2026-09-02).
   // 이 핸들러는 본 스크립트보다 먼저 떠서, 무엇에 죽든 이유를 화면에 적는다.
   window.__booted = false;
+  // 에러가 연달아 나면 **처음 것이 원인**이다. 덮어쓰면 진짜 이유가 사라진다 —
+  // 2026-09-12 에 SDK 파싱 실패(원인)가 firestore TypeError(증상)에 가려졌다.
+  window.__failMsg = "";
   function bootFail(msg) {
+    if (window.__failMsg) msg = window.__failMsg;
+    else window.__failMsg = String(msg);
     const paint = () => {
       const html = '<div class="empty"><b>앱을 시작하지 못했습니다.</b><br>'
         + String(msg).replace(/[<>&]/g, "") + '<br>'
@@ -40,6 +45,52 @@
   onerror="bootFail('연결 라이브러리를 못 받았습니다 (firestore) — 네트워크 확인 후 다시 시도')"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"
   onerror="bootFail('연결 라이브러리를 못 받았습니다 (auth) — 네트워크 확인 후 다시 시도')"></script>
+<script>
+  // ═══ SDK 캐시 자가 치유 ═══
+  // 2026-09-12 맥 웹앱: firebase-firestore-compat.js 가 **깨진 채 캐시**되어
+  // firebase.firestore 가 사라졌다. 네트워크는 성공했으므로 위 onerror 는 안 뜨고,
+  // 「다시 시도」는 페이지 URL 만 캐시버스팅하므로 같은 깨진 캐시를 다시 쓴다 —
+  // 즉 새로고침으로는 영원히 안 고쳐진다.
+  // 여기서 빠진 모듈만 캐시버스터를 붙여 다시 받는다. document.write 는 파서를 막아
+  // 본 스크립트보다 먼저 실행되는 것을 보장한다 — 이 용도에서만 정당하다.
+  (function () {
+    var BASE = "https://www.gstatic.com/firebasejs/9.23.0/firebase-";
+    var fb = window.firebase;
+    var missing = [];
+    if (!fb || typeof fb.initializeApp !== "function") missing.push("app");
+    if (!fb || typeof fb.firestore !== "function") missing.push("firestore");
+    if (!fb || typeof fb.auth !== "function") missing.push("auth");
+    if (!missing.length) return;
+    window.__sdkRepaired = missing.join(",");
+    var cb = "?cb=" + Date.now();
+    var tag = "scr" + "ipt";
+    for (var i = 0; i < missing.length; i++) {
+      document.write(
+        "<" + tag + ' src="' + BASE + missing[i] + "-compat.js" + cb + '"'
+        + ' onerror="bootFail(\'연결 라이브러리를 못 받았습니다 (' + missing[i]
+        + ') — 네트워크 확인 후 다시 시도\')"></' + tag + ">"
+      );
+    }
+  })();
+</script>
+<script>
+  // 치유 후에도 없으면 여기서 끝낸다. 본 스크립트의 firebase.firestore() 가
+  // 「is not a function」 으로 죽는 것보다 이 안내가 훨씬 낫다.
+  (function () {
+    var fb = window.firebase;
+    var bad = [];
+    if (!fb || typeof fb.initializeApp !== "function") bad.push("app");
+    if (!fb || typeof fb.firestore !== "function") bad.push("firestore");
+    if (!fb || typeof fb.auth !== "function") bad.push("auth");
+    if (!bad.length) return;
+    // 앞서 잡힌 원인(파싱 에러 등)은 버리지 않고 괄호로 덧붙인다 —
+    // 행동 지침이 먼저 보이고, 진단 단서도 남는다.
+    var cause = window.__failMsg ? " (" + window.__failMsg + ")" : "";
+    window.__failMsg = "";
+    bootFail("연결 라이브러리(" + bad.join(", ") + ")를 못 받았습니다. "
+      + "네트워크를 확인하고, 그래도 안 되면 브라우저 캐시를 지운 뒤 다시 열어주세요." + cause);
+  })();
+</script>
 <style>
   :root {
     --bg: #0e1015;
@@ -936,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-09-09";
+const BUILD = "2026-09-12-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.

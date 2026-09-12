@@ -987,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-12-03";
+const BUILD = "2026-09-12-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3859,8 +3859,11 @@ document.getElementById("impParse").onclick = () => {
     toast("항목을 못 찾았습니다 — 노트 형식을 확인해주세요");
     return;
   }
-  // 이미 들어온 문장은 빼둔다 (같은 노트를 두 번 붙여넣어도 안전하게)
-  const known = new Set(expressions.map(x => (x.expression || "").trim().toLowerCase()));
+  // 이미 들어온 문장은 **덮어쓸 수 있게** 기존 카드를 같이 들고 온다.
+  // 예전엔 Set 으로 「있다/없다」만 보고 체크를 풀어버렸는데, 그러면 **노트를 고쳐서 다시
+  // 넣어도 카드가 그대로다** — 파서를 고쳐도 옛 카드는 영영 옛 내용이었다
+  // (2026-09-12 Patrick: 「다시 넣었는데 질문이 또 한 줄만 나와」).
+  const known = new Map(expressions.map(x => [(x.expression || "").trim().toLowerCase(), x]));
   // `thin` = 뜻도 질문도 없는 항목. 노트의 「다음 연습 시작 문장」처럼 **주요 표현이 아닌 것**이
   // 여기 걸린다. 처음엔 체크만 풀어뒀는데 Patrick이 "또 항목에 포함된다"고 했다 —
   // **목록에서 아예 뺀다.** 몇 개를 뺐는지는 요약 줄에 표시해 조용히 사라지지 않게 한다 (2026-08-21).
@@ -3875,6 +3878,8 @@ document.getElementById("impParse").onclick = () => {
         // `**` 짝이 안 맞았다가(홀수 개) 자동 복구된 항목 — healBoldPairs() 참조.
         healed: rhythm !== rhythm0 || pron !== pron0,
         dup: known.has(it.expression.trim().toLowerCase()),
+        // 체크하면 새로 만들지 않고 이 카드의 내용만 갱신한다 (학습 진도는 그대로).
+        dupId: (known.get(it.expression.trim().toLowerCase()) || {}).id || "",
       };
     });
   // 전부 걸러진 경우 — 「0개 인식」 화면을 띄우지 말고 이유를 말해준다.
@@ -3907,7 +3912,9 @@ document.getElementById("impParse").onclick = () => {
   document.getElementById("impSum").innerHTML =
     `<b>${date}</b> · 항목 ${impParsed.length}개` +
     (impSkipped ? ` · 주요 표현이 아닌 ${impSkipped}개 제외` : "") +
-    (fresh < impParsed.length ? ` · 이미 있는 것 ${impParsed.length - fresh}개는 자동 해제` : "") +
+    (fresh < impParsed.length
+      ? ` · 이미 있는 것 ${impParsed.length - fresh}개는 체크 해제됨 (<b>체크하면 내용 갱신</b>)`
+      : "") +
     (noRhythm
       ? `<div class="imp-warn">🚨 ${noRhythm}개는 <b>Rhythm Map 이 아예 없습니다</b> —
          이대로 저장하면 강세·끊어읽기 없이 평문으로만 들어가 <b>쉐도잉을 할 수 없습니다.</b>
@@ -3946,7 +3953,7 @@ document.getElementById("impParse").onclick = () => {
         <div class="imp-q">${esc((it.question ? plain(it.question) : "") || it.questionKo || it.title)}</div>
         <div class="imp-fix">✅ ${esc(it.expression)}</div>
         ${it.wrong ? `<div class="imp-wrong">❌ ${esc(it.wrong)}</div>` : ""}
-        ${it.dup ? `<div class="imp-dup">이미 있는 표현</div>` : ""}
+        ${it.dup ? `<div class="imp-dup">이미 있는 표현 — 체크하면 내용만 갱신 (학습 진도·복습 회차 유지)</div>` : ""}
       </div>
     </label>`).join("");
   impShow(true);
@@ -3962,7 +3969,22 @@ document.getElementById("impSave").onclick = async () => {
   btn.disabled = true; btn.textContent = "저장 중…";
   const batch = db.batch();
   const added = [];
+  const updated = [];
   for (const it of picked) {
+    // 이미 있는 표현을 다시 고른 경우 = 「갱신」. 새 문서를 만들면 같은 문장이 두 장이 된다.
+    // **내용 필드만 덮어쓴다** — stage·nextReview·studied 같은 학습 진도는 건드리지 않는다.
+    if (it.dupId) {
+      const uref = db.collection(COL_EXPR).doc(it.dupId);
+      const patch = {
+        question: it.question, questionKo: it.questionKo,
+        ko: it.ko, wrong: it.wrong, why: it.why,
+        rhythm: it.rhythm, chunks: it.chunks,
+        pron: it.pron || "", variants: it.variants || "", useCases: it.useCases || "",
+      };
+      batch.update(uref, patch);
+      updated.push({ id: it.dupId, patch, expression: it.expression });
+      continue;
+    }
     const ref = db.collection(COL_EXPR).doc();
     const doc = {
       expression: it.expression, meaning: "", context: "",
@@ -3984,12 +4006,17 @@ document.getElementById("impSave").onclick = async () => {
   }
   try {
     await batch.commit();
-    expressions = added.concat(expressions);
+    // 갱신본을 메모리에도 반영한다 — 새 객체로 바꾼다(원본을 제자리에서 고치지 않는다).
+    const patchById = new Map(updated.map(u => [u.id, u.patch]));
+    expressions = added.concat(
+      expressions.map(e => patchById.has(e.id) ? { ...e, ...patchById.get(e.id) } : e));
     impBg.classList.remove("show");
     document.getElementById("impText").value = "";
-    toast(`${added.length}개 추가 — 「오늘」 탭에서 학습 체크하세요`);
+    toast([added.length ? `${added.length}개 추가` : "",
+           updated.length ? `${updated.length}개 갱신` : ""].filter(Boolean).join(" · ")
+          + " — 「오늘」 탭에서 학습 체크하세요");
     rerenderActive();
-    prewarmTTS(added);
+    prewarmTTS(added.concat(updated.map(u => ({ expression: u.expression, rhythm: u.patch.rhythm }))));
   } catch (err) {
     console.error(err);
     toast("저장 실패 — 연결을 확인해주세요");

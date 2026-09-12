@@ -987,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-12-01";
+const BUILD = "2026-09-12-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3683,11 +3683,18 @@ function parseReviewNote(text) {
       // 질문도 정답과 똑같은 리듬 표기(**강세**·화살표·`/` 청크)로 온다 — `unbold()`가 아니라
       // `stripOuterBold()`를 써서 강세를 살린다. 예전엔 질문을 평문 취급해 볼드가 통째로
       // 사라졌다(렌더링도 rhythmHtml로 맞춤, 아래 카드 렌더 부분 참조) (2026-09-07).
-      question: stripArrow(stripOuterBold(qEn[0] || "")),
+      // **질문이 여러 줄이면 전부 이어 붙인다.** 정답(`fixedRh`)과 같은 규칙이다 —
+      // 예전엔 `qEn[0]` 으로 첫 줄만 써서 2문장짜리 질문의 뒷문장이 통째로 사라졌다
+      // (2026-09-12 Patrick: 「질문은 두 줄인데 한 줄만 나와」). 렌더는 `rhythmHtml()` 이
+      // 문장 끝 화살표에서 다시 줄을 나누므로 공백으로 이어도 화면은 두 줄로 보인다.
+      question: stripArrow(stripOuterBold(qEn.join(" "))),
       // **질문 밑 한글도 발음 줄이 먼저 온다.** 노트가 `영어 질문 / 발음 / 뜻` 세 줄로 보내므로
       // `qKo[0]` 을 그대로 쓰면 화면에 「왓 디쥬 두 / 디s 모-r닝?」 이 뜻인 척 붙는다
       // (2026-08-31). 정답 블록과 같은 규칙 — 진짜 번역을 먼저 찾고, 없을 때만 첫 줄로 폴백.
-      questionKo: stripArrow(unbold(qKo.find(l => !looksPron(l)) || qKo[0] || "")),
+      // 영어와 같은 이유로 **한글 뜻도 여러 줄을 전부 이어 붙인다** — `find` 로 첫 줄만
+      // 집으면 질문은 두 문장인데 뜻은 한 문장만 남는다. 발음 줄은 여전히 걸러낸다.
+      questionKo: stripArrow(unbold(
+        qKo.filter(l => !looksPron(l)).join(" ") || qKo[0] || "")),
       expression,
       // 한국어 뜻은 `뜻` 라벨이 있으면 그걸, 없으면 예전처럼 정답 블록의 한글 줄을 쓴다.
       // **발음 줄은 건너뛴다.** 노트가 `발음:` 라벨 없이 발음을 정답 블록 안에 넣어 보내면

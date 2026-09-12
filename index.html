@@ -987,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-12-04";
+const BUILD = "2026-09-12-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3841,6 +3841,9 @@ document.getElementById("mExpr").addEventListener("paste", ev => {
   toast("굵은 글씨를 강세 표시로 복원했습니다");
 });
 
+// 붙여넣은 노트를 새로고침 너머로 들고 가는 열쇠. 낡은 버전 경고 → 새로고침 시 쓴다.
+const IMP_DRAFT_KEY = "imp-draft";
+
 let impParsed = [];
 let impSkipped = 0;   // 주요 표현이 아니라 목록에서 뺀 개수
 const impBg = document.getElementById("impBg");
@@ -3849,12 +3852,36 @@ function impShow(step2) {
   document.getElementById("impStep2").style.display = step2 ? "" : "none";
 }
 document.getElementById("importBtn").onclick = () => { impShow(false); impBg.classList.add("show"); };
+// 낡은 버전 경고로 새로고침했다면, 그때 붙여넣었던 노트를 되살려 다시 붙여넣지 않게 한다.
+try {
+  const draft = localStorage.getItem(IMP_DRAFT_KEY);
+  if (draft) {
+    localStorage.removeItem(IMP_DRAFT_KEY);
+    document.getElementById("impText").value = draft;
+    impShow(false); impBg.classList.add("show");
+    toast("새 버전으로 다시 열었습니다 — 노트를 그대로 복원했습니다");
+  }
+} catch (e) { /* 사생활 보호 모드 등 — 복원 없이 그냥 진행 */ }
 document.getElementById("impCancel").onclick = () => impBg.classList.remove("show");
 document.getElementById("impBack").onclick = () => impShow(false);
 impBg.addEventListener("click", ev => { if (ev.target === impBg) impBg.classList.remove("show"); });
 
-document.getElementById("impParse").onclick = () => {
-  const { date, items } = parseReviewNote(document.getElementById("impText").value);
+document.getElementById("impParse").onclick = async () => {
+  // **가져오기 직전에 버전을 확인한다.** 탭을 며칠 열어두면 페이지는 낡은 채로 살아 있고,
+  // 그 낡은 파서가 만든 카드가 그대로 DB에 박힌다 — 고쳐도 카드는 옛 내용이라
+  // 「분명히 고쳤는데 왜 그대로냐」가 된다 (2026-09-12 실제로 6장이 그렇게 저장됐다).
+  // 배너는 새로고침해야 보이는데, 가져오기는 배너를 안 보고도 할 수 있는 동작이다.
+  const btn = document.getElementById("impParse");
+  const text = document.getElementById("impText").value;
+  btn.disabled = true;
+  const sv = await serverBuild();
+  btn.disabled = false;
+  if (sv && sv !== BUILD) {
+    showUpdateBar(text);
+    toast("앱이 옛 버전입니다 — 위 배너를 눌러 새로고침한 뒤 다시 가져오세요");
+    return;
+  }
+  const { date, items } = parseReviewNote(text);
   if (!items.length) {
     toast("항목을 못 찾았습니다 — 노트 형식을 확인해주세요");
     return;
@@ -4201,20 +4228,33 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 // 서버의 index.html을 캐시 없이 받아 BUILD를 비교한다. 다르면 배너를 띄운다.
 // 새로고침은 쿼리를 붙여서 한다 — 그래야 Safari 캐시를 확실히 우회한다.
 let updateShown = false;
-async function checkUpdate() {
-  if (updateShown) return;
+// 서버가 들고 있는 BUILD. 못 받으면(오프라인 등) 빈 문자열 — 「모른다」와 「같다」를 구분한다.
+async function serverBuild() {
   try {
     const r = await fetch(`${location.pathname}?cb=${Date.now()}`, { cache: "no-store" });
-    if (!r.ok) return;
+    if (!r.ok) return "";
     const m = (await r.text()).match(/const BUILD = "([^"]+)"/);
-    if (!m || m[1] === BUILD) return;
-    updateShown = true;
-    const bar = document.createElement("div");
-    bar.className = "update-bar";
-    bar.textContent = "새 버전이 있습니다 — 탭해서 새로고침";
-    bar.onclick = () => location.replace(`${location.pathname}?v=${Date.now()}`);
-    document.body.appendChild(bar);
-  } catch (e) { /* 오프라인 등 — 조용히 넘어간다 */ }
+    return m ? m[1] : "";
+  } catch (e) { return ""; }        // 오프라인 — 작업을 막지 않는다
+}
+function showUpdateBar(draft) {
+  if (updateShown) return;
+  updateShown = true;
+  const bar = document.createElement("div");
+  bar.className = "update-bar";
+  bar.textContent = "새 버전이 있습니다 — 탭해서 새로고침";
+  bar.onclick = () => {
+    // 새로고침하면 붙여넣은 노트가 날아간다. 들고 있다가 다시 채워준다.
+    try { if (draft) localStorage.setItem(IMP_DRAFT_KEY, draft); } catch (e) {}
+    location.replace(`${location.pathname}?v=${Date.now()}`);
+  };
+  document.body.appendChild(bar);
+}
+async function checkUpdate() {
+  if (updateShown) return;
+  const sv = await serverBuild();
+  if (!sv || sv === BUILD) return;
+  showUpdateBar("");
 }
 checkUpdate();
 // 맥 웹앱은 창을 며칠씩 열어둔다. 한 번 막히면 예전엔 수동 새로고침 전까지 영원히

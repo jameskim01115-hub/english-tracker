@@ -38,6 +38,13 @@ Natural Corrected Answer 를 낼 때, Rhythm Map 은 **정답의 모든 문장**
 3. `/` — 끊어 읽는 자리(의미 단위).
 4. 억양 화살표 — 청크 끝마다 하나씩. 아래 [억양 화살표] 기준으로 고른다.
 
+5. **볼드가 단어 끝에서 닫히면 그 뒤에 공백을 반드시 넣는다.**
+   단어 안에서는 붙여 쓰는 게 맞다 — `**or**der` · `**LIM**it` · `**rea**dy`.
+   하지만 단어가 끝났으면 띄어야 한다:
+   - ❌ `I can **switch**to?` · `I **liked**the food` · `I'll **SELL**some of them`
+   - ✅ `I can **switch** to?` · `I **liked** the food` · `I'll **SELL** some of them`
+   붙여 보내면 앱 화면과 TTS 가 「switchto」로 한 단어처럼 읽는다.
+
 한 줄로 이어서 쓴다. 문장이 바뀌어도 줄을 바꾸지 않는다.
 
 [억양 화살표]

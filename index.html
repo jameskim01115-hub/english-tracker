@@ -987,7 +987,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-12-07";
+const BUILD = "2026-09-14-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3314,11 +3314,18 @@ document.getElementById("mSave").onclick = async () => {
   // 덩어리 — `표현 — 뜻` 한 줄에 하나. 구분자는 —, –, =, :, `- ` 를 받는다.
   // 회화 교정 노트의 「입에 붙일 표현」과 같은 구조로 저장한다 (`variants` + `chunks`) —
   // 그래야 밑줄·힌트·게임이 쓰는 조각과 화면에 보여줄 뜻을 둘 다 갖는다.
-  const vlist = chunkRaw.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
-    const m = line.match(/^[`"']?(.{1,60}?)[`"']?\s*(?:—|–|=|:|-{1,2}\s)\s*(.+)$/);
-    return m ? { en: unbold(m[1]).trim(), ko: m[2].trim(), ex: "" }
-             : { en: unbold(line), ko: "", ex: "" };
-  }).filter(v => v.en);
+  const vlist = chunkRaw.split("\n").map(l => l.trim()).filter(Boolean)
+    .reduce((acc, line) => {
+      const prev = acc[acc.length - 1];
+      // 줄바꿈된 뜻(`— 한국어`) — 앞 항목이 뜻 없이 끝났으면 거기에 붙인다.
+      if (ORPHAN_KO.test(line) && prev && !prev.ko && !hasHangul(prev.en)) {
+        const v = splitChunkLine(`${prev.en} — ${line.replace(ORPHAN_KO, "")}`, { colon: true });
+        if (v) return [...acc.slice(0, -1), { ...v, ex: "" }];
+      }
+      const v = splitChunkLine(line, { colon: true });
+      return [...acc, v ? { ...v, ex: "" } : { en: unbold(line), ko: "", ex: "" }];
+    }, [])
+    .filter(v => v.en);
   const doc = {
     expression: isRhythm ? plainFromRhythm(expr) : expr,
     rhythm: isRhythm ? stripOuterBold(expr) : "",
@@ -3467,6 +3474,39 @@ function splitUseLine(line) {
   }
   return splitEnKo(line);
 }
+// 「입에 붙일 표현」 한 줄(`표현 — 뜻 → 예문`)을 가른다. 노트 가져오기·직접 추가가 같이 쓴다.
+// 예전엔 정규식이 **영어 쪽을 60자까지만** 받아서, 표현 자리에 완성 문장을 넣으면
+// 줄 전체가 안 갈라지고 `영어 — 한국어` 가 통째로 영어 칸에 들어갔다
+// (2026-09-14 Patrick — 71자짜리 `Tell me how the inspection went so I know what to say…`).
+// 길이로 자르지 않고 `splitUseLine` 과 같은 방식으로 **한글이 시작되는 마지막 구분자**를 찾는다 —
+// 영어 문장 안에 `—` 가 있어도 깨지지 않는다. 한글 뜻이 없는 옛 형식(`덩어리 = meaning`)만
+// 예전 정규식으로 내려간다(그쪽은 경계를 한글로 못 가르므로 60자 안전장치를 그대로 둔다).
+const CHUNK_SEP = /(\s*[=—–]\s*|\s*-{1,2}\s+)/;
+const CHUNK_SEP_COLON = /(\s*[=—–:：]\s*|\s*-{1,2}\s+)/;
+function splitChunkLine(line, { colon = false } = {}) {
+  const t = String(line || "").trim();
+  const parts = t.split(colon ? CHUNK_SEP_COLON : CHUNK_SEP);   // [글, 구분자, 글, …]
+  let en = "", tail = "";
+  for (let i = parts.length - 2; i >= 1; i -= 2) {
+    const left = parts.slice(0, i).join(""), right = parts.slice(i + 1).join("");
+    if (hasHangul(right) && !hasHangul(left) && /[A-Za-z]/.test(left)) { en = left; tail = right; break; }
+  }
+  if (!en) {
+    const m = t.match(colon
+      ? /^[`"']?(.{1,60}?)[`"']?\s*(?:—|–|=|:|-{1,2}\s)\s*(.+)$/
+      : /^[`"']?(.{2,60}?)[`"']?\s*(?:=|—|–|-{1,2}\s)\s*(.+)$/);
+    if (!m || hasHangul(m[1])) return null;
+    en = m[1]; tail = m[2];
+  }
+  en = unbold(en.trim().replace(/^[`"']+|[`"']+$/g, ""));
+  tail = unbold(tail);
+  if (!en || !tail) return null;
+  const am = tail.match(/^(.*?)\s*[→⇒]\s*(.+)$/);   // `뜻 → 예문`
+  return { en, ko: am ? am[1].trim() : tail, ex: am ? am[2].trim() : "" };
+}
+// 뜻이 줄바꿈돼 다음 줄에 `— 한국어` 로만 오는 경우. 앞 줄(영어만)과 합쳐 다시 가른다 —
+// 안 합치면 `— 임차인에게 …` 가 별도 항목으로 하나 더 생긴다 (2026-09-14 실제로 겪음).
+const ORPHAN_KO = /^\s*(?:[—–=]|-{1,2}(?=\s))\s*(?=[가-힣])/;
 // 노트의 한국어 줄은 `→ 어제는 일요일이었는데…` 처럼 화살표로 시작한다. 그대로 저장하면
 // 카드의 「뜻」이 화살표로 시작한다 — 표기 기호지 내용이 아니므로 벗긴다.
 const stripArrow = s => String(s || "").replace(/^\s*[→⇒➡]\s*/, "").trim();
@@ -3665,13 +3705,15 @@ function parseReviewNote(text) {
     // **뜻과 예문을 버렸다.** 셋 다 담아 접히는 블록으로 보여준다 (2026-08-21 Patrick).
     const vlist = [];
     for (const b of (sec.chunks || []).map(stripBullet)) {
-      const m = b.match(/^[`"']?(.{2,60}?)[`"']?\s*(?:=|—|–|-{1,2}\s)\s*(.+)$/);
-      if (m && !hasHangul(m[1])) {
-        const en = unbold(m[1]);
-        chunks.push(en);                       // 밑줄·힌트·게임이 쓰는 조각
-        const tail = unbold(m[2]);
-        const am = tail.match(/^(.*?)\s*[→⇒]\s*(.+)$/);   // `뜻 → 예문`
-        vlist.push({ en, ko: am ? am[1].trim() : tail, ex: am ? am[2].trim() : "" });
+      // 줄바꿈된 뜻(`— 한국어`)은 바로 앞 줄이 해설로 빠져 있으면 되찾아 합친다.
+      const prev = notes[notes.length - 1];
+      const joined = ORPHAN_KO.test(b) && prev && !hasHangul(prev)
+        ? splitChunkLine(`${prev} — ${b.replace(ORPHAN_KO, "")}`) : null;
+      if (joined) notes.pop();
+      const v = joined || splitChunkLine(b);
+      if (v) {
+        chunks.push(v.en);                     // 밑줄·힌트·게임이 쓰는 조각
+        vlist.push(v);
       } else notes.push(b);
     }
     // 응용 문장 — 같은 표현을 다른 상황에 옮겨 쓴 문장들. 카드의 응용 훈련이 프롬프트로 쓴다.
@@ -3834,7 +3876,9 @@ function autoFillManualAdd(marked) {
   const hangul = lines.filter(l => hasHangul(l));
   const pronLines = hangul.filter(l => looksPron(l));
   const meanLines = hangul.filter(l => !looksPron(l) && !/[—–]/.test(l));
-  const chunkLines = lines.filter(l => hasHangul(l) && /[—–]/.test(l));
+  // 뜻이 다음 줄(`— 한국어`)로 넘어온 표현은 앞의 영어 줄도 같이 덩어리 칸으로 보낸다.
+  const chunkLines = lines.filter((l, i) => (hasHangul(l) && /[—–]/.test(l))
+    || (!hasHangul(l) && !RHYTHM_MARK.test(l) && ORPHAN_KO.test(lines[i + 1] || "")));
   document.getElementById("mExpr").value = rhythmLines.join("\n");
   if (pronLines.length) document.getElementById("mPron").value = pronLines.join("\n");
   if (meanLines.length) document.getElementById("mMean").value = meanLines.join("\n");

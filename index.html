@@ -305,6 +305,9 @@
      **접힌 카드에서는 숨긴다** — 세로로 쌓으면 한 줄짜리 카드가 약 47px 커지는데, 오늘 탭 높이를
      다시 늘리지 말라는 규칙이 있다. 쉐도잉은 어차피 카드를 연 뒤에 한다. */
   .spk-col { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+  /* 영어 줄 + 그 밑 한국어(뜻·번역·발음)를 **한 칸에 같이** 담는다. 한국어를 줄 밖에 두면
+     버튼 두 개 높이만큼 영어와 한국어 사이가 벌어진다 (2026-09-15 Patrick 지적) — 한국어가 🔁 옆으로 올라온다. */
+  .row-main { flex: 1; min-width: 0; }
   .fc:not(.open) .spk-loop { display: none; }
   .spk-loop { position: relative; }
   .spk-loop.lp-shadow { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
@@ -1001,7 +1004,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-15-02";
+const BUILD = "2026-09-15-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2327,11 +2330,13 @@ function exprCard(e, mode, dir) {
     ? `<div class="blk"><div class="blk-l">질문 · 상황</div>
         ${e.question
           ? `<div class="expr-row">
-               <div class="blk-mean">${rhythmHtml(e.question)}</div>
+               <div class="row-main">
+                 <div class="blk-mean">${rhythmHtml(e.question)}</div>
+                 ${e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}
+               </div>
                ${spkPair(plain(e.question), true, isFullSentence(e.question))}
              </div>`
-          : `<div class="blk-mean">${esc(e.questionKo)}</div>`}
-        ${e.question && e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}</div>`
+          : `<div class="blk-mean">${esc(e.questionKo)}</div>`}</div>`
     : "";
 
   if (recall) {
@@ -2345,18 +2350,22 @@ function exprCard(e, mode, dir) {
         ${qBlock}
         <div class="blk blk-answer"><div class="blk-l">정답</div>
           <div class="expr-row">
-            <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+            <div class="row-main">
+              <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+              ${ansKoOf(e) ? `<div class="ans-ko">${esc(ansKoOf(e))}</div>` : ""}
+            </div>
             ${spkPair(e.expression)}
           </div>
-          ${ansKoOf(e) ? `<div class="ans-ko">${esc(ansKoOf(e))}</div>` : ""}
         </div>`;
   } else {
     html += `
       <div class="expr-row">
-        <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+        <div class="row-main">
+          <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+          ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
+        </div>
         ${spkPair(e.expression)}
       </div>
-      ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
       <div class="tap-hint">${mode === "review" || mode === "practice"
         ? "탭해서 뜻 확인 → 소리 내어 3번 말하기"
         : "탭해서 자세히 보기"}</div>
@@ -2393,9 +2402,9 @@ function exprCard(e, mode, dir) {
     // (2026-08-18 복구). **카드 위쪽 「뜻」과 다른 것이다** — 저건 표현(덩어리)의 뜻이고
     // 이건 예문 문장 전체의 뜻이다. 둘을 같은 필드로 합치지 말 것.
     html += `<div class="blk"><div class="blk-l">예문${hasRhythm(p.example) ? " · 리듬" : ""}</div>
-      <div class="blk-ex"><span>${rhythmHtml(p.example)}</span>
+      <div class="blk-ex"><div class="row-main"><span>${rhythmHtml(p.example)}</span>
+        ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}</div>
       ${spkPair(p.example, true)}</div>
-      ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}
       </div>`;
   }
   // 2.5 발음 (한글) — 봇이 리듬맵과 청크·강세를 1:1로 맞춰 보낸다.
@@ -2430,10 +2439,10 @@ function exprCard(e, mode, dir) {
     const vOpen = e.source === "manual";
     html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">${vOpen ? "접기" : `보기 (${vars.length})`}</span></div>
       <ul class="why-list var-list${vOpen ? " open" : ""}">${vars.map(v => `<li>
-        <div class="v-en"><span>${rhythmHtml(v.en)}</span>
+        <div class="v-en"><div class="row-main"><span>${rhythmHtml(v.en)}</span>
+          ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
+          ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}</div>
           ${spkPair(v.en, true)}</div>
-        ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
-        ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}
         ${v.ex ? `<div class="v-en v-ex"><span>${rhythmHtml(v.ex)}</span>
           ${spkPair(v.ex, true)}</div>` : ""}
       </li>`).join("")}</ul></div>`;

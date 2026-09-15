@@ -301,12 +301,19 @@
   }
   .spk:active, .spk.on { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
   .spk.sm { width: 26px; height: 26px; font-size: 12px; border-radius: 8px; }
-  /* 🔁 반복 재생 (2026-09-15). 🔊 아래에 세로로 쌓는다 — 옆에 두면 문장 폭을 40px 넘게 뺏는다.
-     **접힌 카드에서는 숨긴다** — 세로로 쌓으면 한 줄짜리 카드가 약 47px 커지는데, 오늘 탭 높이를
-     다시 늘리지 말라는 규칙이 있다. 쉐도잉은 어차피 카드를 연 뒤에 한다. */
-  .spk-col { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+  /* 🔁 반복 재생 (2026-09-15). 🔊 🔁 를 **가로로 나란히** 두고 영어 첫 줄 높이에 맞춘다.
+     처음엔 세로로 쌓았는데, 글 덩어리(영어+한국어)보다 버튼 기둥이 높아 🔁 가 한국어 줄 밑으로
+     처지고 정렬이 어긋났다 (Patrick 지적, BUILD -03). 세로로 붙인 캡슐을 가운데 정렬하는 안도
+     라이브 화면에서 비교했지만 긴 문장에서 버튼이 글 중간에 떠 보여 가로를 골랐다.
+     버튼은 **카드 안에서 전부** 28px(작은 것 24px)로 줄였다 — 🔊 만 있는 카드와 크기를 맞추려고.
+     **접힌 카드에서는 🔁 를 숨긴다** — 폭을 먹어 줄바꿈이 늘고, 오늘 탭 높이를 다시 늘리지 말라는 규칙이 있다. */
+  .spk-col { flex-shrink: 0; display: flex; gap: 6px; }
+  .fc .spk:not(.sm) { width: 28px; height: 28px; border-radius: 9px; font-size: 13px; }
+  .fc .spk.sm { width: 24px; height: 24px; border-radius: 7px; font-size: 11px; }
+  /* 버튼 가운데를 영어 첫 줄(16px × 1.4 = 22.4px) 가운데에 맞춘다 */
+  .fc .expr-row > .spk, .fc .expr-row > .spk-col { margin-top: -3px; }
   /* 영어 줄 + 그 밑 한국어(뜻·번역·발음)를 **한 칸에 같이** 담는다. 한국어를 줄 밖에 두면
-     버튼 두 개 높이만큼 영어와 한국어 사이가 벌어진다 (2026-09-15 Patrick 지적) — 한국어가 🔁 옆으로 올라온다. */
+     버튼 줄 높이만큼 영어와 한국어 사이가 벌어진다 (2026-09-15 Patrick 지적). */
   .row-main { flex: 1; min-width: 0; }
   .fc:not(.open) .spk-loop { display: none; }
   .spk-loop { position: relative; }
@@ -1004,7 +1011,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-15-03";
+const BUILD = "2026-09-15-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1717,7 +1724,7 @@ function isFullSentence(s) {
   return /[.?!↘↓↗]$/.test(t);
 }
 
-// 카드의 🔊 (+ 문장이면 🔁). 세로로 쌓는다 (CSS `.spk-col` 주석 참조).
+// 카드의 🔊 (+ 문장이면 🔁). 가로로 나란히 둔다 — 세로로 쌓으면 정렬이 어긋난다 (CSS `.spk-col` 주석 참조).
 // `plain()` 을 거친 텍스트는 끝 화살표가 사라질 수 있어, 그런 곳은 원문으로 판정해 `loopable` 을 넘긴다.
 function spkPair(text, sm, loopable = isFullSentence(text)) {
   const c = sm ? "spk sm" : "spk";

@@ -301,6 +301,20 @@
   }
   .spk:active, .spk.on { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
   .spk.sm { width: 26px; height: 26px; font-size: 12px; border-radius: 8px; }
+  /* 🔁 반복 재생 (2026-09-15). 🔊 아래에 세로로 쌓는다 — 옆에 두면 문장 폭을 40px 넘게 뺏는다.
+     **접힌 카드에서는 숨긴다** — 세로로 쌓으면 한 줄짜리 카드가 약 47px 커지는데, 오늘 탭 높이를
+     다시 늘리지 말라는 규칙이 있다. 쉐도잉은 어차피 카드를 연 뒤에 한다. */
+  .spk-col { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+  .fc:not(.open) .spk-loop { display: none; }
+  .spk-loop { position: relative; }
+  .spk-loop.lp-shadow { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
+  .spk-loop.lp-repeat { background: rgba(62,207,142,.16); border-color: rgba(62,207,142,.45); color: var(--green); }
+  .spk-loop[data-tag]::after {
+    content: attr(data-tag); position: absolute; right: -6px; bottom: -6px;
+    font-size: 8.5px; font-weight: 800; line-height: 1; padding: 2px 3px; border-radius: 5px; color: var(--bg);
+  }
+  .spk-loop.lp-shadow::after { background: var(--blue); }
+  .spk-loop.lp-repeat::after { background: var(--green); }
   .fc .tap-hint { font-size: 11px; color: var(--dim); margin-top: 10px; }
   .fc.open .tap-hint { display: none; }
   .fc .back { display: none; margin-top: 13px; padding-top: 13px; border-top: 1px dashed var(--line); }
@@ -987,7 +1001,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-14-01";
+const BUILD = "2026-09-15-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1557,21 +1571,38 @@ function voiceKey() {
 // 문장·쉼표 사이 쉼은 전부 TTS 엔진의 처리에 맡긴다 — 강제로 쪼개지 말 것.
 
 let audioEl = null;
-function speakServer(text, voice, btn) {
+// `onEnd(ms)` 는 **끝까지 재생됐을 때만** 부른다 — 반복 재생(🔁)이 다음 회차를 잡는 신호다.
+// ms = 실제 재생 길이. 「따라 말하기」 간격이 이 값으로 정해진다.
+function speakServer(text, voice, btn, onEnd) {
   const t = plain(text);
   if (!t) return;
   if (!audioEl) audioEl = new Audio();
   try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
   const done = () => { if (btn) btn.classList.remove("on"); };
-  audioEl.onended = done;
-  audioEl.onerror = () => { done(); speakDevice(text, btn); };   // 서버가 죽어도 소리는 나게
-  audioEl.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
+  let startedAt = 0;
+  audioEl.onplaying = () => { if (!startedAt) startedAt = performance.now(); };
+  audioEl.onended = () => {
+    done();
+    if (!onEnd) return;
+    const d = audioEl.duration;
+    onEnd(isFinite(d) && d > 0 ? d * 1000 : performance.now() - startedAt);
+  };
+  audioEl.onerror = () => { done(); speakDevice(text, btn, onEnd); };   // 서버가 죽어도 소리는 나게
+  const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
+  // 같은 문장을 다시 틀면 받아둔 소리를 되감는다 — 반복 재생이 회차마다 서버에 가지 않게.
+  if (audioEl.src === url && !audioEl.error) audioEl.currentTime = 0;
+  else audioEl.src = url;
   if (btn) btn.classList.add("on");
   const p = audioEl.play();
-  if (p && p.catch) p.catch(() => { done(); speakDevice(text, btn); });
+  // AbortError 는 실패가 아니다 — 재생 시작 전에 다른 🔊·반복 끄기가 끼어든 것이다.
+  // 여기서 기기 음성으로 넘기면 **방금 끈 문장이 기기 음성으로 한 번 더 나온다.**
+  if (p && p.catch) p.catch(err => {
+    if (err && err.name === "AbortError") return;
+    done(); speakDevice(text, btn, onEnd);
+  });
 }
 
-function speakDevice(text, btn) {
+function speakDevice(text, btn, onEnd) {
   const t = plain(text);
   if (!t) return;
   if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
@@ -1582,18 +1613,114 @@ function speakDevice(text, btn) {
     u.rate = DEVICE_RATE;
     const v = pickVoice();
     if (v) u.voice = v;
-    if (btn) {
-      btn.classList.add("on");
-      u.onend = u.onerror = () => btn.classList.remove("on");
-    }
+    let startedAt = 0;
+    u.onstart = () => { startedAt = performance.now(); };
+    u.onend = () => {
+      if (btn) btn.classList.remove("on");
+      if (onEnd) onEnd(startedAt ? performance.now() - startedAt : 0);
+    };
+    u.onerror = () => { if (btn) btn.classList.remove("on"); };
+    if (btn) btn.classList.add("on");
     speechSynthesis.speak(u);
   } catch (e) { toast("음성 재생 실패"); }
 }
 
 function speak(text, btn) {
+  stopLoop();   // 다른 🔊를 누르면 돌던 반복은 끝낸다
+  playOnce(text, btn);
+}
+function playOnce(text, btn, onEnd) {
   const k = voiceKey();
-  if (k.startsWith(SRV_PREFIX)) speakServer(text, k.slice(SRV_PREFIX.length), btn);
-  else speakDevice(text, btn);
+  if (k.startsWith(SRV_PREFIX)) speakServer(text, k.slice(SRV_PREFIX.length), btn, onEnd);
+  else speakDevice(text, btn, onEnd);
+}
+
+// ═══════════════ 반복 재생 (🔁) — 2026-09-15 Patrick 요청 ═══════════════
+// 쉐도잉할 때마다 🔊를 다시 누르는 게 번거롭다고 해서 넣었다. 🔁를 누를 때마다
+//   1번 쉐도잉      — 0.3초 쉬고 다시 (원어민 소리에 겹쳐 말하기)
+//   2번 따라 말하기 — 문장 길이 × 1.2 만큼 쉬고 다시 (1~6초로 자른다)
+//   3번 끔
+// **모드는 기억하지 않는다** — 누르면 항상 쉐도잉부터다 (Patrick 확인).
+// 멈추는 경우: 🔁 세 번째 탭 · 다른 🔊 · 카드가 닫히거나 다시 그려짐 · 앱이 백그라운드로 감.
+// 고정 초 대신 문장 길이에 비례시키는 이유: 1.5초 고정이면 짧은 표현엔 길고 긴 문장은 절반도 못 말한다.
+const LOOP_MODES = [
+  { cls: "lp-shadow", tag: "0.3", toast: "쉐도잉 반복 — 0.3초 간격" },
+  { cls: "lp-repeat", tag: "따라", toast: "따라 말하기 반복 — 문장 길이만큼 쉽니다" },
+];
+const LOOP_SHADOW_GAP_MS = 300;
+const LOOP_REPEAT_FACTOR = 1.2;
+const LOOP_REPEAT_MIN_MS = 1000;
+const LOOP_REPEAT_MAX_MS = 6000;
+const LOOP_WATCH_MS = 300;
+let loop = null;      // { id, btn, text, mode, timer, watch }
+let loopSeq = 0;
+
+function paintLoopBtn(btn, mode) {
+  LOOP_MODES.forEach(m => btn.classList.remove(m.cls));
+  const m = LOOP_MODES[mode];
+  if (m) { btn.classList.add(m.cls); btn.dataset.tag = m.tag; }
+  else delete btn.dataset.tag;
+}
+
+function stopLoop() {
+  if (!loop) return;
+  clearTimeout(loop.timer);
+  clearInterval(loop.watch);
+  paintLoopBtn(loop.btn, -1);
+  loop = null;
+  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
+}
+
+function toggleLoop(btn) {
+  const next = loop && loop.btn === btn ? loop.mode + 1 : 0;
+  stopLoop();
+  if (next >= LOOP_MODES.length) { toast("반복 끔"); return; }
+  const id = ++loopSeq;
+  // 카드가 닫히면(🔁가 숨음) 또는 다시 그려지면(🔁가 DOM 에서 사라짐) 끝낸다.
+  // 다음 회차에서야 확인하면 긴 문장은 몇 초 더 들리므로 재생 중에도 감시한다.
+  const watch = setInterval(() => {
+    if (loop && loop.id === id && (!btn.isConnected || btn.offsetParent === null)) stopLoop();
+  }, LOOP_WATCH_MS);
+  loop = { id, btn, text: btn.dataset.loop, mode: next, timer: 0, watch };
+  paintLoopBtn(btn, next);
+  toast(LOOP_MODES[next].toast);
+  loopPlay(id);
+}
+
+function loopPlay(id) {
+  if (!loop || loop.id !== id) return;
+  playOnce(loop.text, null, ms => loopNext(id, ms));
+}
+
+function loopNext(id, ms) {
+  if (!loop || loop.id !== id) return;
+  const gap = loop.mode === 0 ? LOOP_SHADOW_GAP_MS
+    : Math.min(LOOP_REPEAT_MAX_MS, Math.max(LOOP_REPEAT_MIN_MS, ms * LOOP_REPEAT_FACTOR));
+  clearTimeout(loop.timer);   // 서버→기기 폴백 경로에서 끝 신호가 두 번 올 수 있다
+  loop.timer = setTimeout(() => loopPlay(id), gap);
+}
+
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopLoop(); });
+
+// 「전체 문장」일 때만 🔁를 붙인다 (2026-09-15 Patrick) — `I think I can` 같은 조각은 반복할 이유가 없다.
+// 판정은 **끝 글자**로 한다. 실데이터(2026-09-09 백업) 기준 문장은 전부 `. ? !` 또는 끝 억양(↘ ↓ ↗)으로
+// 끝나고, 조각은 단어(`deduct the tax first`)·템플릿 `~`·말줄임 `...` 으로 끝난다.
+// **단어 수로 가르면 안 된다** — `deduct it from the total` 같은 5단어 넘는 조각이 77건이다.
+function isFullSentence(s) {
+  const t = String(s || "").replace(/\*\*|`/g, "").trim().replace(/["'”’)\s]+$/, "");
+  if (!t || /(\.\.\.|…|~)$/.test(t)) return false;
+  return /[.?!↘↓↗]$/.test(t);
+}
+
+// 카드의 🔊 (+ 문장이면 🔁). 세로로 쌓는다 (CSS `.spk-col` 주석 참조).
+// `plain()` 을 거친 텍스트는 끝 화살표가 사라질 수 있어, 그런 곳은 원문으로 판정해 `loopable` 을 넘긴다.
+function spkPair(text, sm, loopable = isFullSentence(text)) {
+  const c = sm ? "spk sm" : "spk";
+  const say = `<button class="${c}" data-say="${esc(text)}" title="듣기">🔊</button>`;
+  if (!loopable) return say;
+  return `<div class="spk-col">${say}` +
+    `<button class="${c} spk-loop" data-loop="${esc(text)}" title="반복 재생">🔁</button></div>`;
 }
 
 // ═══════════════ 발음 탭 ═══════════════
@@ -1671,6 +1798,7 @@ function saySpeak(text, voice, speed) {
   // 여기서 미리 plain() 을 태우면 나중에 키를 넣어도 되살릴 원본이 사라진다.
   const t = String(text || "").slice(0, 400).trim();
   if (!plain(t)) { toast("문장을 입력해주세요"); return; }
+  stopLoop();   // 카드에서 돌던 반복이 이 탭 소리와 겹치지 않게
   const btn = document.getElementById("sayGo");
   const note = document.getElementById("sayNote");
 
@@ -2199,7 +2327,7 @@ function exprCard(e, mode, dir) {
         ${e.question
           ? `<div class="expr-row">
                <div class="blk-mean">${rhythmHtml(e.question)}</div>
-               <button class="spk sm" data-say="${esc(plain(e.question))}" title="듣기">🔊</button>
+               ${spkPair(plain(e.question), true, isFullSentence(e.question))}
              </div>`
           : `<div class="blk-mean">${esc(e.questionKo)}</div>`}
         ${e.question && e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}</div>`
@@ -2217,7 +2345,7 @@ function exprCard(e, mode, dir) {
         <div class="blk blk-answer"><div class="blk-l">정답</div>
           <div class="expr-row">
             <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
-            <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
+            ${spkPair(e.expression)}
           </div>
           ${ansKoOf(e) ? `<div class="ans-ko">${esc(ansKoOf(e))}</div>` : ""}
         </div>`;
@@ -2225,7 +2353,7 @@ function exprCard(e, mode, dir) {
     html += `
       <div class="expr-row">
         <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
-        <button class="spk" data-say="${esc(e.expression)}" title="듣기">🔊</button>
+        ${spkPair(e.expression)}
       </div>
       ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
       <div class="tap-hint">${mode === "review" || mode === "practice"
@@ -2265,7 +2393,7 @@ function exprCard(e, mode, dir) {
     // 이건 예문 문장 전체의 뜻이다. 둘을 같은 필드로 합치지 말 것.
     html += `<div class="blk"><div class="blk-l">예문${hasRhythm(p.example) ? " · 리듬" : ""}</div>
       <div class="blk-ex"><span>${rhythmHtml(p.example)}</span>
-      <button class="spk sm" data-say="${esc(p.example)}" title="듣기">🔊</button></div>
+      ${spkPair(p.example, true)}</div>
       ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}
       </div>`;
   }
@@ -2302,11 +2430,11 @@ function exprCard(e, mode, dir) {
     html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">${vOpen ? "접기" : `보기 (${vars.length})`}</span></div>
       <ul class="why-list var-list${vOpen ? " open" : ""}">${vars.map(v => `<li>
         <div class="v-en"><span>${rhythmHtml(v.en)}</span>
-          <button class="spk sm" data-say="${esc(v.en)}" title="듣기">🔊</button></div>
+          ${spkPair(v.en, true)}</div>
         ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
         ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}
         ${v.ex ? `<div class="v-en v-ex"><span>${rhythmHtml(v.ex)}</span>
-          <button class="spk sm" data-say="${esc(v.ex)}" title="듣기">🔊</button></div>` : ""}
+          ${spkPair(v.ex, true)}</div>` : ""}
       </li>`).join("")}</ul></div>`;
   }
   // 5. 왜 틀렸나 — 길어서 기본은 접어둔다. 카드가 늘어지면 복습을 안 하게 된다.
@@ -2370,6 +2498,9 @@ function exprCard(e, mode, dir) {
   });
   card.querySelectorAll("[data-say]").forEach(el => {
     el.addEventListener("click", ev => { ev.stopPropagation(); speak(el.dataset.say, el); });
+  });
+  card.querySelectorAll("[data-loop]").forEach(el => {
+    el.addEventListener("click", ev => { ev.stopPropagation(); toggleLoop(el); });
   });
   // 접히는 블록이 둘이다 (이렇게도 말해요 / 왜 틀렸나). **각 토글을 자기 블록에 짝지어야 한다** —
   // querySelector 단수로 두면 두 번째 토글이 아예 안 열리고, 개수도 두 블록을 합쳐 세게 된다.
@@ -2455,9 +2586,11 @@ function exprCard(e, mode, dir) {
         const c = cases[Number(btnUse.dataset.ci || 0)] || cases[0];
         sitBox.insertAdjacentHTML("beforeend",
           `<div class="use-sit-a"><span class="use-sit-l">모범 문장</span>${rhythmHtml(c.en)}` +
-          `<button class="spk sm" data-say="${esc(plain(c.en))}" title="듣기">🔊</button></div>`);
+          spkPair(plain(c.en), true, isFullSentence(c.en)) + `</div>`);
         const spk = sitBox.querySelector(".use-sit-a [data-say]");
         if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); speak(spk.dataset.say, spk); });
+        const lp = sitBox.querySelector(".use-sit-a [data-loop]");
+        if (lp) lp.addEventListener("click", sev => { sev.stopPropagation(); toggleLoop(lp); });
       } else {
         sitBox.hidden = true;
       }

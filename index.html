@@ -1001,7 +1001,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-15-01";
+const BUILD = "2026-09-15-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1638,7 +1638,7 @@ function playOnce(text, btn, onEnd) {
 // ═══════════════ 반복 재생 (🔁) — 2026-09-15 Patrick 요청 ═══════════════
 // 쉐도잉할 때마다 🔊를 다시 누르는 게 번거롭다고 해서 넣었다. 🔁를 누를 때마다
 //   1번 쉐도잉      — 0.3초 쉬고 다시 (원어민 소리에 겹쳐 말하기)
-//   2번 따라 말하기 — 문장 길이 × 1.2 만큼 쉬고 다시 (1~6초로 자른다)
+//   2번 따라 말하기 — 문장 길이만큼 쉬고 다시 (0.8~5초로 자른다)
 //   3번 끔
 // **모드는 기억하지 않는다** — 누르면 항상 쉐도잉부터다 (Patrick 확인).
 // 멈추는 경우: 🔁 세 번째 탭 · 다른 🔊 · 카드가 닫히거나 다시 그려짐 · 앱이 백그라운드로 감.
@@ -1648,9 +1648,10 @@ const LOOP_MODES = [
   { cls: "lp-repeat", tag: "따라", toast: "따라 말하기 반복 — 문장 길이만큼 쉽니다" },
 ];
 const LOOP_SHADOW_GAP_MS = 300;
-const LOOP_REPEAT_FACTOR = 1.2;
-const LOOP_REPEAT_MIN_MS = 1000;
-const LOOP_REPEAT_MAX_MS = 6000;
+// 2026-09-15 × 1.2 · 1~6초로 시작했다가 Patrick 이 「조금 길다」고 해서 × 1.0 · 0.8~5초로 줄였다.
+const LOOP_REPEAT_FACTOR = 1.0;
+const LOOP_REPEAT_MIN_MS = 800;
+const LOOP_REPEAT_MAX_MS = 5000;
 const LOOP_WATCH_MS = 300;
 let loop = null;      // { id, btn, text, mode, timer, watch }
 let loopSeq = 0;

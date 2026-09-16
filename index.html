@@ -1005,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-17-01";
+const BUILD = "2026-09-17-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1648,7 +1648,7 @@ function playOnce(text, btn, onEnd) {
 // 탭할 때마다 모드가 돈다:
 //   1번 그냥 재생    — 예전 🔊 그대로 한 번만
 //   2번 쉐도잉       — 0.3초 쉬고 다시 (원어민 소리에 겹쳐 말하기)
-//   3번 따라 말하기  — 문장 길이만큼 쉬고 다시 (0.8~5초로 자른다)
+//   3번 따라 말하기  — 문장 길이만큼 쉬고 다시 (긴 문장은 무릎점 위를 눌러 덜 늘린다)
 //   4번 끔
 // **모드는 기억하지 않는다** — 카드를 다시 열면 언제나 「그냥 재생」부터다.
 // **한 번 재생이 끝나고 `CYC_IDLE_MS` 가 지나면 상태를 푼다** — 안 그러면 한참 뒤에
@@ -1664,10 +1664,17 @@ const CYC_MODES = [
 const LOOP_SHADOW_GAP_MS = 300;
 // 2026-09-15 × 1.2 · 1~6초로 시작했다가 Patrick 이 「조금 길다」고 해서 × 1.0 으로 줄였다.
 // **2026-09-16: 위쪽 상한(5초)을 사실상 없앴다.** 긴 문장은 재생이 5초를 넘는데 쉼은 5초에서
-// 잘려 「따라 말할 시간이 모자란다」가 됐다 (Patrick 지적). 쉼 = **그 문장이 재생된 시간 그대로**다.
+// 잘려 「따라 말할 시간이 모자란다」가 됐다 (Patrick 지적).
+// **2026-09-17: 정비례를 무릎점(knee)으로 바꿨다.** 쉼 = 재생 시간 그대로(× 1.0)면 8초 문장은
+// 8초를 통째로 기다린다 — 「긴 문장은 아주 조금만 더 쉬었으면 좋겠다」(Patrick). 그래서
+// **`LOOP_REPEAT_KNEE_MS`(4초)까지는 예전 그대로**이고, 그 위로 넘어간 만큼만
+// `LOOP_REPEAT_TAIL`(0.4)을 곱해 더한다. 짧은 문장 느낌은 안 건드리고 긴 문장만 짧아진다.
+//   재생 2초 → 2.0초 · 4초 → 4.0초 · 8초 → 5.6초 · 15초 → 8.4초
 // 남은 30초는 튜닝 값이 아니라 **폭주 방지턱**이다 — `duration` 이 이상하게 크게 잡히는
 // 경우에 몇 분씩 멈춰 선 것처럼 보이지 않게 하는 것. 실제 문장은 가장 긴 것도 20초대다.
-const LOOP_REPEAT_FACTOR = 1.0;
+const LOOP_REPEAT_FACTOR = 1.0;      // 무릎점 아래 구간의 배수
+const LOOP_REPEAT_KNEE_MS = 4000;    // 여기까지는 재생 시간 그대로 쉰다
+const LOOP_REPEAT_TAIL = 0.4;        // 무릎점을 넘은 부분은 이만큼만 더 쉰다
 const LOOP_REPEAT_MIN_MS = 800;
 const LOOP_REPEAT_MAX_MS = 30000;
 const LOOP_WATCH_MS = 300;
@@ -1719,6 +1726,15 @@ function loopPlay(id) {
   playOnce(loop.text, loop.mode === 0 ? loop.btn : null, ms => loopNext(id, ms));
 }
 
+// 따라 말하기 쉼. 무릎점까지는 재생 시간 그대로, 그 위는 `LOOP_REPEAT_TAIL` 만큼만 더한다.
+function repeatGap(ms) {
+  const base = ms * LOOP_REPEAT_FACTOR;
+  const raw = base <= LOOP_REPEAT_KNEE_MS
+    ? base
+    : LOOP_REPEAT_KNEE_MS + (base - LOOP_REPEAT_KNEE_MS) * LOOP_REPEAT_TAIL;
+  return Math.min(LOOP_REPEAT_MAX_MS, Math.max(LOOP_REPEAT_MIN_MS, raw));
+}
+
 function loopNext(id, ms) {
   if (!loop || loop.id !== id) return;
   clearTimeout(loop.timer);   // 서버→기기 폴백 경로에서 끝 신호가 두 번 올 수 있다
@@ -1726,8 +1742,7 @@ function loopNext(id, ms) {
     loop.timer = setTimeout(() => { if (loop && loop.id === id) stopLoop(); }, CYC_IDLE_MS);
     return;
   }
-  const gap = loop.mode === 1 ? LOOP_SHADOW_GAP_MS
-    : Math.min(LOOP_REPEAT_MAX_MS, Math.max(LOOP_REPEAT_MIN_MS, ms * LOOP_REPEAT_FACTOR));
+  const gap = loop.mode === 1 ? LOOP_SHADOW_GAP_MS : repeatGap(ms);
   loop.timer = setTimeout(() => loopPlay(id), gap);
 }
 

@@ -256,7 +256,12 @@
   .badge.review    { color: var(--purple); background: rgba(199,146,234,.14); }
   .badge.date      { color: var(--dim);    background: transparent; padding-left: 0; margin-left: auto; }
   .fc .expr-row { display: flex; align-items: flex-start; gap: 10px; }
-  .fc .expr { flex: 1; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
+  .fc .expr { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
+  /* 🔊 는 문장 길이와 무관하게 **항상 오른쪽 끝**이다 (2026-09-16 Patrick 요청). 글 칸이
+     `flex: 1` 이 아닌 줄(질문 블록의 `.blk-mean`·모범 문장)에서는 버튼이 글 바로 뒤에 붙어
+     카드마다 위치가 들쭉날쭉했다 — `margin-left: auto` 로 전부 오른쪽에 고정한다. */
+  .fc .expr-row > .blk-mean { flex: 1; min-width: 0; }
+  .fc .expr-row > .spk, .blk-ex > .spk, .v-en > .spk, .use-sit-a > .spk { margin-left: auto; }
   .fc .expr.ko { color: #ffd98a; font-size: 17px; }
   .prompt-l {
     font-size: 10.5px; font-weight: 800; color: var(--dim);
@@ -294,37 +299,26 @@
   }
   .dirseg button.on { background: rgba(255,92,92,.16); color: var(--accent); }
   .spk {
-    flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; position: relative;
     background: var(--card2); border: 1px solid var(--line); color: var(--sub);
     font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: all .15s; font-family: inherit;
   }
   .spk:active, .spk.on { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
   .spk.sm { width: 26px; height: 26px; font-size: 12px; border-radius: 8px; }
-  /* 🔁 반복 재생 (2026-09-15). 🔊 🔁 를 **가로로 나란히** 두고 영어 첫 줄 높이에 맞춘다.
-     처음엔 세로로 쌓았는데, 글 덩어리(영어+한국어)보다 버튼 기둥이 높아 🔁 가 한국어 줄 밑으로
-     처지고 정렬이 어긋났다 (Patrick 지적, BUILD -03). 세로로 붙인 캡슐을 가운데 정렬하는 안도
-     라이브 화면에서 비교했지만 긴 문장에서 버튼이 글 중간에 떠 보여 가로를 골랐다.
-     버튼은 **카드 안에서 전부** 28px(작은 것 24px)로 줄였다 — 🔊 만 있는 카드와 크기를 맞추려고.
-     **접힌 카드에서는 🔁 를 숨긴다** — 폭을 먹어 줄바꿈이 늘고, 오늘 탭 높이를 다시 늘리지 말라는 규칙이 있다. */
-  .spk-col { flex-shrink: 0; display: flex; gap: 6px; }
-  .fc .spk:not(.sm) { width: 28px; height: 28px; border-radius: 9px; font-size: 13px; }
-  .fc .spk.sm { width: 24px; height: 24px; border-radius: 7px; font-size: 11px; }
-  /* 버튼 가운데를 영어 첫 줄(16px × 1.4 = 22.4px) 가운데에 맞춘다 */
-  .fc .expr-row > .spk, .fc .expr-row > .spk-col { margin-top: -3px; }
-  /* 영어 줄 + 그 밑 한국어(뜻·번역·발음)를 **한 칸에 같이** 담는다. 한국어를 줄 밖에 두면
-     버튼 줄 높이만큼 영어와 한국어 사이가 벌어진다 (2026-09-15 Patrick 지적). */
-  .row-main { flex: 1; min-width: 0; }
-  .fc:not(.open) .spk-loop { display: none; }
-  .spk-loop { position: relative; }
-  .spk-loop.lp-shadow { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
-  .spk-loop.lp-repeat { background: rgba(62,207,142,.16); border-color: rgba(62,207,142,.45); color: var(--green); }
-  .spk-loop[data-tag]::after {
+  /* 반복 재생은 **이 버튼 하나**가 한다 (2026-09-16). 하루 전에는 🔊 옆에 🔁 를 따로 뒀는데,
+     버튼 두 개가 문장 폭을 60px 넘게 먹어 **스마트폰에서 줄바꿈이 늘고 정렬이 어긋났다**
+     (Patrick 지적). 버튼을 합치고 글 배치는 🔁 이전으로 되돌렸다 — 한국어(뜻·번역·발음)는
+     다시 영어 줄 **아래 전체 폭**이다(`.row-main` 제거). 버튼도 32px(작은 것 26px)로 되돌렸다.
+     상태는 색 + 작은 배지(0.3 / 따라)로만 보여준다. **버튼을 다시 둘로 쪼개지 말 것.** */
+  .spk.lp-shadow { background: rgba(90,169,255,.16); border-color: rgba(90,169,255,.4); color: var(--blue); }
+  .spk.lp-repeat { background: rgba(62,207,142,.16); border-color: rgba(62,207,142,.45); color: var(--green); }
+  .spk[data-tag]::after {
     content: attr(data-tag); position: absolute; right: -6px; bottom: -6px;
     font-size: 8.5px; font-weight: 800; line-height: 1; padding: 2px 3px; border-radius: 5px; color: var(--bg);
   }
-  .spk-loop.lp-shadow::after { background: var(--blue); }
-  .spk-loop.lp-repeat::after { background: var(--green); }
+  .spk.lp-shadow::after { background: var(--blue); }
+  .spk.lp-repeat::after { background: var(--green); }
   .fc .tap-hint { font-size: 11px; color: var(--dim); margin-top: 10px; }
   .fc.open .tap-hint { display: none; }
   .fc .back { display: none; margin-top: 13px; padding-top: 13px; border-top: 1px dashed var(--line); }
@@ -342,7 +336,7 @@
     font-size: 13.5px; color: #c3c9d9; line-height: 1.7;
     display: flex; align-items: flex-start; gap: 9px;
   }
-  .blk-ex > span { flex: 1; }
+  .blk-ex > span { flex: 1; min-width: 0; }
   /* 배울 표현 유입 안내. 막는 이유를 항상 같이 보여준다 — 이유 없이 막으면 고장으로 읽힌다 */
   .cap-note {
     font-size: 12px; color: var(--sub); line-height: 1.5;
@@ -404,7 +398,7 @@
   .var-list > li { margin-bottom: 10px; }
   .var-list > li:last-child { margin-bottom: 2px; }
   .v-en { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; color: #c3c9d9; line-height: 1.7; }
-  .v-en > span { flex: 1; }
+  .v-en > span { flex: 1; min-width: 0; }
   .v-pron { font-size: 12.5px; color: #aab2c4; line-height: 1.65; margin-top: 1px; }
   .v-ko { font-size: 12.5px; color: var(--sub); line-height: 1.55; margin-top: 2px; }
   /* 「입에 붙일 표현」의 예문. 표현 줄과 같은 규격이되 한 단계 흐리게 — 주인공은 표현이다 */
@@ -1011,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-15-04";
+const BUILD = "2026-09-16-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1645,15 +1639,22 @@ function playOnce(text, btn, onEnd) {
   else speakDevice(text, btn, onEnd);
 }
 
-// ═══════════════ 반복 재생 (🔁) — 2026-09-15 Patrick 요청 ═══════════════
-// 쉐도잉할 때마다 🔊를 다시 누르는 게 번거롭다고 해서 넣었다. 🔁를 누를 때마다
-//   1번 쉐도잉      — 0.3초 쉬고 다시 (원어민 소리에 겹쳐 말하기)
-//   2번 따라 말하기 — 문장 길이만큼 쉬고 다시 (0.8~5초로 자른다)
-//   3번 끔
-// **모드는 기억하지 않는다** — 누르면 항상 쉐도잉부터다 (Patrick 확인).
-// 멈추는 경우: 🔁 세 번째 탭 · 다른 🔊 · 카드가 닫히거나 다시 그려짐 · 앱이 백그라운드로 감.
+// ═══════════════ 🔊 한 버튼 = 재생 · 반복 (2026-09-16 Patrick 요청) ═══════════════
+// 2026-09-15 에는 🔊 옆에 🔁 를 따로 뒀다. 버튼 두 개가 문장 폭을 60px 넘게 먹어
+// **스마트폰에서 문장이 짧게 접히고 정렬이 어긋났다** (Patrick 지적) — 그래서 **하나로 합쳤다.**
+// 탭할 때마다 모드가 돈다:
+//   1번 그냥 재생    — 예전 🔊 그대로 한 번만
+//   2번 쉐도잉       — 0.3초 쉬고 다시 (원어민 소리에 겹쳐 말하기)
+//   3번 따라 말하기  — 문장 길이만큼 쉬고 다시 (0.8~5초로 자른다)
+//   4번 끔
+// **모드는 기억하지 않는다** — 카드를 다시 열면 언제나 「그냥 재생」부터다.
+// **한 번 재생이 끝나고 `CYC_IDLE_MS` 가 지나면 상태를 푼다** — 안 그러면 한참 뒤에
+// 「소리만 한 번 더」 눌렀을 때 느닷없이 쉐도잉이 돌아간다. 연속으로 누를 때만 모드가 오른다.
+// 반복은 **전체 문장에만** 붙는다(`isFullSentence` → `data-cyc`). 조각·칩은 예전처럼 한 번만 난다.
+// 멈추는 경우: 네 번째 탭 · 다른 🔊 · 발음 탭 재생 · 카드가 닫히거나 다시 그려짐 · 백그라운드.
 // 고정 초 대신 문장 길이에 비례시키는 이유: 1.5초 고정이면 짧은 표현엔 길고 긴 문장은 절반도 못 말한다.
-const LOOP_MODES = [
+const CYC_MODES = [
+  null,                                                                 // 0 — 한 번만 재생
   { cls: "lp-shadow", tag: "0.3", toast: "쉐도잉 반복 — 0.3초 간격" },
   { cls: "lp-repeat", tag: "따라", toast: "따라 말하기 반복 — 문장 길이만큼 쉽니다" },
 ];
@@ -1663,58 +1664,69 @@ const LOOP_REPEAT_FACTOR = 1.0;
 const LOOP_REPEAT_MIN_MS = 800;
 const LOOP_REPEAT_MAX_MS = 5000;
 const LOOP_WATCH_MS = 300;
+const CYC_IDLE_MS = 6000;   // 한 번 재생이 끝나고 이만큼 지나면 다음 탭은 다시 「그냥 재생」
 let loop = null;      // { id, btn, text, mode, timer, watch }
 let loopSeq = 0;
 
-function paintLoopBtn(btn, mode) {
-  LOOP_MODES.forEach(m => btn.classList.remove(m.cls));
-  const m = LOOP_MODES[mode];
-  if (m) { btn.classList.add(m.cls); btn.dataset.tag = m.tag; }
-  else delete btn.dataset.tag;
+// 반복 중일 때만 🔁 로 바뀌고 색·배지가 붙는다. 「그냥 재생」과 끔은 평소의 🔊 다.
+function paintSpk(btn, mode) {
+  CYC_MODES.forEach(m => { if (m) btn.classList.remove(m.cls); });
+  const m = CYC_MODES[mode];
+  if (m) { btn.classList.add(m.cls); btn.dataset.tag = m.tag; btn.textContent = "🔁"; }
+  else { delete btn.dataset.tag; btn.textContent = "🔊"; }
 }
 
 function stopLoop() {
   if (!loop) return;
   clearTimeout(loop.timer);
   clearInterval(loop.watch);
-  paintLoopBtn(loop.btn, -1);
+  paintSpk(loop.btn, -1);
+  loop.btn.classList.remove("on");   // 재생 도중 끊으면 onended 가 안 와 파란 불이 남는다
   loop = null;
   try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
 }
 
-function toggleLoop(btn) {
+// 카드 안 🔊 를 눌렀을 때의 단 하나의 진입점.
+function tapSpeak(btn) {
+  const text = btn.dataset.say;
+  if (!btn.dataset.cyc) { speak(text, btn); return; }   // 조각·칩 — 예전처럼 한 번만
   const next = loop && loop.btn === btn ? loop.mode + 1 : 0;
   stopLoop();
-  if (next >= LOOP_MODES.length) { toast("반복 끔"); return; }
+  if (next >= CYC_MODES.length) { toast("반복 끔"); return; }
   const id = ++loopSeq;
-  // 카드가 닫히면(🔁가 숨음) 또는 다시 그려지면(🔁가 DOM 에서 사라짐) 끝낸다.
+  // 카드가 닫히거나 다시 그려지면(버튼이 DOM 에서 사라지면) 끝낸다.
   // 다음 회차에서야 확인하면 긴 문장은 몇 초 더 들리므로 재생 중에도 감시한다.
   const watch = setInterval(() => {
     if (loop && loop.id === id && (!btn.isConnected || btn.offsetParent === null)) stopLoop();
   }, LOOP_WATCH_MS);
-  loop = { id, btn, text: btn.dataset.loop, mode: next, timer: 0, watch };
-  paintLoopBtn(btn, next);
-  toast(LOOP_MODES[next].toast);
+  loop = { id, btn, text, mode: next, timer: 0, watch };
+  paintSpk(btn, next);
+  if (CYC_MODES[next]) toast(CYC_MODES[next].toast);
   loopPlay(id);
 }
 
 function loopPlay(id) {
   if (!loop || loop.id !== id) return;
-  playOnce(loop.text, null, ms => loopNext(id, ms));
+  // 「그냥 재생」은 예전 🔊 처럼 버튼에 파란 불(.on)을 준다. 반복 모드는 이미 색이 있어 넘기지 않는다.
+  playOnce(loop.text, loop.mode === 0 ? loop.btn : null, ms => loopNext(id, ms));
 }
 
 function loopNext(id, ms) {
   if (!loop || loop.id !== id) return;
-  const gap = loop.mode === 0 ? LOOP_SHADOW_GAP_MS
-    : Math.min(LOOP_REPEAT_MAX_MS, Math.max(LOOP_REPEAT_MIN_MS, ms * LOOP_REPEAT_FACTOR));
   clearTimeout(loop.timer);   // 서버→기기 폴백 경로에서 끝 신호가 두 번 올 수 있다
+  if (loop.mode === 0) {      // 한 번만 재생 — 잠깐 「다음 탭은 쉐도잉」 상태로 들고 있다 푼다
+    loop.timer = setTimeout(() => { if (loop && loop.id === id) stopLoop(); }, CYC_IDLE_MS);
+    return;
+  }
+  const gap = loop.mode === 1 ? LOOP_SHADOW_GAP_MS
+    : Math.min(LOOP_REPEAT_MAX_MS, Math.max(LOOP_REPEAT_MIN_MS, ms * LOOP_REPEAT_FACTOR));
   loop.timer = setTimeout(() => loopPlay(id), gap);
 }
 
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopLoop(); });
 
-// 「전체 문장」일 때만 🔁를 붙인다 (2026-09-15 Patrick) — `I think I can` 같은 조각은 반복할 이유가 없다.
+// 「전체 문장」일 때만 반복을 붙인다 (2026-09-15 Patrick) — `I think I can` 같은 조각은 반복할 이유가 없다.
 // 판정은 **끝 글자**로 한다. 실데이터(2026-09-09 백업) 기준 문장은 전부 `. ? !` 또는 끝 억양(↘ ↓ ↗)으로
 // 끝나고, 조각은 단어(`deduct the tax first`)·템플릿 `~`·말줄임 `...` 으로 끝난다.
 // **단어 수로 가르면 안 된다** — `deduct it from the total` 같은 5단어 넘는 조각이 77건이다.
@@ -1724,14 +1736,12 @@ function isFullSentence(s) {
   return /[.?!↘↓↗]$/.test(t);
 }
 
-// 카드의 🔊 (+ 문장이면 🔁). 가로로 나란히 둔다 — 세로로 쌓으면 정렬이 어긋난다 (CSS `.spk-col` 주석 참조).
+// 카드의 🔊 버튼. **버튼은 하나뿐이다** — 전체 문장이면 `data-cyc` 를 붙여 탭마다
+// 재생 → 쉐도잉 → 따라 말하기 → 끔 으로 돈다 (CSS `.spk` 주석 참조).
 // `plain()` 을 거친 텍스트는 끝 화살표가 사라질 수 있어, 그런 곳은 원문으로 판정해 `loopable` 을 넘긴다.
-function spkPair(text, sm, loopable = isFullSentence(text)) {
-  const c = sm ? "spk sm" : "spk";
-  const say = `<button class="${c}" data-say="${esc(text)}" title="듣기">🔊</button>`;
-  if (!loopable) return say;
-  return `<div class="spk-col">${say}` +
-    `<button class="${c} spk-loop" data-loop="${esc(text)}" title="반복 재생">🔁</button></div>`;
+function spkBtn(text, sm, loopable = isFullSentence(text)) {
+  return `<button class="spk${sm ? " sm" : ""}" data-say="${esc(text)}"${loopable ? ` data-cyc="1"` : ""}` +
+    ` title="${loopable ? "듣기 · 다시 누르면 반복" : "듣기"}">🔊</button>`;
 }
 
 // ═══════════════ 발음 탭 ═══════════════
@@ -2337,13 +2347,11 @@ function exprCard(e, mode, dir) {
     ? `<div class="blk"><div class="blk-l">질문 · 상황</div>
         ${e.question
           ? `<div class="expr-row">
-               <div class="row-main">
-                 <div class="blk-mean">${rhythmHtml(e.question)}</div>
-                 ${e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}
-               </div>
-               ${spkPair(plain(e.question), true, isFullSentence(e.question))}
+               <div class="blk-mean">${rhythmHtml(e.question)}</div>
+               ${spkBtn(plain(e.question), true, isFullSentence(e.question))}
              </div>`
-          : `<div class="blk-mean">${esc(e.questionKo)}</div>`}</div>`
+          : `<div class="blk-mean">${esc(e.questionKo)}</div>`}
+        ${e.question && e.questionKo ? `<div class="legend">${esc(e.questionKo)}</div>` : ""}</div>`
     : "";
 
   if (recall) {
@@ -2357,22 +2365,18 @@ function exprCard(e, mode, dir) {
         ${qBlock}
         <div class="blk blk-answer"><div class="blk-l">정답</div>
           <div class="expr-row">
-            <div class="row-main">
-              <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
-              ${ansKoOf(e) ? `<div class="ans-ko">${esc(ansKoOf(e))}</div>` : ""}
-            </div>
-            ${spkPair(e.expression)}
+            <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+            ${spkBtn(e.expression)}
           </div>
+          ${ansKoOf(e) ? `<div class="ans-ko">${esc(ansKoOf(e))}</div>` : ""}
         </div>`;
   } else {
     html += `
       <div class="expr-row">
-        <div class="row-main">
-          <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
-          ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
-        </div>
-        ${spkPair(e.expression)}
+        <div class="expr${e.rhythm ? " rh" : ""}">${answerHtml(e, p)}</div>
+        ${spkBtn(e.expression)}
       </div>
+      ${mode === "new" && koTextOf(e) ? `<div class="ans-ko">${esc(koTextOf(e))}</div>` : ""}
       <div class="tap-hint">${mode === "review" || mode === "practice"
         ? "탭해서 뜻 확인 → 소리 내어 3번 말하기"
         : "탭해서 자세히 보기"}</div>
@@ -2409,9 +2413,9 @@ function exprCard(e, mode, dir) {
     // (2026-08-18 복구). **카드 위쪽 「뜻」과 다른 것이다** — 저건 표현(덩어리)의 뜻이고
     // 이건 예문 문장 전체의 뜻이다. 둘을 같은 필드로 합치지 말 것.
     html += `<div class="blk"><div class="blk-l">예문${hasRhythm(p.example) ? " · 리듬" : ""}</div>
-      <div class="blk-ex"><div class="row-main"><span>${rhythmHtml(p.example)}</span>
-        ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}</div>
-      ${spkPair(p.example, true)}</div>
+      <div class="blk-ex"><span>${rhythmHtml(p.example)}</span>
+      ${spkBtn(p.example, true)}</div>
+      ${e.contextKo ? `<div class="ex-ko">${esc(e.contextKo)}</div>` : ""}
       </div>`;
   }
   // 2.5 발음 (한글) — 봇이 리듬맵과 청크·강세를 1:1로 맞춰 보낸다.
@@ -2446,12 +2450,12 @@ function exprCard(e, mode, dir) {
     const vOpen = e.source === "manual";
     html += `<div class="blk"><div class="blk-l why-toggle">${vLabel} <span class="why-more">${vOpen ? "접기" : `보기 (${vars.length})`}</span></div>
       <ul class="why-list var-list${vOpen ? " open" : ""}">${vars.map(v => `<li>
-        <div class="v-en"><div class="row-main"><span>${rhythmHtml(v.en)}</span>
-          ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
-          ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}</div>
-          ${spkPair(v.en, true)}</div>
+        <div class="v-en"><span>${rhythmHtml(v.en)}</span>
+          ${spkBtn(v.en, true)}</div>
+        ${v.pron ? `<div class="v-pron">${rhythmHtml(v.pron)}</div>` : ""}
+        ${v.ko ? `<div class="v-ko">${esc(v.ko)}</div>` : ""}
         ${v.ex ? `<div class="v-en v-ex"><span>${rhythmHtml(v.ex)}</span>
-          ${spkPair(v.ex, true)}</div>` : ""}
+          ${spkBtn(v.ex, true)}</div>` : ""}
       </li>`).join("")}</ul></div>`;
   }
   // 5. 왜 틀렸나 — 길어서 기본은 접어둔다. 카드가 늘어지면 복습을 안 하게 된다.
@@ -2514,10 +2518,7 @@ function exprCard(e, mode, dir) {
     card.classList.toggle("open");
   });
   card.querySelectorAll("[data-say]").forEach(el => {
-    el.addEventListener("click", ev => { ev.stopPropagation(); speak(el.dataset.say, el); });
-  });
-  card.querySelectorAll("[data-loop]").forEach(el => {
-    el.addEventListener("click", ev => { ev.stopPropagation(); toggleLoop(el); });
+    el.addEventListener("click", ev => { ev.stopPropagation(); tapSpeak(el); });
   });
   // 접히는 블록이 둘이다 (이렇게도 말해요 / 왜 틀렸나). **각 토글을 자기 블록에 짝지어야 한다** —
   // querySelector 단수로 두면 두 번째 토글이 아예 안 열리고, 개수도 두 블록을 합쳐 세게 된다.
@@ -2603,11 +2604,9 @@ function exprCard(e, mode, dir) {
         const c = cases[Number(btnUse.dataset.ci || 0)] || cases[0];
         sitBox.insertAdjacentHTML("beforeend",
           `<div class="use-sit-a"><span class="use-sit-l">모범 문장</span>${rhythmHtml(c.en)}` +
-          spkPair(plain(c.en), true, isFullSentence(c.en)) + `</div>`);
+          spkBtn(plain(c.en), true, isFullSentence(c.en)) + `</div>`);
         const spk = sitBox.querySelector(".use-sit-a [data-say]");
-        if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); speak(spk.dataset.say, spk); });
-        const lp = sitBox.querySelector(".use-sit-a [data-loop]");
-        if (lp) lp.addEventListener("click", sev => { sev.stopPropagation(); toggleLoop(lp); });
+        if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); tapSpeak(spk); });
       } else {
         sitBox.hidden = true;
       }

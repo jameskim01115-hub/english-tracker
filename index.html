@@ -1005,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-16-05";
+const BUILD = "2026-09-17-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3586,7 +3586,14 @@ function matchLabel(line) {
     // 라벨을 감싼 **닫는 볼드**가 내용으로 남으면 안 된다 — 붙여넣기 복원기가 `**✅ 자연스러운 문장**`
     // 처럼 만들어 오는데, 그대로 두면 정답이 `**` 한 개가 되고 **그 항목이 통째로 버려진다**
     // (RHYTHM_MARK 가 `**` 를 리듬으로 오인 → expression 이 빈 문자열 → continue). 2026-08-21 실측.
-    const rest = head.slice(m[0].length)
+    const after = head.slice(m[0].length);
+    // **「발음」으로 시작하는 평문은 라벨이 아니다.** ChatGPT 가 노트 끝에 붙인 수정 안내
+    // 「발음 포인트는 ❌→⭕ 불릿 형식으로 바꿨어…」가 발음 라벨로 읽혀 마지막 카드의 진짜 발음을
+    // 덮어썼다 (2026-09-17 Patrick). 콜론이 없는데 뒤 내용이 음차가 아니면 라벨로 안 본다.
+    // `발음 (Pronunciation)` 처럼 괄호만 붙은 라벨은 그대로 받는다.
+    if (key === "pron" && /[\p{L}\p{N}]/u.test(after) && !/^\s*[:：]/.test(after)
+        && !/^\s*[(（][^)）]*[)）]\s*$/.test(after) && !looksPron(after)) continue;
+    const rest = after
       .replace(/^\s*[:：]\s*/, "")
       .replace(/^[*`~]+\s*/, "")
       .trim();

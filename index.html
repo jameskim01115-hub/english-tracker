@@ -1005,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-16-02";
+const BUILD = "2026-09-16-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1659,10 +1659,14 @@ const CYC_MODES = [
   { cls: "lp-repeat", tag: "따라", toast: "따라 말하기 반복 — 문장 길이만큼 쉽니다" },
 ];
 const LOOP_SHADOW_GAP_MS = 300;
-// 2026-09-15 × 1.2 · 1~6초로 시작했다가 Patrick 이 「조금 길다」고 해서 × 1.0 · 0.8~5초로 줄였다.
+// 2026-09-15 × 1.2 · 1~6초로 시작했다가 Patrick 이 「조금 길다」고 해서 × 1.0 으로 줄였다.
+// **2026-09-16: 위쪽 상한(5초)을 사실상 없앴다.** 긴 문장은 재생이 5초를 넘는데 쉼은 5초에서
+// 잘려 「따라 말할 시간이 모자란다」가 됐다 (Patrick 지적). 쉼 = **그 문장이 재생된 시간 그대로**다.
+// 남은 30초는 튜닝 값이 아니라 **폭주 방지턱**이다 — `duration` 이 이상하게 크게 잡히는
+// 경우에 몇 분씩 멈춰 선 것처럼 보이지 않게 하는 것. 실제 문장은 가장 긴 것도 20초대다.
 const LOOP_REPEAT_FACTOR = 1.0;
 const LOOP_REPEAT_MIN_MS = 800;
-const LOOP_REPEAT_MAX_MS = 5000;
+const LOOP_REPEAT_MAX_MS = 30000;
 const LOOP_WATCH_MS = 300;
 const CYC_IDLE_MS = 6000;   // 한 번 재생이 끝나고 이만큼 지나면 다음 탭은 다시 「그냥 재생」
 let loop = null;      // { id, btn, text, mode, timer, watch }

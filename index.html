@@ -256,7 +256,12 @@
   .badge.review    { color: var(--purple); background: rgba(199,146,234,.14); }
   .badge.date      { color: var(--dim);    background: transparent; padding-left: 0; margin-left: auto; }
   .fc .expr-row { display: flex; align-items: flex-start; gap: 10px; }
-  .fc .expr { flex: 1; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
+  .fc .expr { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; line-height: 1.4; letter-spacing: -0.2px; }
+  /* 🔊 는 문장 길이와 무관하게 **항상 오른쪽 끝**이다 (2026-09-16 Patrick 요청). 글 칸이
+     `flex: 1` 이 아닌 줄(질문 블록의 `.blk-mean`·모범 문장)에서는 버튼이 글 바로 뒤에 붙어
+     카드마다 위치가 들쭉날쭉했다 — `margin-left: auto` 로 전부 오른쪽에 고정한다. */
+  .fc .expr-row > .blk-mean { flex: 1; min-width: 0; }
+  .fc .expr-row > .spk, .blk-ex > .spk, .v-en > .spk, .use-sit-a > .spk { margin-left: auto; }
   .fc .expr.ko { color: #ffd98a; font-size: 17px; }
   .prompt-l {
     font-size: 10.5px; font-weight: 800; color: var(--dim);
@@ -331,7 +336,7 @@
     font-size: 13.5px; color: #c3c9d9; line-height: 1.7;
     display: flex; align-items: flex-start; gap: 9px;
   }
-  .blk-ex > span { flex: 1; }
+  .blk-ex > span { flex: 1; min-width: 0; }
   /* 배울 표현 유입 안내. 막는 이유를 항상 같이 보여준다 — 이유 없이 막으면 고장으로 읽힌다 */
   .cap-note {
     font-size: 12px; color: var(--sub); line-height: 1.5;
@@ -393,7 +398,7 @@
   .var-list > li { margin-bottom: 10px; }
   .var-list > li:last-child { margin-bottom: 2px; }
   .v-en { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; color: #c3c9d9; line-height: 1.7; }
-  .v-en > span { flex: 1; }
+  .v-en > span { flex: 1; min-width: 0; }
   .v-pron { font-size: 12.5px; color: #aab2c4; line-height: 1.65; margin-top: 1px; }
   .v-ko { font-size: 12.5px; color: var(--sub); line-height: 1.55; margin-top: 2px; }
   /* 「입에 붙일 표현」의 예문. 표현 줄과 같은 규격이되 한 단계 흐리게 — 주인공은 표현이다 */
@@ -1000,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-16-01";
+const BUILD = "2026-09-16-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.

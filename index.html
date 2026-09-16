@@ -1005,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-16-04";
+const BUILD = "2026-09-16-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2874,8 +2874,12 @@ function planRebalance() {
 // 평형 복습량이 60~80/일로 튀어 상한을 계속 넘긴다. 두 상수는 항상 짝으로 바꿀 것.
 const NEW_CAP_MAX = 3;
 
+// 「직접 추가」(source: manual)는 몫에서 뺀다. 저장할 때 `studiedAt: today` 가 같이 붙어서
+// 오늘 몫 3개를 먹고 있었다 — 9/15 는 직접 추가 3개로 「학습 완료」가 0개, 9/16 은 2개를 먹어
+// 1개만 됐다(2026-09-16 Patrick 「3개가 안 된다」). 몫은 **배울 표현을 복습으로 넘기는 개수**다.
+// 직접 추가한 표현이 늘린 복습 부하는 다음 날부터 `dueItems()` 로 `newCapToday()` 에 반영된다.
 function studiedToday() {
-  return expressions.filter(e => e.studiedAt === today).length;
+  return expressions.filter(e => e.studiedAt === today && e.source !== "manual").length;
 }
 function newCapToday() {
   const due = dueItems().length;

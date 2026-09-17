@@ -189,6 +189,33 @@ https://tts.srv1722311.hstgr.cloud/tts?t=<텍스트>&v=F2&s=0.9
 - 서버가 죽거나 오프라인이면 `speakServer()`가 `speakDevice()`로 자동 폴백한다. 소리는 항상 난다.
 - 설정 선택값(`localStorage.et_voice`)은 `srv:F2` 형태(서버) 또는 voiceURI(기기) 둘 중 하나다.
 
+### 화살표는 소리로 보낼 때 문장부호가 된다 (`speechText`) — 2026-09-17
+
+**소리로 보낼 때는 `plain()` 이 아니라 `speechText()` 를 쓴다.** `plain()` 은 화살표를
+**공백으로 지운다** — 화면용으로는 맞지만 소리로는 틀렸다. 마침표 없이 `↘` 로만 끝나는
+리듬맵은 **문장 경계가 통째로 사라져 TTS 가 한 호흡으로 죽 읽는다.**
+
+```
+plain()       → "I just relaxed at home and created an application to help me study English"
+speechText()  → "I just relaxed at home and created an application to help me study English."
+```
+
+- **Patrick 이 말한 「감정 없이 책 읽는 느낌」의 원인 하나가 이것이었다** (2026-09-17).
+  Patrick 확인: **옛날 카드에 마침표가 빠진 게 많고 최근 것은 다 있다** — 그래서 옛 카드에서
+  유독 밋밋했다. 서버의 `build_ssml()` 은 이미 `↘`→마침표로 옮기고 있었는데
+  **평문 경로(`clean()`)만 이 처리가 빠져 있었다.**
+- 규칙 자체는 새로 만들지 않았다 — 가져오기에서 검증된 `plainFromRhythm()` 을 그대로 쓴다.
+- **화살표가 없으면 `plain()` 그대로다.** 덩어리(`eat out`)·이미 마침표가 있는 문장은
+  **한 글자도 안 바뀌어 캐시 키가 유지된다.** 실측: 화살표 없는 7건 전부 옛 출력과 동일,
+  화살표 있는 12건 중 **마침표가 빠져 있던 것만** 바뀌었다.
+- **세 구현이 글자 그대로 같아야 한다** — 앱 `speechText()` · `hermes-sync.py` 의
+  `speech_text()` · 서버 `clean()`. 어긋나면 캐시 키가 달라져 미리 만든 음성을 못 찾는다.
+  19개 문장으로 **19/19 일치**를 확인하고 배포했다. 한쪽만 고치지 말 것.
+- **한계**: 화살표도 문장부호도 없는 옛 카드는 문장인지 조각인지 알 방법이 없어 그대로 둔다
+  (`isFullSentence()` 도 같은 이유로 조각으로 본다). 추측으로 마침표를 붙이지 말 것.
+- 끝이 `?`·`!` 면 덮어쓰지 않는다. 다만 **문장 끝 `↗` 는 마침표가 된다** — 상승 억양인데
+  하강으로 읽힌다. 드문 경우라 두었지만 문제가 되면 `plainFromRhythm()` 에서 갈라야 한다.
+
 ### 대문자는 소리로 보낼 때 벗긴다 (`unstressCaps`)
 
 TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」(U.N. + wind)로 나왔다 — 실측으로

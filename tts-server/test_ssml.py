@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 src = open("server.py").read()
 tree = ast.parse(src)
-WANT_FN = {"unstress_caps", "_xml_escape", "build_ssml", "clean"}
+WANT_FN = {"unstress_caps", "_xml_escape", "build_ssml", "clean", "_arrows_to_punct"}
 WANT_CONST = {"SPELL_OUT", "BR", "MAX_CHARS"}
 parts = []
 for n in tree.body:
@@ -87,6 +87,14 @@ print("\n=== clean() — 평문 경로 ===")
 clean = ns["clean"]
 CLEAN_CASES = [
     ("I just can't **STAND** / ungrateful people. ↘", "I just can't stand ungrateful people."),
+    # 2026-09-17: 화살표를 문장부호로 옮긴다. 마침표 없이 `↘` 로만 끝나는 리듬맵이
+    # 문장 경계를 잃어 한 호흡으로 죽 읽히던 문제 — 앱 `speechText()` 와 같은 규칙이다.
+    ("I just **relaxed** at **HOME** → / and **created** an app ↘",
+     "I just relaxed at home and created an app."),
+    ("As you all know, ↘↗ / we had a problem ↘", "As you all know, we had a problem."),
+    ("my email too, ↘↗ / and the brand ↘", "my email too, and the brand."),
+    ("do you need the brand too? ↘", "do you need the brand too?"),   # ?·! 는 덮어쓰지 않는다
+    ("Honestly, I just can't **STAND** / people. ↘", "Honestly, I just can't stand people."),
     ("The **CUSA** fee is due.", "The CUSA fee is due."),          # SPELL_OUT 은 유지
     ("AQUALINK called.", "aqualink called."),
     ("already lowercase text", "already lowercase text"),          # 멱등 — 기존 캐시 키 보존

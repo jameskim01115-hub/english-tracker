@@ -714,6 +714,10 @@
   .say-go:active { transform: scale(.99); }
   .say-go.on { background: #14532d; }
   .say-go:disabled { opacity: .5; }
+  /* 반복 중 상태. 카드 🔊 와 같은 색 규칙이다 — 쉐도잉 = 파랑, 따라 말하기 = 초록
+     (`.spk.lp-shadow` / `.spk.lp-repeat` 참조). `.on`(만드는 중) 뒤에 와야 이긴다. */
+  .say-go.lp-shadow { background: #1d4ed8; }
+  .say-go.lp-repeat { background: #15803d; }
   .say-note { font-size: 12px; color: var(--sub); margin: 9px 3px 0; min-height: 17px; }
   .say-clear { background: none; border: none; color: var(--sub); font-size: 12px;
                cursor: pointer; font-family: inherit; text-decoration: underline; }
@@ -1005,7 +1009,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-17-04";
+const BUILD = "2026-09-17-05";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1633,7 +1637,8 @@ function speakDevice(text, btn, onEnd) {
 }
 
 function speak(text, btn) {
-  stopLoop();   // 다른 🔊를 누르면 돌던 반복은 끝낸다
+  stopLoop();      // 다른 🔊를 누르면 돌던 반복은 끝낸다
+  stopSayLoop();   // 발음 탭에서 돌던 반복도 같이 — 두 소리가 겹치면 안 된다
   playOnce(text, btn);
 }
 function playOnce(text, btn, onEnd) {
@@ -1685,6 +1690,18 @@ const CYC_IDLE_MS = 6000;   // 한 번 재생이 끝나고 이만큼 지나면 �
 let loop = null;      // { id, btn, text, mode, timer, watch }
 let loopSeq = 0;
 
+// 발음 탭의 큰 「재생」 버튼도 같은 사이클을 돈다 (2026-09-17). 표시만 다르다 —
+// 배지를 붙일 자리가 없는 큰 버튼이라 글자로 알린다. 동작은 `sayLoop*` 함수들에 있다.
+// **선언을 아래로 내리지 말 것**: `speak()`·`tapSpeak()` 이 `stopSayLoop()` 을 부르는데
+// 그 함수가 이 값들을 읽는다 (CLAUDE.md 「절대 규칙」 — TDZ 로 앱 전체가 죽은 전례가 있다).
+const SAY_GO_MODES = [
+  { cls: "", label: "🔊 재생" },
+  { cls: "lp-shadow", label: "🔁 쉐도잉 반복 · 0.3초" },
+  { cls: "lp-repeat", label: "🔁 따라 말하기 반복" },
+];
+let sayLoop = null;      // { id, text, voice, speed, mode, timer }
+let sayLoopSeq = 0;
+
 // 반복 중일 때만 🔁 로 바뀌고 색·배지가 붙는다. 「그냥 재생」과 끔은 평소의 🔊 다.
 function paintSpk(btn, mode) {
   CYC_MODES.forEach(m => { if (m) btn.classList.remove(m.cls); });
@@ -1710,6 +1727,7 @@ function tapSpeak(btn) {
   if (!btn.dataset.cyc) { speak(text, btn); return; }   // 조각·칩 — 예전처럼 한 번만
   const next = loop && loop.btn === btn ? loop.mode + 1 : 0;
   stopLoop();
+  stopSayLoop();   // 발음 탭 반복과 겹치지 않게
   if (next >= CYC_MODES.length) { toast("반복 끔"); return; }
   const id = ++loopSeq;
   // 카드가 닫히거나 다시 그려지면(버튼이 DOM 에서 사라지면) 끝낸다.
@@ -1749,7 +1767,7 @@ function loopNext(id, ms) {
   loop.timer = setTimeout(() => loopPlay(id), gap);
 }
 
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopLoop(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { stopLoop(); stopSayLoop(); } });
 
 // 「전체 문장」일 때만 반복을 붙인다 (2026-09-15 Patrick) — `I think I can` 같은 조각은 반복할 이유가 없다.
 // 판정은 **끝 글자**로 한다. 실데이터(2026-09-09 백업) 기준 문장은 전부 `. ? !` 또는 끝 억양(↘ ↓ ↗)으로
@@ -1837,7 +1855,9 @@ function paintSayRecent() {
     `<div class="mt">${esc(x.v)} · ${x.s.toFixed(1)}x</div></div>`).join("");
 }
 
-function saySpeak(text, voice, speed) {
+// `onEnd(ms)` 는 **끝까지 재생됐을 때만** 부른다 — 카드 🔊 의 `speakServer()` 와 같은 규약이라
+// 반복 사이클이 두 곳에서 똑같이 돈다. ms = 실제 재생 길이(「따라 말하기」 쉼의 기준).
+function saySpeak(text, voice, speed, onEnd) {
   // 리듬 표기(`**강세**`·`/`·`↘`)를 **벗기지 않고 그대로** 보낸다.
   // 서버가 판단한다 — Azure 키가 있으면 SSML 로 강세·끊어읽기를 되살리고,
   // 없으면(현재) 서버 쪽 clean() 이 평문으로 벗긴다. 결과는 지금과 동일하다.
@@ -1859,21 +1879,106 @@ function saySpeak(text, voice, speed) {
     btn.disabled = false;
     note.textContent = msg || "";
   };
-  sayAudio.onended = () => done("");
+  let startedAt = 0;
+  const endMs = () => {
+    const d = sayAudio.duration;
+    return isFinite(d) && d > 0 ? d * 1000 : performance.now() - startedAt;
+  };
+  sayAudio.onended = () => { done(sayNoteText(voice, speed)); if (onEnd) onEnd(endMs()); };
   // **재생이 시작되면 바로 버튼을 푼다.** 끝날 때까지 잠가두면 긴 문장에서
   // 다시 듣기·다른 음성으로 바꾸기가 막힌다. 잠그는 목적은 생성 중복 방지뿐이다.
   sayAudio.onplaying = () => {
+    if (!startedAt) startedAt = performance.now();
     btn.disabled = false;
     btn.classList.remove("on");
-    note.textContent = `${voice} · ${speed.toFixed(1)}x`;
+    note.textContent = sayNoteText(voice, speed);
   };
   // 서버가 죽거나 edge-tts 가 막히면 기기 음성으로라도 소리를 낸다.
-  sayAudio.onerror = () => { done("서버 음성 실패 — 기기 음성으로 재생합니다"); speakDevice(t, null); };
+  // `onEnd` 를 같이 넘겨야 **폴백 중에도 반복이 계속 돈다.**
+  sayAudio.onerror = () => {
+    done("서버 음성 실패 — 기기 음성으로 재생합니다");
+    speakDevice(t, null, onEnd);
+  };
 
   // ssml=1 은 서버가 Azure 키를 가졌을 때만 실제로 켜진다. 없으면 무시된다.
-  sayAudio.src = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${speed}&ssml=1`;
+  const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${speed}&ssml=1`;
+  // 같은 문장을 다시 틀면 받아둔 소리를 되감는다 — 반복이 회차마다 서버에 가지 않게.
+  if (sayAudio.src === url && !sayAudio.error) sayAudio.currentTime = 0;
+  else sayAudio.src = url;
   const p = sayAudio.play();
-  if (p && p.catch) p.catch(() => { done("재생 실패"); speakDevice(t, null); });
+  if (p && p.catch) p.catch(err => {
+    // AbortError 는 실패가 아니다 — 재생 직전에 반복 끄기·다른 문장이 끼어든 것이다.
+    // 여기서 기기 음성으로 넘기면 방금 끈 문장이 한 번 더 나온다 (카드 쪽과 같은 함정).
+    if (err && err.name === "AbortError") return;
+    done("재생 실패");
+    speakDevice(t, null, onEnd);
+  });
+}
+
+// ══════ 발음 탭의 「재생」도 탭할 때마다 단계가 오른다 (2026-09-17 Patrick 요청) ══════
+// 카드 🔊 와 **완전히 같은 사이클**이다: 그냥 재생 → 쉐도잉(0.3초) → 따라 말하기 → 끔.
+// 간격 규칙(`LOOP_SHADOW_GAP_MS`·`repeatGap()`)과 「그냥 재생」의 6초 리셋(`CYC_IDLE_MS`)까지
+// 같은 상수를 쓴다 — 두 화면의 감각이 어긋나면 안 되므로 **여기서 따로 정의하지 말 것.**
+// 카드와 다른 점은 표시뿐이다. 작은 아이콘 버튼이 아니라 큰 버튼이라 배지 대신 글자로 알린다.
+function sayNoteText(voice, speed) {
+  const m = sayLoop && SAY_GO_MODES[sayLoop.mode];
+  return `${voice} · ${speed.toFixed(1)}x${m && m.cls ? " · 반복 중 (다시 누르면 다음 단계)" : ""}`;
+}
+
+function paintSayGo(mode) {
+  const b = document.getElementById("sayGo");
+  if (!b) return;
+  SAY_GO_MODES.forEach(m => { if (m.cls) b.classList.remove(m.cls); });
+  const m = SAY_GO_MODES[mode] || SAY_GO_MODES[0];
+  if (m.cls) b.classList.add(m.cls);
+  b.textContent = m.label;
+}
+
+function stopSayLoop() {
+  if (!sayLoop) return;
+  clearTimeout(sayLoop.timer);
+  sayLoop = null;
+  paintSayGo(0);
+  const b = document.getElementById("sayGo");
+  if (b) { b.classList.remove("on"); b.disabled = false; }   // 재생 중 끊으면 onended 가 안 온다
+  try { if (sayAudio) sayAudio.pause(); } catch (e) { /* 재생 전 */ }
+  try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
+}
+
+function startSayLoop(text, voice, speed, mode, quiet) {
+  const id = ++sayLoopSeq;
+  sayLoop = { id, text, voice, speed, mode, timer: 0 };
+  paintSayGo(mode);
+  if (!quiet && CYC_MODES[mode]) toast(CYC_MODES[mode].toast);
+  sayLoopPlay(id);
+}
+
+function sayLoopPlay(id) {
+  if (!sayLoop || sayLoop.id !== id) return;
+  saySpeak(sayLoop.text, sayLoop.voice, sayLoop.speed, ms => sayLoopNext(id, ms));
+}
+
+function sayLoopNext(id, ms) {
+  if (!sayLoop || sayLoop.id !== id) return;
+  clearTimeout(sayLoop.timer);
+  if (sayLoop.mode === 0) {
+    // 「그냥 재생」 상태는 6초 뒤에 푼다 — 한참 뒤에 「한 번 더」 누른 것이
+    // 느닷없이 쉐도잉이 되면 안 된다. 연속으로 누를 때만 단계가 오른다 (카드와 같은 규칙).
+    sayLoop.timer = setTimeout(() => { if (sayLoop && sayLoop.id === id) stopSayLoop(); }, CYC_IDLE_MS);
+    return;
+  }
+  const gap = sayLoop.mode === 1 ? LOOP_SHADOW_GAP_MS : repeatGap(ms);
+  sayLoop.timer = setTimeout(() => sayLoopPlay(id), gap);
+}
+
+// 음성·속도를 바꿨을 때. **단계는 유지한다** — 반복으로 들으면서 음성을 갈아 끼우는 게
+// 이 탭의 주 용도라, 칩 하나 눌렀다고 반복이 풀리면 안 된다.
+function sayReplay(text) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  const mode = sayLoop ? sayLoop.mode : 0;
+  stopSayLoop();
+  startSayLoop(t, sayVoice, saySpeed, mode, true);
 }
 
 function initSayTab() {
@@ -1890,7 +1995,7 @@ function initSayTab() {
     localStorage.setItem("et_say_voice", sayVoice);
     paintSayChips();
     // 문장이 있으면 바꾸자마자 들려준다 — 음성 비교가 이 탭의 주 용도다.
-    if (ta.value.trim()) saySpeak(ta.value, sayVoice, saySpeed);
+    sayReplay(ta.value);
   };
   document.getElementById("sayVoicesF").addEventListener("click", pickVoiceChip);
   document.getElementById("sayVoicesM").addEventListener("click", pickVoiceChip);
@@ -1901,15 +2006,23 @@ function initSayTab() {
     saySpeed = parseFloat(b.dataset.s);
     localStorage.setItem("et_say_speed", String(saySpeed));
     paintSayChips();
-    if (ta.value.trim()) saySpeak(ta.value, sayVoice, saySpeed);
+    sayReplay(ta.value);
   });
 
+  // 탭할 때마다 단계가 오른다: 그냥 재생 → 쉐도잉 → 따라 말하기 → 끔.
+  // **문장이 바뀌면 처음(그냥 재생)부터다** — 다른 문장인데 단계를 물려받으면 안 된다.
   document.getElementById("sayGo").addEventListener("click", () => {
     const t = ta.value.trim();
     if (!t) { toast("문장을 입력해주세요"); return; }
-    saySpeak(t, sayVoice, saySpeed);
-    sayRecentPush(t);
+    const next = sayLoop && sayLoop.text === t ? sayLoop.mode + 1 : 0;
+    stopSayLoop();
+    if (next >= SAY_GO_MODES.length) { toast("반복 끔"); return; }
+    if (next === 0) sayRecentPush(t);
+    startSayLoop(t, sayVoice, saySpeed, next);
   });
+
+  // 입력이 바뀌면 돌던 반복은 끝낸다 — 지운 문장이 계속 들리면 안 된다.
+  ta.addEventListener("input", () => { if (sayLoop && sayLoop.text !== ta.value.trim()) stopSayLoop(); });
 
   document.getElementById("sayRecent").addEventListener("click", ev => {
     const it = ev.target.closest("[data-i]");
@@ -1918,7 +2031,9 @@ function initSayTab() {
     if (!x) return;
     ta.value = x.t;
     len.textContent = x.t.length;
-    saySpeak(x.t, x.v, x.s);
+    // 그때 쓰던 음성·속도 그대로 한 번 재생한다. 이어서 「재생」을 누르면 쉐도잉으로 오른다.
+    stopSayLoop();
+    startSayLoop(x.t, x.v, x.s, 0, true);
   });
 
   document.getElementById("sayClear").addEventListener("click", () => {
@@ -2097,6 +2212,7 @@ function setTab(name) {
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + name));
   document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
   scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  if (name !== "say") stopSayLoop();   // 발음 탭을 떠나면 돌던 반복은 끝낸다
   if (name === "game" && !game) renderGameStart();
   if (name === "lib") ensureAllLoaded();
 }

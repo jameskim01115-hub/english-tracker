@@ -1005,7 +1005,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-16-03";
+const BUILD = "2026-09-17-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1414,8 +1414,49 @@ function looksPron(s) {
     if (/[0-9]/.test(t[m.index - 1] || "")) continue;  // 숫자 뒤 단위 — `8km를`
     if (isHan(t[m.index - 1]) || isHan(t[m.index + m[0].length])) return true;
   }
-  const KO = /(을 |를 |은 |는 |에서|으로|해요|합니다|했|해야|그래서|예요|이에요|거예요|네요|죠\.|니다|어요|았|였|고 |도 |만 |에게|한테|부터|까지)/;
-  return /\//.test(t) && !KO.test(t);
+  return /\//.test(t) && !KO_GRAM.test(t);
+}
+// 한국어 문장의 지문(조사·어미). 음차에는 거의 안 나온다.
+const KO_GRAM = /(을 |를 |은 |는 |에서|으로|해요|합니다|했|해야|그래서|예요|이에요|거예요|네요|죠\.|니다|어요|았|였|고 |도 |만 |에게|한테|부터|까지)/;
+// **확실한 뜻 줄**만 true. 발음 줄과 헷갈릴 여지가 없을 때만 쓴다.
+function looksMean(s) { return !looksPron(s) && KO_GRAM.test(String(s || "")); }
+
+// 노트의 한 블록은 **영어 → 발음 → 뜻** 순서로 온다. 그 안의 한글 줄을 발음과 뜻으로 가른다.
+// **줄 하나만 보고 가르면 안 된다** — `왓 두 아이 니-투 브륑?` 처럼 홑자모·라틴 조각·`/` 가
+// 하나도 없는 발음 줄이 있다. 그런 줄이 「뜻」으로 새어 들어가 카드의 뜻이
+// 「왓 두 아이 니-투 브륑? 새 계좌를 …」 이 됐고, 발음에는 첫 줄만 남았다
+// (2026-09-17 Patrick 지적 — 정답이 두 문장일 때마다 생긴다).
+// 그래서 **줄 묶음으로 본다**: 첫 「확실한 뜻」 앞까지가 앞 구간이고, 그 구간에 발음이
+// 하나라도 있으면 **구간 전체가 발음**이다. 그 뒤는 전부 뜻이다.
+// `cap`(영어 줄 수)으로 한도를 둔다 — 발음 줄은 영어 줄 수를 넘지 않으므로, 뜻이 통째로
+// 발음으로 빨려 들어가는 최악을 막는다.
+function splitKoPron(lines, cap) {
+  const run = [];
+  let i = 0;
+  for (; i < lines.length; i++) {
+    if (looksMean(lines[i])) break;
+    run.push(lines[i]);
+  }
+  const rest = lines.slice(i);
+  if (!run.some(looksPron)) return { pron: [], mean: run.concat(rest) };
+  const n = cap > 0 ? Math.min(run.length, cap) : run.length;
+  return { pron: run.slice(0, n), mean: run.slice(n).concat(rest) };
+}
+
+// 두 한국어 줄이 **사실상 같은 문장**인지. 글자 2-gram Dice 계수를 쓴다 —
+// 노트의 「오늘의 질문」이 한국어뿐인 워밍업 항목에서는 질문이 곧 정답의 뜻이라
+// 카드에 같은 문장이 「질문 · 상황」과 「뜻」으로 **두 번** 나왔다 (2026-09-17 Patrick 지적).
+// 완전 일치로는 못 잡는다 — `고장이라 업체를` 과 `고장이라서, 기사를` 처럼 조금씩 다르다.
+function sameKo(a, b) {
+  const norm = t => String(t || "").replace(/[\s.,!?·…"'’”()]/g, "");
+  const x = norm(a), y = norm(b);
+  if (!x || !y || x.length < 6 || y.length < 6) return false;
+  const gram = t => { const g = []; for (let i = 0; i < t.length - 1; i++) g.push(t.slice(i, i + 2)); return g; };
+  const gx = gram(x), gy = gram(y);
+  const pool = gy.slice();
+  let hit = 0;
+  for (const g of gx) { const i = pool.indexOf(g); if (i >= 0) { pool.splice(i, 1); hit++; } }
+  return (2 * hit) / (gx.length + gy.length) >= 0.6;
 }
 function srcOf(e) {
   if (e.source === "hermes-wanted") return { cls: "wanted", label: "막힌 표현" };
@@ -2347,7 +2388,11 @@ function exprCard(e, mode, dir) {
   // 질문(e.question)은 정답과 똑같이 리듬 표기(강세·화살표·청크)로 온다 — rhythmHtml()로
   // 그려야 볼드·피크가 살고, 🔊 버튼도 정답과 같은 패턴(data-say)으로 듣기를 지원한다.
   // 「상황」(questionKo만 있는 카드)은 원래도 평문 설명이라 그대로 둔다 (2026-09-07).
-  const qBlock = isReview(e) && (e.question || e.questionKo) && !(recall && pr.q)
+  // 영어 질문이 없고 `questionKo` 가 뜻과 **사실상 같은 문장**이면 질문 블록을 통째로 뺀다.
+  // 워밍업 항목은 「오늘의 질문」이 한국어 한 줄(= 영작할 문장)이라 그게 곧 정답의 뜻이다 —
+  // 그대로 두면 한→영은 앞면과, 영→한은 「뜻」과 같은 문장이 두 번 나온다 (2026-09-17 Patrick 지적).
+  const qDup = !e.question && sameKo(e.questionKo, koOf(e));
+  const qBlock = isReview(e) && (e.question || e.questionKo) && !qDup && !(recall && pr.q)
     ? `<div class="blk"><div class="blk-l">질문 · 상황</div>
         ${e.question
           ? `<div class="expr-row">
@@ -3903,8 +3948,10 @@ function parseReviewNote(text) {
     // 정답 블록에 섞여 온 한글 줄을 「뜻」과 「발음」으로 가른다.
     const koCands = fixed.filter(l => isKoLine(l));
     // 정답이 여러 줄이면 뜻·발음도 줄 수만큼 온다. **`find` 로 첫 줄만 집으면 나머지가 버려진다.**
-    const koLine = koCands.filter(l => !looksPron(l)).join(" ");
-    const pronLine = koCands.filter(l => looksPron(l)).join(" ");
+    // 줄마다 따로 판정하지 않고 `splitKoPron` 으로 **묶어서** 가른다 (위 주석 참조).
+    const koSplit = splitKoPron(koCands, fixedAll.length);
+    const koLine = koSplit.mean.join(" ");
+    const pronLine = koSplit.pron.join(" ");
 
     items.push({
       title: unbold(title),
@@ -3922,7 +3969,7 @@ function parseReviewNote(text) {
       // 영어와 같은 이유로 **한글 뜻도 여러 줄을 전부 이어 붙인다** — `find` 로 첫 줄만
       // 집으면 질문은 두 문장인데 뜻은 한 문장만 남는다. 발음 줄은 여전히 걸러낸다.
       questionKo: stripArrow(unbold(
-        qKo.filter(l => !looksPron(l)).join(" ") || qKo[0] || "")),
+        splitKoPron(qKo, qEn.length).mean.join(" ") || qKo[0] || "")),
       expression,
       // 한국어 뜻은 `뜻` 라벨이 있으면 그걸, 없으면 예전처럼 정답 블록의 한글 줄을 쓴다.
       // **발음 줄은 건너뛴다.** 노트가 `발음:` 라벨 없이 발음을 정답 블록 안에 넣어 보내면
@@ -4027,8 +4074,10 @@ function autoFillManualAdd(marked) {
   const rhythmLines = lines.filter(l => !hasHangul(l) && RHYTHM_MARK.test(l));
   if (!rhythmLines.length) return false;
   const hangul = lines.filter(l => hasHangul(l));
-  const pronLines = hangul.filter(l => looksPron(l));
-  const meanLines = hangul.filter(l => !looksPron(l) && !/[—–]/.test(l));
+  // 여기도 줄 하나씩 보지 않고 묶어서 가른다 — 파서와 같은 규칙이어야 한다 (`splitKoPron`).
+  const hSplit = splitKoPron(hangul, rhythmLines.length);
+  const pronLines = hSplit.pron;
+  const meanLines = hSplit.mean.filter(l => !/[—–]/.test(l));
   // 뜻이 다음 줄(`— 한국어`)로 넘어온 표현은 앞의 영어 줄도 같이 덩어리 칸으로 보낸다.
   const chunkLines = lines.filter((l, i) => (hasHangul(l) && /[—–]/.test(l))
     || (!hasHangul(l) && !RHYTHM_MARK.test(l) && ORPHAN_KO.test(lines[i + 1] || "")));

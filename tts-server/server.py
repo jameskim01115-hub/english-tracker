@@ -194,10 +194,35 @@ def clean(text):
     """
     t = unstress_caps(text)
     t = t.replace("**", "")
+    # **화살표는 문장부호로 옮긴다** (2026-09-17). 예전에는 공백으로 지웠는데, 마침표 없이
+    # `↘` 로만 끝나는 리듬맵(「발음」 탭에 리듬 표기를 그대로 붙여넣는 경우)은 문장 경계가
+    # 사라져 한 호흡으로 죽 읽혔다. `build_ssml()` 은 이미 `↘`→마침표로 옮기고 있었는데
+    # **평문 경로만 이 처리가 빠져 있었다.** 앱 `speechText()` 와 같은 규칙이다.
+    # 화살표가 없으면 예전 그대로라 기존 캐시 키가 유지된다(멱등).
+    if re.search(r"[→↘↓↗]", t):
+        return _arrows_to_punct(t)[:MAX_CHARS]
     t = re.sub(r"[→↘↓↗]", " ", t)
     t = re.sub(r"\s+/\s+", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t[:MAX_CHARS]
+
+
+def _arrows_to_punct(t):
+    """화살표를 문장부호로. 앱 `plainFromRhythm()` 과 **정규식 순서까지** 같아야 한다.
+
+    `↘↗` 를 `↘` 보다 먼저 걸러야 한다 — 뒤에 두면 마침표가 박혀 문장이 두 동강 난다.
+    """
+    t = re.sub(r"\s*↘↗\s*", ", ", t)
+    t = re.sub(r"\s*[↘↓]\s*", ". ", t)
+    t = re.sub(r"\s*[→↗]\s*", " ", t)
+    t = re.sub(r"\s+/\s+", " ", t)
+    t = re.sub(r"\s+([,.])", r"\1", t)
+    t = re.sub(r",(?:\s*,)+", ",", t)
+    t = re.sub(r",\s*\.", ".", t)
+    t = re.sub(r"\.\s*\.", ".", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"[.\s]*$", "", t)
+    return re.sub(r"([^.?!])$", r"\1.", t)
 
 
 def unstress_caps(text):

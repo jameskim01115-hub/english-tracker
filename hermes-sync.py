@@ -686,9 +686,34 @@ def speech_text(raw: str) -> str:
                lambda m: m.group(0) if SPELL_OUT.fullmatch(m.group(0)) else m.group(0).lower(),
                t)
     t = t.replace("**", "")
+    # **화살표가 있으면 문장부호로 옮긴다** (2026-09-17). 예전에는 전부 공백으로 지웠는데,
+    # 마침표 없이 `↘` 로만 끝나는 리듬맵은 문장 경계가 사라져 TTS 가 한 호흡으로 죽 읽었다
+    # (「감정 없이 책 읽는 느낌」의 원인 하나). 앱 `speechText()`·서버 `clean()` 과 같은 규칙이다.
+    # 화살표가 없으면 예전 그대로 — 캐시 키가 유지된다.
+    if re.search(r"[→↘↓↗]", t):
+        return _arrows_to_punct(t)
     t = re.sub(r"[→↘↓↗]", " ", t)
     t = re.sub(r"\s+/\s+", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+def _arrows_to_punct(t: str) -> str:
+    """화살표를 문장부호로. 앱 `plainFromRhythm()` 과 **정규식 순서까지** 같아야 한다.
+
+    `↘↗`(도입부 끝, 뒤에 더 온다)를 `↘` 보다 **먼저** 걸러야 한다 — 뒤에 두면
+    마침표가 박혀 문장이 두 동강 난다.
+    """
+    t = re.sub(r"\s*↘↗\s*", ", ", t)
+    t = re.sub(r"\s*[↘↓]\s*", ". ", t)
+    t = re.sub(r"\s*[→↗]\s*", " ", t)
+    t = re.sub(r"\s+/\s+", " ", t)
+    t = re.sub(r"\s+([,.])", r"\1", t)
+    t = re.sub(r",(?:\s*,)+", ",", t)
+    t = re.sub(r",\s*\.", ".", t)
+    t = re.sub(r"\.\s*\.", ".", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"[.\s]*$", "", t)
+    return re.sub(r"([^.?!])$", r"\1.", t)
 
 
 def prewarm(texts):

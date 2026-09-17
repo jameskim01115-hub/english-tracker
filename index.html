@@ -1009,7 +1009,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-17-05";
+const BUILD = "2026-09-17-06";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1320,6 +1320,22 @@ function plain(s) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// **소리로 보낼 때는 `plain()` 이 아니라 이걸 쓴다** (2026-09-17).
+// `plain()` 은 화살표를 **공백으로 지운다** — 화면용으로는 맞지만 소리로는 틀렸다.
+// 마침표 없이 `↘` 로만 끝나는 리듬맵(배달 카드의 「예문」이 그렇다)은 문장 경계가
+// 통째로 사라져 **억양이 안 내려가고 한 호흡으로 죽 읽는다** — Patrick 이 말한
+// 「감정 없이 책 읽는 느낌」의 원인 하나가 이것이었다. 실측:
+//   plain()       → "I just relaxed at home and created an application to help me study English"
+//   speechText()  → "I just relaxed at home. and created an application to help me study English."
+// `↘`→마침표·`↘↗`→쉼표 규칙은 이미 `plainFromRhythm()` 이 갖고 있다(가져오기에서 검증된 것).
+// **화살표가 없으면 `plain()` 그대로 내려보낸다** — 덩어리·평문 정답은 한 글자도 안 바뀌어
+// 캐시 키가 유지된다. 바뀌는 건 리듬 표기가 실제로 들어 있는 문장뿐이다.
+// ⚠️ `hermes-sync.py` 의 `speech_text()`·서버 `clean()` 과 **글자 그대로 같은 규칙이어야 한다.**
+function speechText(s) {
+  const t = String(s || "");
+  return /[→↘↓↗]/.test(t) ? plainFromRhythm(t) : plain(t);
+}
 function isStudied(e) { return e.studied === true || (e.stage || 0) > 0; }
 function isGraduated(e) { return (e.stage || 0) >= INTERVALS.length; }
 const SRC_REVIEW = "chatgpt-review";
@@ -1585,7 +1601,7 @@ let audioEl = null;
 // `onEnd(ms)` 는 **끝까지 재생됐을 때만** 부른다 — 반복 재생(🔁)이 다음 회차를 잡는 신호다.
 // ms = 실제 재생 길이. 「따라 말하기」 간격이 이 값으로 정해진다.
 function speakServer(text, voice, btn, onEnd) {
-  const t = plain(text);
+  const t = speechText(text);
   if (!t) return;
   if (!audioEl) audioEl = new Audio();
   try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
@@ -1614,7 +1630,7 @@ function speakServer(text, voice, btn, onEnd) {
 }
 
 function speakDevice(text, btn, onEnd) {
-  const t = plain(text);
+  const t = speechText(text);
   if (!t) return;
   if (!("speechSynthesis" in window)) { toast("이 브라우저는 음성 재생을 지원하지 않습니다"); return; }
   try {

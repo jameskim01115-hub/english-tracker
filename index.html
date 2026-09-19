@@ -664,6 +664,61 @@
   .m-save { background: var(--accent); color: #fff; }
   .m-cancel { background: var(--card2); color: var(--sub); }
 
+  /* ───── 🎧 귀로 복습 (오디오북) ───── */
+  /* 전체 화면을 덮는다. **닫으면 재생도 멈춘다** — 뒤에서 소리만 계속 나면
+     어디서 나는지 못 찾는다. 주머니에 넣고 들을 때는 이 화면을 열어둔 채로 둔다. */
+  .ab-bg {
+    display: none; position: fixed; inset: 0; z-index: 70;
+    background: var(--bg); flex-direction: column;
+  }
+  .ab-bg.show { display: flex; }
+  .ab-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(env(safe-area-inset-top) + 14px) 18px 6px;
+    color: var(--dim); font-size: 12px; font-weight: 700;
+  }
+  .ab-x {
+    background: none; border: none; color: var(--sub); cursor: pointer;
+    font-family: inherit; font-size: 20px; line-height: 1; padding: 4px 6px;
+  }
+  .ab-body {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    gap: 14px; padding: 10px 22px; text-align: center; overflow-y: auto;
+  }
+  .ab-src {
+    font-size: 11px; font-weight: 800; color: var(--dim);
+    letter-spacing: .04em;
+  }
+  .ab-en { font-size: 22px; font-weight: 700; line-height: 1.55; word-break: break-word; }
+  .ab-ko { font-size: 15px; color: var(--sub); line-height: 1.6; }
+  .ab-now {
+    font-size: 13px; font-weight: 800; color: var(--blue); min-height: 18px;
+  }
+  .ab-ctl {
+    display: flex; align-items: center; justify-content: center; gap: 26px;
+    padding: 6px 0 14px;
+  }
+  .ab-ctl button {
+    background: var(--card2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 999px; cursor: pointer; font-family: inherit;
+    width: 54px; height: 54px; font-size: 19px;
+  }
+  .ab-ctl .ab-main {
+    width: 72px; height: 72px; font-size: 26px;
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+  /* 모드·반복 선택. 재생 중에 바꾸면 현재 표현을 처음부터 다시 짠다. */
+  .ab-opts {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    padding: 0 18px calc(env(safe-area-inset-bottom) + 26px);
+  }
+  .ab-seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .ab-seg button {
+    background: none; border: none; color: var(--dim); cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 800; padding: 8px 14px; border-radius: 999px;
+  }
+  .ab-seg button.on { background: var(--card2); color: var(--text); }
+
   /* ───── bottom nav ───── */
   nav.tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -854,6 +909,8 @@
         </div>
       </div>
     </div>
+    <button class="more-btn" id="abGo" style="margin:0 0 12px">
+      🎧 귀로 복습 — 듣기만 하는 오디오북</button>
     <div id="dueList"><div class="loading">불러오는 중…</div></div>
   </section>
 
@@ -976,6 +1033,37 @@
 <canvas id="fx"></canvas>
 <div class="toast" id="toast"></div>
 
+<!-- 🎧 귀로 복습 — 오디오북 (2026-09-19). 복습 예정분 + 미학습 표현을 자동으로 넘기며 재생한다.
+     복습 단계는 건드리지 않는다 — 듣기는 인출이 아니다. -->
+<div class="ab-bg" id="abBg">
+  <div class="ab-head">
+    <button class="ab-x" id="abClose" title="닫기 (재생도 멈춥니다)">✕</button>
+    <span id="abPos"></span>
+  </div>
+  <div class="ab-body">
+    <div class="ab-src" id="abSrc"></div>
+    <div class="ab-en" id="abEn"></div>
+    <div class="ab-ko" id="abKo"></div>
+    <div class="ab-now" id="abNow"></div>
+  </div>
+  <div class="ab-ctl">
+    <button id="abPrev" title="이전 표현">⏮</button>
+    <button class="ab-main" id="abPlay" title="일시정지 / 재생">⏸</button>
+    <button id="abSkip" title="다음 표현">⏭</button>
+  </div>
+  <div class="ab-opts">
+    <div class="ab-seg" id="abMode">
+      <button data-m="listen">흘려듣기</button>
+      <button data-m="recall">인출 훈련</button>
+    </div>
+    <div class="ab-seg" id="abReps">
+      <button data-r="5">5회</button>
+      <button data-r="10">10회</button>
+    </div>
+  </div>
+</div>
+
+
 <script>
 // ═══════════════ CONFIG ═══════════════
 // 이 앱 전용 Firebase 프로젝트. M Building 프로젝트(m-building-fbe46)와 절대 공유하지 않는다.
@@ -1009,7 +1097,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-17-07";
+const BUILD = "2026-09-19-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1843,6 +1931,253 @@ function spkBtn(text, sm, loopable = isFullSentence(text)) {
   return `<button class="spk${sm ? " sm" : ""}" data-say="${esc(text)}"${loopable ? ` data-cyc="1"` : ""}` +
     ` title="${loopable ? "듣기 · 다시 누르면 반복" : "듣기"}">🔊</button>`;
 }
+
+
+// ═══════════════ 🎧 귀로 복습 — 오디오북 (2026-09-19 Patrick 요청) ═══════════════
+// 「클릭 없이 오디오북처럼 틀어두면 배경음악처럼 듣다가 복습도 된다」에서 나왔다.
+//
+// 대상은 **오늘 복습 예정분 + 아직 복습 주기에 안 들어간 미학습 표현** 둘뿐이고,
+// **복습 단계(stage·nextReview)는 절대 건드리지 않는다.** 듣기는 인출이 아니다 —
+// 게임 정답이 복습 일정을 앞당기지 않는 것과 같은 원칙이다 (CLAUDE.md).
+// 여기서 Firestore 에 쓰는 것은 **하나도 없다.** 쓰기를 추가하자는 제안을 다시 하지 말 것.
+//
+// 모드 둘:
+//   흘려듣기   영어만 N회
+//   인출 훈련  복습 예정분 → 한국어 뜻 → 쉼(영어를 떠올리는 시간) → 영어 N회
+//              미학습     → 영어 N회 → 한국어 뜻
+//     **미학습은 순서를 뒤집는다.** 처음 보는 표현을 한→영으로 물으면 답을 알 수가 없다.
+//     「오늘」 탭의 처음 보는 표현을 영→한으로 익히게 해둔 것과 같은 이유다.
+//
+// 한국어는 **서버 음성(KoSunHi)** 으로만 낸다. 기기 내장 한국어 음성은 Patrick 이
+// 「너무 기계음이라 거슬린다」고 해서 뺐다(2026-09-19). 그래서 서버가 죽으면 한국어는
+// **건너뛴다** — 영어처럼 기기 음성으로 폴백하면 영어 음성이 한글을 읽어 소리가 깨진다.
+//
+// 재생은 카드 🔊 와 같은 `audioEl` 하나를 쓴다. 같은 문장을 반복할 때 되감아 트므로
+// 회차마다 서버에 가지 않는다. 문장별 mp3 는 hermes-sync 가 미리 만들어 두므로 대부분 캐시 히트다.
+const AB_KO_VOICE = "KoSunHi";      // 2026-09-19 Patrick 이 후보 4개를 듣고 고름
+const AB_KO_SPEED = "1.0";          // 서버가 KO_SPEED 로 고정한다 — 이 값은 표시용
+const AB_REPS = [5, 10];
+const AB_GAP_MS = 700;              // 같은 문장 반복 사이
+const AB_ITEM_GAP_MS = 1200;        // 표현이 바뀔 때
+// 한국어 뜻을 듣고 영어를 떠올리는 시간. 고정 초로 두면 짧은 표현엔 길고 긴 문장은 모자란다 —
+// 단어 수로 잡는다. (카드 🔁 의 `repeatGap()` 은 **들은 길이**를 쓰지만 여기서는
+// 아직 영어를 재생하기 전이라 실제 길이를 알 수 없다.)
+const AB_RECALL_PER_WORD_MS = 420;
+const AB_RECALL_MIN_MS = 2500;
+const AB_RECALL_MAX_MS = 9000;
+// 백그라운드에서 타이머가 얼어 재생이 끊긴 채로 돌아오는 경우를 구제한다.
+const AB_STALL_MS = 9000;
+
+let ab = null;        // { id, items, i, steps, s, tick }
+let abSeq = 0;
+let abPaused = false;
+let abMode = localStorage.getItem("et_ab_mode") === "recall" ? "recall" : "listen";
+let abReps = AB_REPS.includes(+localStorage.getItem("et_ab_reps")) ? +localStorage.getItem("et_ab_reps") : 5;
+
+// 한국어 전용 재생. `speakServer()` 를 쓰지 않는 이유는 **기기 음성 폴백 때문이다** —
+// 실패하면 그냥 건너뛴다(`onEnd(0)`).
+function speakKo(text, onEnd) {
+  const t = String(text || "").trim();
+  if (!t) { if (onEnd) onEnd(0); return; }
+  if (!audioEl) audioEl = new Audio();
+  try { audioEl.pause(); } catch (e) { /* 아직 재생 전 */ }
+  let startedAt = 0;
+  let ended = false;
+  const fire = ms => { if (!ended) { ended = true; if (onEnd) onEnd(ms); } };
+  audioEl.onplaying = () => { if (!startedAt) startedAt = performance.now(); };
+  audioEl.onended = () => {
+    const d = audioEl.duration;
+    fire(isFinite(d) && d > 0 ? d * 1000 : performance.now() - startedAt);
+  };
+  audioEl.onerror = () => fire(0);
+  const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${AB_KO_VOICE}&s=${AB_KO_SPEED}`;
+  if (audioEl.src === url && !audioEl.error) audioEl.currentTime = 0;
+  else audioEl.src = url;
+  const p = audioEl.play();
+  if (p && p.catch) p.catch(err => { if (!err || err.name !== "AbortError") fire(0); });
+}
+
+// 복습 예정분 먼저, 그다음 미학습. 복습 탭과 달리 **DAILY_CAP 으로 자르지 않는다** —
+// 듣기는 복습 단계를 건드리지 않아 하루 부담이라는 개념이 없다.
+function abQueue() {
+  const seen = new Set();
+  return [...dueItems(), ...newItems()].filter(e => {
+    if (!e || seen.has(e.id) || !String(e.expression || "").trim()) return false;
+    seen.add(e.id);
+    return true;
+  });
+}
+
+// 표현 하나를 어떤 순서로 들려줄지. 설정을 바꾸면 현재 표현부터 다시 짠다.
+function abPlan(e) {
+  const en = String(e.expression || "").trim();
+  const ko = koTextOf(e);
+  const steps = [];
+  const pushEn = () => { for (let i = 0; i < abReps; i++) steps.push({ k: "en", t: en, n: i + 1 }); };
+  if (abMode === "recall" && ko) {
+    if (isStudied(e)) { steps.push({ k: "ko", t: ko, recall: true, words: en.split(/\s+/).length }); pushEn(); }
+    else { pushEn(); steps.push({ k: "ko", t: ko }); }
+  } else {
+    pushEn();
+  }
+  // 덩어리 카드(봇 배달)는 예문을 한 번 더 들려준다 — `eat out` 만 다섯 번 들어서는 쓸 자리를 모른다.
+  // 예문도 hermes-sync 가 미리 만들어 둔다(`fresh.extend([expr, example])`) — 캐시 히트다.
+  const ex = isFullSentence(en) ? "" : (parseContext(e).example || "");
+  if (ex) steps.push({ k: "en", t: ex, ex: true });
+  return steps;
+}
+
+function abRecallGap(words) {
+  return Math.min(AB_RECALL_MAX_MS, Math.max(AB_RECALL_MIN_MS, (words || 6) * AB_RECALL_PER_WORD_MS));
+}
+
+function abCur() { return ab && ab.items[ab.i]; }
+
+function abStop() {
+  if (!ab) return;
+  clearTimeout(ab.timer);
+  ab = null;
+  abPaused = false;
+  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
+  document.getElementById("abBg").classList.remove("show");
+}
+
+function abStart() {
+  const items = abQueue();
+  if (!items.length) { toast("들을 표현이 없습니다 — 복습도 배울 표현도 비었습니다"); return; }
+  stopLoop(); stopSayLoop();      // 다른 소리와 겹치지 않게
+  ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0 };
+  abPaused = false;
+  document.getElementById("abBg").classList.add("show");
+  abLoadItem();
+}
+
+function abLoadItem() {
+  if (!ab) return;
+  const e = abCur();
+  if (!e) return;
+  ab.steps = abPlan(e);
+  ab.s = 0;
+  abPlay();
+}
+
+function abPlay() {
+  if (!ab || abPaused) return;
+  const st = ab.steps[ab.s];
+  if (!st) {                      // 이 표현은 끝 — 다음으로
+    ab.timer = setTimeout(() => abNext(1), AB_ITEM_GAP_MS);
+    abPaint();
+    return;
+  }
+  ab.tick = Date.now();
+  abPaint();
+  const id = ab.id, i = ab.i, s = ab.s;
+  const onEnd = () => {
+    // 그 사이 설정이 바뀌었거나(다시 짜임) 표현을 넘겼으면 이 회차는 버린다.
+    if (!ab || ab.id !== id || ab.i !== i || ab.s !== s || abPaused) return;
+    ab.s++;
+    const last = ab.s >= ab.steps.length;
+    const gap = st.recall ? abRecallGap(st.words) : (last ? AB_ITEM_GAP_MS : AB_GAP_MS);
+    ab.tick = Date.now();
+    ab.timer = setTimeout(() => { if (ab && ab.id === id) abPlay(); }, gap);
+  };
+  if (st.k === "ko") speakKo(st.t, onEnd);
+  else playOnce(st.t, null, onEnd);   // 영어는 Patrick 이 고른 음성 그대로
+}
+
+function abNext(dir) {
+  if (!ab) return;
+  clearTimeout(ab.timer);
+  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  ab.i += dir;
+  if (ab.i >= ab.items.length) {     // 한 바퀴 — 처음부터 다시 (배경음악처럼 계속 돌게)
+    ab.i = 0;
+    toast("한 바퀴 돌았습니다 — 처음부터 다시 재생합니다");
+  }
+  if (ab.i < 0) ab.i = ab.items.length - 1;
+  ab.id = ++abSeq;                   // 돌던 회차의 늦은 onEnd 를 무효로
+  abLoadItem();
+}
+
+function abTogglePause() {
+  if (!ab) return;
+  abPaused = !abPaused;
+  if (abPaused) {
+    clearTimeout(ab.timer);
+    try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+    try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
+    abPaint();
+  } else {
+    ab.id = ++abSeq;                 // 멈추기 전 회차의 onEnd 가 살아 돌아오지 않게
+    abPlay();
+  }
+}
+
+// 모드·반복 횟수는 재생 중에도 바꾼다. **현재 표현을 처음부터 다시** 짠다 —
+// 한국어를 이미 들은 표현에 한국어를 또 붙이거나, 반복 도중 숫자가 어긋나지 않게.
+function abSet(key, val) {
+  if (key === "mode") { abMode = val; localStorage.setItem("et_ab_mode", val); }
+  else { abReps = val; localStorage.setItem("et_ab_reps", String(val)); }
+  abPaintCtl();
+  if (!ab) return;
+  clearTimeout(ab.timer);
+  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  ab.id = ++abSeq;
+  abLoadItem();
+}
+
+function abPaintCtl() {
+  document.querySelectorAll("#abMode button").forEach(b =>
+    b.classList.toggle("on", b.dataset.m === abMode));
+  document.querySelectorAll("#abReps button").forEach(b =>
+    b.classList.toggle("on", +b.dataset.r === abReps));
+}
+
+function abPaint() {
+  if (!ab) return;
+  const e = abCur();
+  if (!e) return;
+  const st = ab.steps[ab.s];
+  document.getElementById("abPos").textContent = `${ab.i + 1} / ${ab.items.length}`;
+  document.getElementById("abSrc").textContent = isStudied(e) ? "복습 예정" : "배울 표현";
+  document.getElementById("abEn").innerHTML = e.rhythm ? rhythmHtml(e.rhythm) : esc(e.expression);
+  const ko = koTextOf(e);
+  document.getElementById("abKo").textContent = ko;
+  document.getElementById("abKo").style.display = ko ? "" : "none";
+  const play = document.getElementById("abPlay");
+  play.textContent = abPaused ? "▶︎" : "⏸";
+  let now = "";
+  if (abPaused) now = "일시정지";
+  else if (!st) now = "다음 표현…";
+  else if (st.k === "ko") now = st.recall ? "🇰🇷 뜻 — 영어로 떠올려 보세요" : "🇰🇷 뜻";
+  else if (st.ex) now = "예문";
+  else now = `🔁 ${st.n} / ${abReps}`;
+  document.getElementById("abNow").textContent = now;
+}
+
+// 백그라운드에서 타이머가 얼어 재생이 끊긴 채 돌아오는 일이 있다(iOS). 화면이 다시 보일 때
+// 한참 아무 일도 없었으면 이어서 튼다. **오디오북은 `visibilitychange` 로 멈추지 않는다** —
+// 카드 🔁 와 발음 탭 반복만 멈춘다(위쪽 핸들러). 주머니에 넣고 듣는 게 이 기능의 목적이다.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !ab || abPaused) return;
+  if (Date.now() - (ab.tick || 0) > AB_STALL_MS) { ab.id = ++abSeq; abPlay(); }
+});
+
+// 부가 기능의 초기 실행은 try/catch 로 감싼다 — 여기서 죽으면 앱이 통째로 빈 껍데기가 된다
+// (CLAUDE.md 「절대 규칙」: 2026-09-02 에 실제로 겪었다).
+try {
+  document.getElementById("abGo").addEventListener("click", abStart);
+  document.getElementById("abClose").addEventListener("click", abStop);
+  document.getElementById("abPlay").addEventListener("click", abTogglePause);
+  document.getElementById("abPrev").addEventListener("click", () => abNext(-1));
+  document.getElementById("abSkip").addEventListener("click", () => abNext(1));
+  document.querySelectorAll("#abMode button").forEach(b =>
+    b.addEventListener("click", () => abSet("mode", b.dataset.m)));
+  document.querySelectorAll("#abReps button").forEach(b =>
+    b.addEventListener("click", () => abSet("reps", +b.dataset.r)));
+  abPaintCtl();
+} catch (e) { console.error("audiobook init failed", e); }
 
 // ═══════════════ 발음 탭 ═══════════════
 // 서버가 음성 이름으로 엔진을 고른다 — 여기 이름들은 Microsoft Neural 쪽이다.

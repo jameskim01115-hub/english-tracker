@@ -1097,7 +1097,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-19-02";
+const BUILD = "2026-09-19-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1968,11 +1968,185 @@ const AB_RECALL_MAX_MS = 9000;
 // 백그라운드에서 타이머가 얼어 재생이 끊긴 채로 돌아오는 경우를 구제한다.
 const AB_STALL_MS = 9000;
 
-let ab = null;        // { id, items, i, steps, s, tick }
+let ab = null;        // { id, items, i, steps, s, tick, marks }
 let abSeq = 0;
 let abPaused = false;
 let abMode = localStorage.getItem("et_ab_mode") === "recall" ? "recall" : "listen";
 let abReps = AB_REPS.includes(+localStorage.getItem("et_ab_reps")) ? +localStorage.getItem("et_ab_reps") : 5;
+
+// ── 잠금화면 무음 재생 (AudioContext 이어붙이기, 2026-09-19) ──────────────────
+// setTimeout 으로 회차·표현 사이를 쉬면 iOS 가 그 무음 구간에서 페이지를 재운다 —
+// 타이머가 안 깨어나 다음 소리가 영영 안 난다(사파리 탭도 마찬가지로 확인됨).
+// 해결: 표현 하나의 반복·간격을 통째로 하나의 WAV 로 미리 구워 `audioEl` 에 물린다.
+// 재생 도중엔 자바스크립트 타이머가 전혀 필요 없어 화면이 잠겨도 끊기지 않는다.
+// 표현이 바뀌는 지점(`onended`)만 JS 가 필요한데, **다음 표현을 미리 구워둬서(prefetch)**
+// 그 순간엔 이미 완성된 blob 을 물리기만 하면 되게 한다.
+// 기기 음성을 골랐거나 서버가 죽어 있으면 null 이 돌아오고, 그때만 예전 setTimeout
+// 방식(`abPlay`)으로 폴백한다 — 그 경로는 원래도 잠금화면 지원 대상이 아니었다.
+let abCtx = null;
+let abBlobUrl = null;     // 현재 audioEl 에 물려 있는 blob — 새로 물릴 때 revoke
+let abNextCache = null;   // { forIndex, built } — 다음 표현 미리 구워둔 것
+
+function abGetCtx() {
+  if (abCtx && abCtx.state !== "closed") {
+    if (abCtx.state === "suspended") abCtx.resume().catch(() => { /* decode 자체는 suspended 에서도 된다 */ });
+    return abCtx;
+  }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  try {
+    abCtx = new AC();
+    if (abCtx.state === "suspended") abCtx.resume().catch(() => { /* 무시 — 재생은 audioEl 이 한다 */ });
+  } catch (e) { return null; }
+  return abCtx;
+}
+
+// 모노 AudioBuffer → WAV Blob. 문장 몇 개 분량이라 PCM 그대로 저장해도 용량 문제 없다.
+function abWav(buf) {
+  const sr = buf.sampleRate, n = buf.length, bps = 2;
+  const bytes = new ArrayBuffer(44 + n * bps);
+  const v = new DataView(bytes);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n * bps, true);
+  w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * bps, true); v.setUint16(32, bps, true);
+  v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * bps, true);
+  const s = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) {
+    const x = Math.max(-1, Math.min(1, s[i]));
+    v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+  }
+  return new Blob([bytes], { type: "audio/wav" });
+}
+
+// steps(표현 하나 분량)를 통째로 이어붙인 WAV blob URL + 구간 표시(marks)로 만든다.
+// marks 는 진행 표시(`abPaint`)가 지금 몇 번째 회차인지 알 수 있게 하는 시간 경계다.
+async function abBuildBlob(steps) {
+  const k = voiceKey();
+  if (!k.startsWith(SRV_PREFIX)) return null;   // 기기 음성은 오디오 바이트를 못 받아온다
+  const ctx = abGetCtx();
+  if (!ctx) return null;
+  const enVoice = k.slice(SRV_PREFIX.length);
+  const urlFor = st => st.k === "ko"
+    ? `${TTS_URL}?t=${encodeURIComponent(st.t)}&v=${AB_KO_VOICE}&s=${AB_KO_SPEED}`
+    : `${TTS_URL}?t=${encodeURIComponent(speechText(st.t))}&v=${enVoice}&s=${TTS_SPEED}`;
+
+  const urls = [...new Set(steps.map(urlFor))];
+  const buffers = new Map();
+  try {
+    await Promise.all(urls.map(async u => {
+      const res = await fetch(u);
+      if (!res.ok) throw new Error("tts fetch failed");
+      const arr = await res.arrayBuffer();
+      buffers.set(u, await ctx.decodeAudioData(arr));
+    }));
+  } catch (e) {
+    return null;   // 하나라도 실패하면 통째로 폴백 — 부분 오디오북은 더 헷갈린다
+  }
+
+  const sr = ctx.sampleRate;
+  const pieces = [];
+  const marks = [];
+  let total = 0;
+  steps.forEach((st, idx) => {
+    const start = total / sr;
+    const buf = buffers.get(urlFor(st));
+    if (buf) { pieces.push(buf.getChannelData(0)); total += buf.length; }
+    marks.push({ s: idx, start, end: total / sr });
+    const last = idx >= steps.length - 1;
+    const gapMs = last ? 0 : (st.recall ? abRecallGap(st.words) : AB_GAP_MS);
+    if (gapMs) {
+      const n = Math.round(sr * gapMs / 1000);
+      pieces.push(new Float32Array(n));
+      total += n;
+    }
+  });
+  if (!total) return null;
+
+  const out = ctx.createBuffer(1, total, sr);
+  const data = out.getChannelData(0);
+  let off = 0;
+  for (const p of pieces) { data.set(p, off); off += p.length; }
+  return { url: URL.createObjectURL(abWav(out)), marks };
+}
+
+// 지금 재생 중인 표현이 끝나기 전에 다음 표현을 미리 구워둔다 — `onended` 시점엔
+// blob 을 물리기만 하면 되므로 iOS 가 그 짧은 전환마저 죽일 여지를 없앤다.
+// **`forId` 를 넣지 않는다** — `abNext()` 는 정상적인 한 칸 전진에서도 매번 `ab.id` 를
+// 새로 부여하는데(레거시 setTimeout 콜백 무효화용), id 로 매칭하면 방금 구워둔 캐시가
+// 다음 표현 로드 시점엔 이미 "다른 id" 가 돼서 **한 번도 맞지 않는다** — 캐시가 있으나 마나
+// 해지고 매번 다시 굽는다(2026-09-19 시뮬레이션으로 실제 확인). `forIndex` 만으로 충분한 이유:
+// `ab.items` 배열은 `abStart()` 가 새로 짤 때만 바뀌고, 그때·`abSet()`(모드/반복 변경)·
+// 정지 시 전부 `abDropNextCache()` 로 캐시를 명시적으로 비우기 때문에 인덱스가 우연히
+// 맞아도 내용이 옛것일 위험이 없다.
+function abPrefetchNext(id, i) {
+  if (!ab || ab.id !== id || ab.items.length < 2) return;
+  const nextIdx = (i + 1) % ab.items.length;
+  const e = ab.items[nextIdx];
+  if (!e) return;
+  const steps = abPlan(e);
+  const token = { forIndex: nextIdx, built: null };
+  abNextCache = token;
+  abBuildBlob(steps).then(built => {
+    if (abNextCache !== token) { if (built) URL.revokeObjectURL(built.url); return; }   // 그 사이 무효화됨
+    if (built) token.built = built;
+    else abNextCache = null;
+  });
+}
+
+// 캐시된(또는 굽는 중인) 다음 표현을 명시적으로 버린다. 큐·설정이 바뀌어 더는 못 쓰게 됐을
+// 때만 부른다 — 정상적인 「다음으로 넘어가기」에서는 부르지 않는다(그게 프리페치의 요점이다).
+function abDropNextCache() {
+  if (abNextCache) {
+    if (abNextCache.built) URL.revokeObjectURL(abNextCache.built.url);
+    abNextCache = null;
+  }
+}
+
+// 통째 blob 을 audioEl 에 물려 재생한다. 끝나면(onended) 다음 표현으로 — 이때 이미
+// 구워둔 blob 이 있으면(abNextCache) abLoadItem 이 곧바로 이어 튼다.
+function abPlayBlob(built, id, i) {
+  if (!ab || ab.id !== id) { URL.revokeObjectURL(built.url); return; }
+  if (abBlobUrl && abBlobUrl !== built.url) URL.revokeObjectURL(abBlobUrl);
+  abBlobUrl = built.url;
+  ab.marks = built.marks;
+  ab.s = 0;
+  if (!audioEl) audioEl = new Audio();
+  try { audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  audioEl.ontimeupdate = () => {
+    if (!ab || ab.id !== id || !ab.marks) return;
+    const t = audioEl.currentTime;
+    const m = ab.marks.find(mk => t >= mk.start && t < mk.end) || ab.marks[ab.marks.length - 1];
+    if (m && m.s !== ab.s) { ab.s = m.s; abPaint(); }
+  };
+  audioEl.onended = () => {
+    if (!ab || ab.id !== id) return;
+    ab.tick = Date.now();
+    abNext(1);
+  };
+  audioEl.onerror = () => { if (ab && ab.id === id) { ab.marks = null; abPlay(); } };
+  audioEl.src = built.url;
+  ab.tick = Date.now();
+  abPaint();
+  const p = audioEl.play();
+  if (p && p.catch) p.catch(err => {
+    if (err && err.name === "AbortError") return;
+    if (ab && ab.id === id) { ab.marks = null; abPlay(); }
+  });
+  abPrefetchNext(id, i);
+}
+
+// 지금 재생 중이던 것(타이머·현재 blob)만 정리한다. **`abNextCache` 는 건드리지 않는다** —
+// `abNext()` 의 정상적인 한 칸 전진에서도 이 함수를 쓰는데, 거기서 프리페치 캐시까지
+// 지워버리면 매번 다시 굽게 된다. 캐시를 실제로 버려야 할 때는 `abDropNextCache()` 를 따로 부른다.
+function abResetPlayback() {
+  if (!ab) return;
+  clearTimeout(ab.timer);
+  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  if (abBlobUrl) { URL.revokeObjectURL(abBlobUrl); abBlobUrl = null; }
+}
 
 // 한국어 전용 재생. `speakServer()` 를 쓰지 않는 이유는 **기기 음성 폴백 때문이다** —
 // 실패하면 그냥 건너뛴다(`onEnd(0)`).
@@ -2071,10 +2245,11 @@ function abMediaState(s) {
 
 function abStop() {
   if (!ab) return;
-  clearTimeout(ab.timer);
+  abResetPlayback();
+  abDropNextCache();
   ab = null;
   abPaused = false;
-  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  try { if (audioEl) audioEl.ontimeupdate = null; } catch (e) { /* 재생 전 */ }
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
   abMediaState("none");
   abMediaLast = "";
@@ -2085,7 +2260,9 @@ function abStart() {
   const items = abQueue();
   if (!items.length) { toast("들을 표현이 없습니다 — 복습도 배울 표현도 비었습니다"); return; }
   stopLoop(); stopSayLoop();      // 다른 소리와 겹치지 않게
-  ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0 };
+  if (abBlobUrl) { URL.revokeObjectURL(abBlobUrl); abBlobUrl = null; }
+  abDropNextCache();
+  ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0, marks: null };
   abPaused = false;
   document.getElementById("abBg").classList.add("show");
   abMediaInit();
@@ -2093,13 +2270,28 @@ function abStart() {
   abLoadItem();
 }
 
+// 미리 구워둔 다음 표현이 있으면 곧바로 이어 튼다(무음 없음). 없으면 지금부터 굽는데,
+// 굽는 동안(fetch+decode, 보통 1초 안팎) 소리가 비어 있다 — 화면이 켜져 있을 때만
+// 겪는 시작 지연이라 감수한다. 굽기가 실패하면(기기 음성·서버 다운) 예전 방식으로 폴백.
 function abLoadItem() {
   if (!ab) return;
   const e = abCur();
   if (!e) return;
   ab.steps = abPlan(e);
   ab.s = 0;
-  abPlay();
+  const id = ab.id, i = ab.i;
+  if (abNextCache && abNextCache.forIndex === i && abNextCache.built) {
+    const built = abNextCache.built;
+    abNextCache = null;
+    abPlayBlob(built, id, i);
+    return;
+  }
+  abDropNextCache();   // 인덱스가 안 맞는 캐시(뒤로 가기 등)는 여기서 정리
+  abBuildBlob(ab.steps).then(built => {
+    if (!ab || ab.id !== id || ab.i !== i) { if (built) URL.revokeObjectURL(built.url); return; }
+    if (built) abPlayBlob(built, id, i);
+    else abPlay();   // 기기 음성이거나 서버 실패 — 예전 setTimeout 방식
+  });
 }
 
 function abPlay() {
@@ -2128,8 +2320,7 @@ function abPlay() {
 
 function abNext(dir) {
   if (!ab) return;
-  clearTimeout(ab.timer);
-  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  abResetPlayback();
   ab.i += dir;
   if (ab.i >= ab.items.length) {     // 한 바퀴 — 처음부터 다시 (배경음악처럼 계속 돌게)
     ab.i = 0;
@@ -2150,8 +2341,16 @@ function abTogglePause() {
     try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
     abPaint();
   } else {
-    ab.id = ++abSeq;                 // 멈추기 전 회차의 onEnd 가 살아 돌아오지 않게
-    abPlay();
+    ab.tick = Date.now();
+    // 통째 blob 이 이미 물려 있으면 다시 굽지 않고 이어서 재생만 한다.
+    if (audioEl && abBlobUrl && audioEl.src === abBlobUrl) {
+      abPaint();
+      const p = audioEl.play();
+      if (p && p.catch) p.catch(() => { /* 재개 실패는 무시 — 다음 조작에서 다시 시도 */ });
+    } else {
+      ab.id = ++abSeq;                 // 멈추기 전 회차의 onEnd 가 살아 돌아오지 않게
+      abPlay();
+    }
   }
 }
 
@@ -2162,8 +2361,8 @@ function abSet(key, val) {
   else { abReps = val; localStorage.setItem("et_ab_reps", String(val)); }
   abPaintCtl();
   if (!ab) return;
-  clearTimeout(ab.timer);
-  try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
+  abResetPlayback();
+  abDropNextCache();   // 모드·반복 횟수가 바뀌면 구워둔 다음 표현의 내용 자체가 달라진다
   ab.id = ++abSeq;
   abLoadItem();
 }
@@ -2203,7 +2402,7 @@ function abPaint() {
 // 카드 🔁 와 발음 탭 반복만 멈춘다(위쪽 핸들러). 주머니에 넣고 듣는 게 이 기능의 목적이다.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !ab || abPaused) return;
-  if (Date.now() - (ab.tick || 0) > AB_STALL_MS) { ab.id = ++abSeq; abPlay(); }
+  if (Date.now() - (ab.tick || 0) > AB_STALL_MS) { abResetPlayback(); ab.id = ++abSeq; abLoadItem(); }
 });
 
 // 부가 기능의 초기 실행은 try/catch 로 감싼다 — 여기서 죽으면 앱이 통째로 빈 껍데기가 된다

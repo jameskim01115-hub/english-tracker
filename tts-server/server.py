@@ -73,6 +73,34 @@ NEURAL_VOICES = {
     "AndrewLow":   "en-US-AndrewNeural",
 }
 
+# ══════════════ 한국어 음성 (오디오북 「인출 훈련」 모드용) ══════════════
+# 한국어 뜻을 먼저 들려주고 영어를 떠올리게 하는 모드에 쓴다. 기기 내장 한국어 음성은
+# Patrick 이 **「너무 기계음이라 거슬린다」**고 해서 쓰지 않는다 (2026-09-19).
+#
+# **아직 고르지 않은 후보들이다.** 영어 쪽 규칙(「들어보지 않은 음성은 넣지 않는다」)은
+# 그대로다 — 배포 후 Patrick 이 브라우저에서 네 개를 들어보고 하나를 고르면,
+# 그 이름만 앱 상수(`KO_VOICE`)에 박고 나머지는 이 표에 남겨둔다(옛 선택값 보호).
+#
+#   https://tts.srv1722311.hstgr.cloud/tts?v=KoSunHi&t=오늘 안에 보내주실 수 있나요?
+#
+# ⚠️ 음성 이름은 Microsoft 카탈로그 기준이라 **배포 후 실제로 한 번씩 눌러볼 것.**
+# 없는 이름이면 그 음성만 500 이 나고 나머지는 멀쩡하다. 목록 확인:
+#   ssh hermes "docker exec english-tts python -c \"import asyncio, edge_tts; \
+#   print([v['ShortName'] for v in asyncio.run(edge_tts.list_voices()) if v['Locale'] == 'ko-KR'])\""
+KOREAN_VOICES = {
+    "KoSunHi":  "ko-KR-SunHiNeural",              # 여성 · 표준 낭독체
+    "KoJiMin":  "ko-KR-JiMinNeural",              # 여성 · 밝고 가벼움
+    "KoHyunsu": "ko-KR-HyunsuMultilingualNeural", # 남성 · 최신 멀티링구얼
+    "KoInJoon": "ko-KR-InJoonNeural",             # 남성 · 표준 낭독체
+}
+# 앱은 모든 재생에 속도 0.9 를 보낸다(영어 기준). 한국어에 그대로 쓰면 늘어져서
+# **서버가 고정 속도로 덮어쓴다** — PuckSlow 와 같은 방식이라, 앱이 뭘 보내든
+# 어느 화면에서 골라도 같은 속도로 나온다. 캐시 키도 하나로 고정된다.
+KO_SPEED = 1.0
+
+# 라우팅은 Neural 경로를 그대로 탄다(edge-tts / Azure 승격까지 동일).
+NEURAL_VOICES.update(KOREAN_VOICES)
+
 # ══════════════ Kokoro-82M (로컬 ONNX) ══════════════
 # **남성 음성은 여기서 나온다.** 2026-08-19 Patrick 블라인드 청취 3라운드 결과:
 # Edge 남성(Andrew·Brian)은 최고 ★4에 그쳤고 전부 「책 읽는 느낌」이었다.
@@ -509,6 +537,7 @@ class Handler(BaseHTTPRequestHandler):
                     "chars_this_month": azure_usage() if AZURE_KEY else None,
                     "monthly_cap": AZURE_MONTHLY_CHARS if AZURE_KEY else None,
                 },
+                "korean": sorted(KOREAN_VOICES),
                 "kokoro": {
                     "voices": sorted(KOKORO_VOICES),
                     "loaded": _kokoro is not None,
@@ -548,6 +577,9 @@ class Handler(BaseHTTPRequestHandler):
         # 골라도(설정 기본 음성·발음 탭 등) 항상 같은 속도로 나오게 하려는 것.
         if voice == "PuckSlow":
             speed = PUCK_SLOW_SPEED
+        # 한국어는 앱이 보낸 영어용 속도(0.9)를 무시하고 고정값을 쓴다.
+        if voice in KOREAN_VOICES:
+            speed = KO_SPEED
 
         # 캐시에 이미 있으면 레이트 리밋을 적용하지 않는다
         cached = os.path.exists(os.path.join(CACHE, f"{cache_key(text, voice, speed, use_ssml)}.mp3"))

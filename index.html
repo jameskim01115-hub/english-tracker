@@ -1097,7 +1097,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-19-01";
+const BUILD = "2026-09-19-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2033,6 +2033,42 @@ function abRecallGap(words) {
 
 function abCur() { return ab && ab.items[ab.i]; }
 
+// ── 잠금화면 컨트롤 (MediaSession, 2026-09-19) ──────────────────────────
+// 잠금화면·제어센터·이어폰 버튼에서 ⏯ ⏮ ⏭ 가 되고 지금 듣는 표현이 뜬다.
+// **소리가 서버 mp3(`audioEl`)로 날 때만 보인다** — 기기 음성(speechSynthesis) 경로는
+// 브라우저가 미디어로 치지 않아 잠금화면에 안 나온다. 그건 폴백 경로라 그대로 둔다.
+// 핸들러는 한 번만 달고, **`ab` 가 없으면 아무것도 하지 않는다** — 오디오북을 끈 뒤에도
+// 잠금화면에 남은 컨트롤을 누르면 죽은 세션이 되살아나는 걸 막는다.
+let abMediaReady = false;
+let abMediaLast = "";
+function abMediaInit() {
+  if (abMediaReady || !("mediaSession" in navigator)) return;
+  abMediaReady = true;
+  const on = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch (e) { /* 미지원 동작 */ } };
+  on("play", () => { if (ab && abPaused) abTogglePause(); });
+  on("pause", () => { if (ab && !abPaused) abTogglePause(); });
+  on("previoustrack", () => { if (ab) abNext(-1); });
+  on("nexttrack", () => { if (ab) abNext(1); });
+  on("stop", () => { if (ab) abStop(); });
+}
+// 표현이 바뀔 때만 갱신한다. 반복 회차마다 새로 쓰면 잠금화면이 깜빡인다.
+function abMediaMeta(e) {
+  if (!("mediaSession" in navigator) || !e) return;
+  if (abMediaLast === e.id) return;
+  abMediaLast = e.id;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: plain(e.expression || ""),
+      artist: koTextOf(e) || (isStudied(e) ? "복습 예정" : "배울 표현"),
+      album: "영어 트래커 · 귀로 복습",
+    });
+  } catch (err) { /* MediaMetadata 미지원 */ }
+}
+function abMediaState(s) {
+  if (!("mediaSession" in navigator)) return;
+  try { navigator.mediaSession.playbackState = s; } catch (e) { /* 미지원 */ }
+}
+
 function abStop() {
   if (!ab) return;
   clearTimeout(ab.timer);
@@ -2040,6 +2076,8 @@ function abStop() {
   abPaused = false;
   try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (e) { /* 미지원 */ }
+  abMediaState("none");
+  abMediaLast = "";
   document.getElementById("abBg").classList.remove("show");
 }
 
@@ -2050,6 +2088,8 @@ function abStart() {
   ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0 };
   abPaused = false;
   document.getElementById("abBg").classList.add("show");
+  abMediaInit();
+  abMediaState("playing");
   abLoadItem();
 }
 
@@ -2103,6 +2143,7 @@ function abNext(dir) {
 function abTogglePause() {
   if (!ab) return;
   abPaused = !abPaused;
+  abMediaState(abPaused ? "paused" : "playing");
   if (abPaused) {
     clearTimeout(ab.timer);
     try { if (audioEl) audioEl.pause(); } catch (e) { /* 재생 전 */ }
@@ -2139,6 +2180,7 @@ function abPaint() {
   const e = abCur();
   if (!e) return;
   const st = ab.steps[ab.s];
+  abMediaMeta(e);
   document.getElementById("abPos").textContent = `${ab.i + 1} / ${ab.items.length}`;
   document.getElementById("abSrc").textContent = isStudied(e) ? "복습 예정" : "배울 표현";
   document.getElementById("abEn").innerHTML = e.rhythm ? rhythmHtml(e.rhythm) : esc(e.expression);

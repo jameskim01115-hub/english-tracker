@@ -664,6 +664,36 @@
   .m-save { background: var(--accent); color: #fff; }
   .m-cancel { background: var(--card2); color: var(--sub); }
 
+  /* ───── 카드 수정 (2026-09-28 Patrick 요청) ───── */
+  /* 4칸(영어·발음·뜻·입에 붙일 표현)을 직접 고친다. 복습 기록은 건드리지 않는다. */
+  .ed-modal { max-height: 88vh; overflow-y: auto; }
+  .ed-help { font-size: 12px; color: var(--dim); line-height: 1.65; margin-bottom: 12px; }
+  .ed-lb {
+    font-size: 11.5px; font-weight: 800; color: var(--sub);
+    margin: 2px 0 6px; letter-spacing: .01em;
+  }
+  .ed-lb small { font-weight: 600; color: var(--dim); }
+  .ed-hits { max-height: 46vh; overflow-y: auto; margin: 4px 0 4px; }
+  .ed-hit {
+    width: 100%; text-align: left; display: block;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 13px; margin-bottom: 7px; cursor: pointer; font-family: inherit;
+  }
+  .ed-hit b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.5; }
+  .ed-hit span { display: block; font-size: 12px; color: var(--sub); margin-top: 4px; line-height: 1.5; }
+  .ed-hit i { display: block; font-size: 10.5px; color: var(--dim); font-style: normal; margin-top: 5px; }
+  .ed-empty { font-size: 12.5px; color: var(--dim); padding: 14px 2px; }
+  .ed-warn { font-size: 11.5px; color: var(--accent); line-height: 1.6; margin: -4px 0 10px; min-height: 0; }
+  .ed-keep {
+    font-size: 11px; color: var(--dim); line-height: 1.6;
+    background: var(--card2); border-radius: 10px; padding: 9px 11px; margin-top: 4px;
+  }
+  .btn-edit {
+    width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px;
+    background: var(--card2); color: var(--sub); border: 1px solid var(--line);
+    font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+
   /* ───── 🎧 귀로 복습 (오디오북) ───── */
   /* 전체 화면을 덮는다. **닫으면 재생도 멈춘다** — 뒤에서 소리만 계속 나면
      어디서 나는지 못 찾는다. 주머니에 넣고 들을 때는 이 화면을 열어둔 채로 둔다. */
@@ -960,8 +990,10 @@
       <input type="search" id="bankSearch" placeholder="표현 · 뜻 · 예문 검색…">
       <button class="add-btn" id="addBtn">+</button>
     </div>
-    <button class="more-btn" id="importBtn" style="margin:0 0 12px">
+    <button class="more-btn" id="importBtn" style="margin:0 0 8px">
       💬 회화 복습 노트 가져오기</button>
+    <button class="more-btn" id="editBtn" style="margin:0 0 12px">
+      ✏️ 카드 수정 — 키워드로 찾기</button>
     <div class="filters" id="filters"></div>
     <div id="bankList"></div>
 
@@ -1004,6 +1036,40 @@
     <div class="row">
       <button class="m-cancel" id="mCancel">취소</button>
       <button class="m-save" id="mSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 카드 수정 — 4칸을 직접 고친다 (2026-09-28 Patrick 요청).
+     키워드 검색 → 카드 선택 → 수정. 복습 기록(단계·다음 복습일)은 손대지 않는다. -->
+<div class="modal-bg" id="edBg">
+  <div class="modal ed-modal">
+    <h3 id="edTitle">카드 수정</h3>
+
+    <div id="edPick">
+      <p class="ed-help">고칠 카드를 <b>키워드로 검색</b>하세요. 영어·뜻·발음·덩어리 어디든 걸립니다.</p>
+      <input type="search" id="edQ" placeholder="키워드 (예: China · 수압 · noodles)">
+      <div class="ed-hits" id="edHits"></div>
+      <div class="row"><button class="m-cancel" id="edPickClose">닫기</button></div>
+    </div>
+
+    <div id="edForm" style="display:none">
+      <div class="ed-lb">영어 <small>— 순수 문장. TTS가 이걸 읽습니다 (볼드·<code>/</code>·화살표 없이)</small></div>
+      <textarea id="edExpr" rows="4"></textarea>
+      <div class="ed-lb">리듬맵 <small>— 카드에 보이는 줄. 강세 <code>**</code> · 청크 <code>/</code> · 화살표</small></div>
+      <textarea id="edRhythm" rows="4"></textarea>
+      <div class="ed-warn" id="edWarn"></div>
+      <div class="ed-lb">발음 <small>— 한글</small></div>
+      <textarea id="edPron" rows="3"></textarea>
+      <div class="ed-lb">뜻 <small>— 한국어</small></div>
+      <textarea id="edMean" rows="3"></textarea>
+      <div class="ed-lb">입에 붙일 표현 <small>— 영어 1줄 / 한글 1줄, 항목 사이 빈 줄</small></div>
+      <textarea id="edChunk" rows="7"></textarea>
+      <div class="ed-keep" id="edKeep"></div>
+      <div class="row">
+        <button class="m-cancel" id="edBack">← 목록</button>
+        <button class="m-save" id="edSave">저장</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1097,7 +1163,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-19-03";
+const BUILD = "2026-09-28-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3283,6 +3349,9 @@ function exprCard(e, mode, dir) {
     // 목록에서도 바로 복습에 넣을 수 있어야 한다 — 오늘 탭으로 돌아갈 이유가 없다.
     if (!isStudied(e)) html += `<button class="btn-study">✓ 학습 완료 — 복습 주기에 넣기</button>`;
     else if (isGraduated(e)) html += `<button class="btn-reopen">↺ 복습 큐에 다시 넣기</button>`;
+    // 「영어와 뜻이 1:1로 안 맞는 카드를 직접 고치고 싶다」(2026-09-28 Patrick).
+    // 삭제 위에 둔다 — 고치는 게 주 동작이고 삭제는 그 아래 작은 보조 링크다.
+    html += `<button class="btn-edit">✏️ 카드 수정</button>`;
     html += `<button class="btn-del">삭제</button>`;
   }
 
@@ -3399,6 +3468,8 @@ function exprCard(e, mode, dir) {
       await saveExpr(e.id, { usedCount: n });
     });
   }
+  const btnEdit = card.querySelector(".btn-edit");
+  if (btnEdit) btnEdit.addEventListener("click", ev => { ev.stopPropagation(); openEdit(e); });
   const btnDel = card.querySelector(".btn-del");
   if (btnDel) btnDel.addEventListener("click", async ev => {
     ev.stopPropagation();
@@ -5069,6 +5140,162 @@ function prewarmTTS(items) {
     fetch(`${TTS_URL}?t=${encodeURIComponent(plain(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));
 }
+
+// ═══════════════ 카드 수정 (2026-09-28) ═══════════════
+// 「영어와 한국어 뜻이 1:1로 안 맞는 카드를 직접 고치고 싶다」는 Patrick 요청에서 나왔다.
+// 4칸(영어·발음·뜻·입에 붙일 표현) + 리듬맵을 고친다.
+//
+// **복습 기록을 절대 건드리지 않는다.** `stage`·`nextReview`·`studied`·`studiedAt` 은
+// patch 에 넣지 않고, 저장은 `saveExpr()`(merge:true)라 그 필드들이 그대로 남는다.
+// 카드를 지웠다 다시 만드는 식으로 바꾸지 말 것 — 진도가 통째로 날아간다.
+const edBg = document.getElementById("edBg");
+let edTarget = null;
+
+// **뜻이 담기는 필드가 소스마다 다르다** (`meaningOf` 참조) — 봇 배달·직접 추가는 `meaning`,
+// 회화 교정·막힌 표현은 `ko`. 읽은 칸에 그대로 되돌려 써야 한다.
+// 엉뚱한 칸에 쓰면 옛 뜻이 남아 **카드에 뜻이 두 개** 나오거나, 한→영 앞면이 안 바뀐다.
+function meanField(e) { return (e.meaning || !e.ko) ? "meaning" : "ko"; }
+
+// 「입에 붙일 표현」 칸 규격 (Patrick 지정): 한 항목 = 영어 1줄 / 한글 1줄(+예문 1줄),
+// **항목 사이는 빈 줄**. 구분자 기호를 쓰지 않는다 — 리듬맵에 `—`·`|` 가 들어가 충돌한다.
+function variantsToText(list) {
+  return list.map(v => [v.en, v.ko, v.ex].filter(Boolean).join("\n")).join("\n\n");
+}
+// 위 규격을 되읽는다. **`영어 — 한글` 한 줄 형식도 계속 받는다** — 직접 추가 모달이 그 형식이고,
+// 붙여넣기로 그렇게 들어오는 일이 잦다. 한 줄짜리 블록만 `splitChunkLine()` 으로 내려보낸다.
+function parseVariantText(text) {
+  return String(text || "").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(block => {
+    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length === 1) {
+      const v = splitChunkLine(lines[0], { colon: true });
+      return v ? { en: v.en, ko: v.ko, ex: v.ex || "" } : { en: unbold(lines[0]), ko: "", ex: "" };
+    }
+    const en = unbold(lines[0].replace(/^[`"']+|[`"']+$/g, ""));
+    const ko = unbold(stripArrow(String(lines[1]).replace(ORPHAN_KO, "")));
+    return { en, ko, ex: lines.slice(2).join(" ").trim() };
+  }).filter(v => v.en);
+}
+
+// 리듬맵과 영어 문장이 어긋나면 **화면에는 리듬맵이, 소리는 영어 문장이** 나가 둘이 다르다
+// (2026-08-10 `rhythmTail()` 과 같은 함정). 저장을 막지는 않고 경고만 띄운다.
+function edWords(s) {
+  return plain(s).toLowerCase().replace(/[^a-z0-9' ]+/g, " ").split(/\s+/).filter(Boolean);
+}
+function edCheck() {
+  const box = document.getElementById("edWarn");
+  const expr = document.getElementById("edExpr").value.trim();
+  const rh   = document.getElementById("edRhythm").value.trim();
+  if (!box) return;
+  if (!expr || !rh) { box.textContent = ""; return; }
+  box.textContent = edWords(expr).join(" ") === edWords(rh).join(" ") ? ""
+    : "⚠️ 리듬맵과 영어 문장의 단어가 다릅니다 — 카드에는 리듬맵이, 소리는 영어 문장이 나갑니다.";
+}
+
+function edResultHtml(e) {
+  const ko = meaningOf(e);
+  return `<button class="ed-hit" data-eid="${esc(e.id)}">
+    <b>${esc(String(e.expression || "").slice(0, 120))}</b>
+    ${ko ? `<span>${esc(String(ko).slice(0, 120))}</span>` : ""}
+    <i>${esc(srcOf(e).label)} · ${e.stage || 0}단계</i></button>`;
+}
+function edSearch() {
+  const q = document.getElementById("edQ").value.trim().toLowerCase();
+  const box = document.getElementById("edHits");
+  if (!q) {
+    box.innerHTML = `<div class="ed-empty">키워드를 입력하세요.${allLoaded ? "" : " (전체 목록 불러오는 중…)"}</div>`;
+    return;
+  }
+  const hits = expressions.filter(e => [e.expression, e.rhythm, e.meaning, e.ko, e.pron,
+      e.chunks, e.context, e.question, e.questionKo]
+    .some(f => typeof f === "string" && f.toLowerCase().includes(q))).slice(0, 40);
+  box.innerHTML = hits.length
+    ? hits.map(edResultHtml).join("")
+    : `<div class="ed-empty">찾은 카드가 없습니다.${allLoaded ? "" : " 전체 목록을 아직 불러오는 중입니다."}</div>`;
+  box.querySelectorAll(".ed-hit").forEach(b => b.addEventListener("click", () => {
+    const e = expressions.find(x => x.id === b.dataset.eid);
+    if (e) openEdit(e);
+  }));
+}
+
+function openEdit(e) {
+  edTarget = e;
+  document.getElementById("edTitle").textContent = "카드 수정";
+  document.getElementById("edPick").style.display = "none";
+  document.getElementById("edForm").style.display = "";
+  document.getElementById("edExpr").value   = e.expression || "";
+  document.getElementById("edRhythm").value = e.rhythm || "";
+  document.getElementById("edPron").value   = e.pron || "";
+  document.getElementById("edMean").value   = meaningOf(e);
+  document.getElementById("edChunk").value  = variantsToText(variantsOf(e))
+    || String(e.chunks || "").split(" | ").filter(Boolean).join("\n\n");
+  document.getElementById("edKeep").innerHTML =
+    `복습 기록은 그대로 유지됩니다 — <b>${e.stage || 0}단계 · 다음 복습 ${esc(e.nextReview || "—")}</b>`;
+  edCheck();
+  requestAnimationFrame(() => ED_BOXES.forEach(id => edGrow(document.getElementById(id))));
+  edBg.classList.add("show");
+}
+function openEditPicker() {
+  edTarget = null;
+  document.getElementById("edTitle").textContent = "카드 수정 — 검색";
+  document.getElementById("edForm").style.display = "none";
+  document.getElementById("edPick").style.display = "";
+  document.getElementById("edQ").value = "";
+  edSearch();
+  edBg.classList.add("show");
+  ensureAllLoaded();            // 전체를 훑어야 옛 카드도 검색에 걸린다
+  document.getElementById("edQ").focus();
+}
+
+document.getElementById("editBtn").onclick = openEditPicker;
+document.getElementById("edQ").addEventListener("input", edSearch);
+document.getElementById("edPickClose").onclick = () => edBg.classList.remove("show");
+document.getElementById("edBack").onclick = openEditPicker;
+["edExpr", "edRhythm"].forEach(id =>
+  document.getElementById(id).addEventListener("input", edCheck));
+// 내용에 맞춰 칸이 늘어난다 — 긴 문장이 잘려 보이면 어디가 어긋났는지 못 찾는다.
+const ED_BOXES = ["edExpr", "edRhythm", "edPron", "edMean", "edChunk"];
+function edGrow(el) { el.style.height = "auto"; el.style.height = (el.scrollHeight + 2) + "px"; }
+ED_BOXES.forEach(id => document.getElementById(id).addEventListener("input", ev => edGrow(ev.target)));
+edBg.addEventListener("click", ev => { if (ev.target === edBg) edBg.classList.remove("show"); });
+
+document.getElementById("edSave").onclick = async () => {
+  const e = edTarget;
+  if (!e) return;
+  if (!canWrite()) return;
+  const raw  = document.getElementById("edExpr").value.trim();
+  const rhIn = document.getElementById("edRhythm").value.trim();
+  const pron = document.getElementById("edPron").value.trim();
+  const mean = document.getElementById("edMean").value.trim();
+  if (!raw) { toast("영어 문장을 입력해주세요"); return; }
+  // **영어 칸은 순수 문장이어야 한다** (TTS가 읽는 칸). 실수로 리듬맵을 넣으면
+  // 직접 추가 모달과 같은 규칙으로 갈라준다 — 안 그러면 `/` 와 `↘` 를 소리로 읽는다.
+  const isRh = RHYTHM_MARK.test(raw);
+  const vlist = parseVariantText(document.getElementById("edChunk").value);
+  const patch = {
+    expression: isRh ? plainFromRhythm(raw) : raw,
+    rhythm: rhIn ? stripOuterBold(rhIn) : (isRh ? stripOuterBold(raw) : ""),
+    pron,
+    chunks: vlist.map(v => v.en).join(" | "),
+    variants: vlist.length ? JSON.stringify(vlist) : "",
+  };
+  patch[meanField(e)] = mean;
+  const keep = { ...e };
+  Object.assign(e, patch);
+  saveCache();
+  edBg.classList.remove("show");
+  rerenderActive();
+  try {
+    // merge:true — patch 에 없는 stage·nextReview·studied 는 서버에서 그대로 남는다.
+    await db.collection(COL_EXPR).doc(e.id).set(patch, { merge: true });
+    toast("수정했습니다 — 복습 기록은 그대로입니다");
+    prewarmTTS([e]);            // 문장이 바뀌었으면 새 음성을 미리 받아둔다
+  } catch (err) {
+    console.error(err);
+    Object.assign(e, keep);     // 실패하면 화면을 되돌린다
+    saveCache(); rerenderActive();
+    toast("수정 실패 — 연결을 확인해주세요");
+  }
+};
 
 // ═══════════════ 설정 ═══════════════
 

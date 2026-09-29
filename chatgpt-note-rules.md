@@ -128,20 +128,53 @@ How would you **like** → / to **HAN**dle that? ↘
 Natural Corrected Answer 는 **입으로 실제로 말하는 문장**이어야 한다.
 문법적으로 반듯하게 정리된 문장만 주면 쉐도잉할 때 딱딱하고 책 읽는 느낌이 난다.
 
+⚠️ **문장 맨 앞의 필러 하나로 끝내지 말 것.** 실제로 그렇게 됐다 — 227장을 세어 보니
+`Yeah`·`Honestly` 두 개가 46%를 먹었고, **정작 말을 살리는 연결어는 거의 0이었다**
+(`The thing is` 0 · `Plus` 0 · `On top of that` 0 · `Basically` 0 · 문장 끝 `though` 0 ·
+문장 시작 `So,` 2장 · `because` 5장). 맨 앞 한 단어는 **덜 중요한 쪽**이다.
+
 1. 개수 — 한 문장에 하나. 많아야 두 개. 어색하면 아예 넣지 않는다.
-2. 위치 — 문장 맨 앞, 또는 절과 절 사이.
+2. 위치 — **맨 앞 필러보다 「절과 절 사이의 연결어」를 먼저 본다.** 두 문장이 그냥 나열돼
+   있으면 그 사이를 이어 주는 것이 가장 크게 자연스러워진다.
 3. 금지 — 여러 개를 연달아 쌓지 않는다.
    ❌ `Well, actually, yeah. Um, I think ...`
    ⭕ `Yeah, actually, I think ...`
-4. 쓰는 것 — Yeah / Actually / I mean / You know / Honestly / Look / Anyway / So / Hmm / I guess
-5. 축약형 — gonna, wanna, gotta, kinda, 'cause 를 그대로 쓴다. going to 로 펴지 않는다.
-6. 원칙 — **필러는 뼈대를 바꾸지 않는다.** 필러를 넣는다고 Patrick 이 말하지 않은 내용을
+4. **고정 목록이 아니다.** 아래는 갈래와 예시일 뿐이고 여기에 한정하지 않는다.
+   그 상황에서 원어민이 실제로 고를 만한 것을 쓴다.
+
+   생각할 때      Well / Um / I mean / You know / Like / Let me think
+   말 시작        So / Okay so / Actually / Basically
+   이유           because / The thing is / It's just that
+   덧붙임         and / Also / Plus / On top of that
+   반대·전환      but / though(문장 끝) / Still / At the same time
+   결과           so / That's why / So basically
+   예시           like / For example / something like that
+   불확실         something like / around / I think / If I remember correctly
+   맞장구         Right / Exactly / Yeah but / I see / Got it / That makes sense
+   다시 정리      What I mean is / In other words / Basically
+
+   **Patrick 이 먼저 몸에 붙이려는 7개**(가능하면 이쪽을 우선해서 고른다):
+   `So` · `actually` · `I mean` · `the thing is` · `plus` · `on top of that` · `though`
+
+5. **분포 — 앞 항목에서 쓴 필러를 다음 항목에서 또 쓰지 않는다.** 노트 하나 안에서 같은
+   것이 반복되면 그건 「상황에 맞게 고른 것」이 아니라 기본값을 찍은 것이다.
+   특히 `Yeah,`·`Honestly,` 로 시작하는 항목이 연달아 나오면 다시 고른다.
+6. 축약형 — gonna, wanna, gotta, kinda, 'cause 를 그대로 쓴다. going to 로 펴지 않는다.
+7. 원칙 — **필러는 뼈대를 바꾸지 않는다.** 필러를 넣는다고 Patrick 이 말하지 않은 내용을
    덧붙이지 않는다. 뜻이 달라지면 그건 필러가 아니라 다른 문장이다.
-7. **한국어 뜻에도 같은 필러를 넣는다.**
-   Yeah, → 「네,」 · Actually, → 「사실,」 · Honestly, → 「솔직히,」 ·
-   Look, → 「저기,」 · I mean, → 「그러니까,」 · Anyway, → 「아무튼,」
+8. **한국어 뜻에도 같은 필러·연결어를 넣는다.**
+   Yeah, → 「네,」 · Actually, → 「사실,」 · Honestly, → 「솔직히,」 · Look, → 「저기,」 ·
+   I mean, → 「그러니까,」 · Anyway, → 「아무튼,」 · Well, → 「음,」 · So, → 「그래서,」 ·
+   The thing is, → 「문제는,」 · Plus, → 「게다가,」 · On top of that, → 「거기에다가,」 ·
+   That's why → 「그래서」 · Basically, → 「쉽게 말하면,」 · ~, though → 「~긴 한데」
    영어에만 넣으면 **한국어만 보고 영어를 떠올릴 때 그 필러가 어디서 나오는지 알 수가 없어**
    1:1 이 깨진다.
+
+**문장을 하나씩 끊어 읽는 느낌이 나면 연결어가 빠진 것이다.**
+   ❌ `I was busy today. We had a meeting. The contractor was late. We couldn't finish the work.`
+   ⭕ `So, I was pretty busy today because we had a meeting. And actually, the contractor was
+      late, so we couldn't finish everything. On top of that, we found another problem with
+      the plumbing.`
 
 적용하지 않는 곳
 - Patrick's Original Answer — 말한 원문 그대로 둔다

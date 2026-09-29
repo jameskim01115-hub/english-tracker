@@ -377,20 +377,14 @@
   }
   .fc .expr.ko.q { color: #cfe4ff; font-size: 16px; line-height: 1.45; }
   .prompt-sub { font-size: 12.5px; color: var(--sub); margin-top: 5px; line-height: 1.5; }
-  /* 「내가 썼던 것」(.blk-wrong) 은 2026-09-29 에 뺐다 — Patrick: 틀린 문장을 다시 읽는 건
-     공부에 도움이 안 된다. 그 자리는 「왜 고쳤나」가 대신한다. CSS 도 같이 지웠다. */
-  .why-toggle, .why-cut-toggle { cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  /* `.blk-wrong`(「내가 썼던 것」)은 2026-09-29 에 뺐다 — 렌더와 함께 스타일도 지웠다. */
+  .why-toggle { cursor: pointer; display: flex; align-items: center; gap: 7px; }
   .why-more {
     text-transform: none; letter-spacing: 0; color: var(--blue);
     font-size: 10.5px; font-weight: 800;
   }
   .why-list { display: none; margin: 2px 0 0; padding-left: 16px; }
   .why-list.open { display: block; }
-  /* 「왜 고쳤나」는 기본이 펼침이다. 다만 노트 꼬리가 쓸려 들어와 20~50줄인 카드가 있어
-     (2026-09-29 실측 217건 중 31건이 10줄 이상) 앞 WHY_OPEN_MAX 줄만 보이고 나머지는 접는다.
-     숨길 줄은 JS 가 `.why-x` 로 표시한다 — CSS 에 줄 수를 박으면 상수와 어긋난다. */
-  .why-list.cut > .why-x { display: none; }
-  .why-list.cut.all > .why-x { display: list-item; }
   .why-list li { font-size: 12.5px; color: #b6bdcd; line-height: 1.6; margin-bottom: 3px; }
   /* 발음(한글) — 리듬맵 바로 아래. 강세 표기가 영어와 1:1로 대응되므로 같은 리듬 스타일을 탄다 */
   .blk-pron { font-size: 13.5px; color: #c3c9d9; line-height: 1.7; }
@@ -1537,10 +1531,6 @@ function isReview(e) { return e.source === SRC_REVIEW; }
 // 그게 없는 카드(2026-09-09 이전 121장)는 **상황을 주지 않는다.** 틀린 상황을 주느니
 // 안 주는 게 낫다 — 표현만 보여주고 상황은 Patrick 이 고른다. 원래 방식에서도
 // 공항→식당→병원을 고른 건 Patrick 이었다.
-// 「왜 고쳤나」를 접지 않고 바로 보여줄 최대 줄 수. 넘으면 나머지는 「+N줄 더」로 접는다.
-// 카드가 늘어지면 복습을 안 하게 된다는 규칙(CLAUDE.md)과 「바로 보이게 해달라」는
-// 2026-09-29 Patrick 요청의 절충점이다. 실측 217건 중 170건(78%)이 5줄 이하다.
-const WHY_OPEN_MAX = 6;
 const USE_TARGET = 3;   // 원칙: 「그날 최소 3번 다른 문맥에서 재사용」. 5회까지는 계속 셀 수 있다
 function usedOf(e) { return Math.max(0, Number(e.usedCount) || 0); }
 // 목표(3회)를 넘겨도 계속 셀 수 있게 둔다 — 원칙상 5개 상황까지 쓰면 더 좋다.
@@ -3233,8 +3223,8 @@ function exprCard(e, mode, dir) {
   }
 
   // ── 회화 교정 전용 블록 ──
-  // **고친 이유를 정답 바로 밑에서 읽는 게 이 카드의 핵심이다** (2026-09-29 Patrick).
-  // 예전엔 「내가 썼던 것」(틀린 문장)이 이 자리였는데 다시 읽어봐야 공부가 안 된다.
+  // 정답(리듬맵)과 그 뜻이 이 카드의 핵심이다. 틀린 문장을 다시 보여주지는 않는다
+  // (2026-09-29 Patrick — 아래 `wrong` 주석 참조).
   if (isReview(e)) {
     if (!recall) html += qBlock;
     // 한→영이면 ko 는 이미 앞면 프롬프트라 다시 띄우지 않는다 — 같은 문장이 두 번 나온다.
@@ -3244,18 +3234,11 @@ function exprCard(e, mode, dir) {
       html += `<div class="blk"><div class="blk-l">뜻</div>
         <div class="blk-mean">${esc(koOf(e))}</div></div>`;
     }
-    // 「왜 고쳤나」가 「내가 썼던 것」 자리를 대신한다 (2026-09-29 Patrick).
-    // 틀린 문장을 빨간 취소선으로 다시 읽는 건 공부가 안 된다 — 고친 이유가 들어가야 한다.
-    // **기본 펼침**이다. 예전엔 맨 아래에 접혀 있어 사실상 안 봤다.
-    const whyLines = String(e.why || "").split("\n").map(l => l.trim()).filter(Boolean);
-    if (whyLines.length) {
-      const cut = whyLines.length > WHY_OPEN_MAX;
-      html += `<div class="blk"><div class="blk-l${cut ? " why-cut-toggle" : ""}">왜 고쳤나`
-        + (cut ? ` <span class="why-more">+${whyLines.length - WHY_OPEN_MAX}줄 더</span>` : "")
-        + `</div><ul class="why-list open${cut ? " cut" : ""}">`
-        + whyLines.map((l, i) => `<li${i >= WHY_OPEN_MAX ? ` class="why-x"` : ""}>${esc(l)}</li>`).join("")
-        + `</ul></div>`;
-    }
+    // **「내가 썼던 것」(`wrong`) 블록은 2026-09-29 에 뺐다 — 다시 넣지 말 것.**
+    // Patrick: 틀린 문장을 빨간 취소선으로 다시 읽는 건 공부에 도움이 안 된다.
+    // 고칠 이유는 맨 아래 「왜 틀렸나」가 이미 담고 있다.
+    // **데이터는 지우지 않았다** — `wrong` 필드는 그대로 남아 「표현」 탭 검색이 계속 훑고,
+    // 노트 파서(`impSave`)도 계속 채운다. 화면 표시만 없앤 것이다.
   }
   // 1. 뜻 (한→영이면 이미 앞면에 썼으므로 생략)
   // 회화 교정은 위 `isReview` 블록에서 이미 그렸으므로 여기서 제외한다 — 안 그러면 두 번 나온다.
@@ -3295,8 +3278,7 @@ function exprCard(e, mode, dir) {
         `<span class="chip" data-say="${esc(c)}">${esc(c)}</span>`).join("")}</div></div>`;
   }
   // 4.5 이렇게도 말해요 — 같은 뜻을 다르게 말하는 연습. **기본 접힘**이다.
-  // 카드가 길어지면 복습을 안 하게 된다 (Patrick 확인함). 위 「왜 고쳤나」는 2026-09-29에
-  // 펼침으로 바뀌었지만 이건 그대로 접어둔다 — 주가 아니라 곁가지다.
+  // 카드가 길어지면 복습을 안 하게 된다 — 「왜 틀렸나」와 같은 이유로 접어둔다 (Patrick 확인함).
   if (vars.length) {
     // 라벨이 소스마다 다르다 — 배달은 「같은 뜻을 다르게」, 회화 교정은 「입에 붙일 표현」이다.
     // 두 개는 성격이 달라 같은 이름을 쓰면 안 된다.
@@ -3316,8 +3298,12 @@ function exprCard(e, mode, dir) {
           ${spkBtn(v.ex, true)}</div>` : ""}
       </li>`).join("")}</ul></div>`;
   }
-  // 「왜 틀렸나」 블록은 여기 있었다 — 2026-09-29 에 「왜 고쳤나」로 이름을 바꿔
-  // **정답 바로 밑(옛 「내가 썼던 것」 자리)으로 올렸다.** 다시 내리지 말 것.
+  // 5. 왜 틀렸나 — 길어서 기본은 접어둔다. 카드가 늘어지면 복습을 안 하게 된다.
+  if (isReview(e) && e.why) {
+    const lines = String(e.why).split("\n").filter(Boolean);
+    html += `<div class="blk"><div class="blk-l why-toggle">왜 틀렸나 <span class="why-more">보기 (${lines.length})</span></div>
+      <ul class="why-list">${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`;
+  }
   // 5. 진도
   const dots = INTERVALS.map((_, i) => `<i class="${i < stage ? "on" : ""}"></i>`).join("");
   let nextTxt;
@@ -3377,19 +3363,7 @@ function exprCard(e, mode, dir) {
   card.querySelectorAll("[data-say]").forEach(el => {
     el.addEventListener("click", ev => { ev.stopPropagation(); tapSpeak(el); });
   });
-  // 「왜 고쳤나」는 기본이 펼침이라 토글이 다르다 — 넘치는 줄만 여닫는다 (`.all`).
-  // 아래 `.why-toggle` 핸들러와 섞지 말 것: 저건 `.open` 을 토글해 블록을 통째로 여닫는다.
-  card.querySelectorAll(".why-cut-toggle").forEach(t => {
-    const list = t.parentElement.querySelector(".why-list");
-    const more = t.parentElement.querySelector(".why-more");
-    if (!list || !more) return;
-    const hidden = list.querySelectorAll(":scope > .why-x").length;
-    t.addEventListener("click", ev => {
-      ev.stopPropagation();
-      more.textContent = list.classList.toggle("all") ? "접기" : `+${hidden}줄 더`;
-    });
-  });
-  // 접히는 블록(이렇게도 말해요 · 입에 붙일 표현). **각 토글을 자기 블록에 짝지어야 한다** —
+  // 접히는 블록이 둘이다 (이렇게도 말해요 / 왜 틀렸나). **각 토글을 자기 블록에 짝지어야 한다** —
   // querySelector 단수로 두면 두 번째 토글이 아예 안 열리고, 개수도 두 블록을 합쳐 세게 된다.
   card.querySelectorAll(".why-toggle").forEach(t => {
     const box = t.parentElement;

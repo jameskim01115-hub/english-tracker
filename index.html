@@ -3644,7 +3644,18 @@ function exprCard(e, mode, dir) {
           spkBtn(plain(c.en), true, isFullSentence(c.en)) + `</div>`);
         const spk = sitBox.querySelector(".use-sit-a [data-say]");
         if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); tapSpeak(spk); });
-      } else if (!maskMode) {
+      } else if (maskMode) {
+        // **연 다음에야 🔊 를 붙인다.** 처음부터 있으면 듣는 순간이 곧 정답이라
+        // 인출이 성립하지 않는다 — useCases 쪽에서 모범 문장을 말한 뒤에 공개하는 것과 같다.
+        // 문장을 다시 쓰지 않는다: 바로 위에 열린 원문이 있어 두 번 나오면 중복이다.
+        if (!sitBox.querySelector(".use-sit-a")) {
+          sitBox.insertAdjacentHTML("beforeend",
+            `<div class="use-sit-a"><span class="use-sit-l">소리로 확인</span>` +
+            `<span>전체 문장 듣기</span>${spkBtn(e.expression)}</div>`);
+          const spk = sitBox.querySelector(".use-sit-a [data-say]");
+          if (spk) spk.addEventListener("click", sev => { sev.stopPropagation(); tapSpeak(spk); });
+        }
+      } else {
         sitBox.hidden = true;
       }
       // 가리기는 **상자를 닫지 않는다** — 채워 말한 것과 열린 원문을 비교하는 것이

@@ -1,0 +1,180 @@
+# -*- coding: utf-8 -*-
+# 필러·연결어 배치 1 (2026-09-29) — 회화 교정 · 0단계 30장
+# 각 항목: expression / rhythm / pron / ko 네 칸. stage·nextReview 는 건드리지 않는다.
+B1 = [
+("zxGfRSbEoQ1GbgrWCeKR", "Honestly,",
+ "Honestly, I think your staff needs to be more careful when they pack the items. They should double-check everything against the order receipt.",
+ "**Hon**estly, ↘↗ / I think your **staff** → / needs to be more **CARE**ful → / when they **pack** the **items**. ↘ They should **dou**ble-**check ev**erything → / against the **or**der re**CEIPT**. ↘",
+ "**아**너s리, / 아이 씽큐어r **s때f** / 니-즈투 비 모-r **케어r**f얼 / 웬 데이 **팩** 디 **아이**럼z. 데이 슈d **더**버L **첵 에**v뤼씽 / 어겐s더 **오**-r더r 뤼**씨**-ㅌ.",
+ "솔직히 포장할 때 직원분들이 좀 더 주의해야 할 것 같아요. 주문서와 전부 대조해서 확인해야 하고요."),
+
+("83NJatBQaCdxtamrkILx", "Actually,",
+ "Actually, our contract doesn't allow subletting, so we can't do that while your lease is still running.",
+ "**Ac**tually, ↘↗ / our **con**tract doesn't allow sub**let**ting, → / so we **can't** do that → / while your **LEASE** is still running. ↘",
+ "**액**츄얼리, / 아워r **컨**추뤡ㅌ 더즌ㅌ 얼라우 써블**레**링, / 쏘우 위 **캔**ㅌ 두 댓 / 와이ㄹ 유어r **리-**s 이z s틸 뤄닝.",
+ "사실 저희 계약서상 전대는 허용되지 않습니다. 그래서 임대 기간이 남아 있는 동안에는 그렇게 할 수 없습니다."),
+
+("FHNYauiOp8SBnKRaEZba", "Yeah,",
+ "Yeah, I hear you, but we're short on time. The handover to Metro Bank is coming, so we need it done by this weekend.",
+ "Yeah, ↘↗ / I **hear** you, ↗ / but we're **SHORT** on time. ↘ The **hand**over to **Met**ro Bank is coming, → / so we need it **DONE** / by this **week**end. ↘",
+ "예, / 아이 **히**어r 유, / 벗 위어r **쇼**-r돈 타임. 더 **핸**도우v어r 투 **메**추로우 뱅ㅋ 이z 커밍, / 쏘우 위 니-릿 **던** / 바이 디s **위-**켄d.",
+ "네, 무슨 말씀인지 압니다만, 시간이 빠듯합니다. 메트로뱅크 인도가 다가오고 있어서 이번 주말까지는 끝내야 합니다."),
+
+("jIZSEIAlD6MZsyr68hXw", "Oh, / 대문자 교정",
+ "Oh, sorry about that. I'll send maintenance up to check it first, then I'll get back to you once we know what the problem is.",
+ "**Oh**, ↘↗ / **SOR**ry about that. ↘ I'll send **main**tenance up → / to **check** it first, ↗ / then I'll get **back** to you → / once we **know** → / what the **PROB**lem is. ↘",
+ "**오**우, / **써**뤼 어바웃 댓. 아으L 쎈d **메**인트넌s 업 / 투 **첵**킷 f어rsㅌ, / 덴 아으L 겟 **백** 투 유 / 원s 위 **노우** / 왓 더 **프롸**블럼 이z.",
+ "아, 죄송합니다. 먼저 유지보수 직원을 올려보내 확인하고, 문제가 뭔지 알게 되면 다시 연락드리겠습니다."),
+
+("lhDUwfaW5iPSQuQUvxcX", "Honestly,",
+ "Honestly, I'd set up an app for complaints. That way, when tenants have a problem, they just log it and we handle it from there. Right now they call us at all hours.",
+ "**Hon**estly, ↘↗ / I'd **set** up an **APP** for complaints. ↘ **That** way, ↘↗ / when **ten**ants have a **prob**lem, ↘↗ / they just **log** it ↗ / and we **han**dle it from **THERE**. ↘ Right **now** → / they call us at **ALL** hours. ↘",
+ "**아**너s리, / 아으d **쎄**럽 언 **앱** f어r 컴플레인츠. **댓** 웨이, / 웬 **테**넌츠 해v 어 **프롸**블럼, / 데이 저sㅌ **러**깃 / 앤드 위 **핸**들릿 f뤔 **데**어r. 롸잇 **나우** / 데이 커어ㄹ 어s 앳 **어어ㄹ** 아워rz.",
+ "솔직히 저라면 불만 접수용 앱을 만들겠습니다. 그러면 임차인이 문제가 생겼을 때 그냥 등록만 하고, 저희가 거기서부터 처리하면 됩니다. 지금은 시도 때도 없이 전화가 옵니다."),
+
+("YpT3XPfduvzuNamE3XBL", "yes → Yeah,",
+ "Yeah, here it is. This is my baggage claim tag.",
+ "Yeah, ↘↗ / **HERE** it is. ↘ This is my baggage claim **TAG**. ↘",
+ "예, / **히**어r릿 이z. 디씨z 마이 배기쥐 클레임 **태그**.",
+ "네, 여기 있습니다. 이게 제 수하물 태그예요."),
+
+("aBSvyRyzzLnq0gMuo1yn", "So, / Hi 대문자·「안녕하세요」 보충",
+ "Hi, excuse me. So, I think my bag didn't show up at baggage claim. Could you help me check it, please?",
+ "Hi, / ex**CUSE** me. ↘ **So**, ↘↗ / I think my bag didn't **show** up → / at baggage **CLAIM**. ↘ Could you help me **CHECK** it, / please? ↗",
+ "하이, / 익스**큐**-z 미. **쏘**우, / 아이 씽ㅋ 마이 백 디든ㅌ **쇼**우 업 / 앳 배기쥐 **클레임**. 쿠쥬 헬p 미 **첵**킷, / 플리-z?",
+ "안녕하세요, 실례합니다. 저기, 제 가방이 수하물 찾는 곳에서 나오지 않았어요. 확인 좀 도와주시겠어요?"),
+
+("wwsUvSq8XEbgtHtoz82Y", "Yeah, / pr267 → PR267",
+ "Yeah, my flight number is PR267, from Manila.",
+ "Yeah, ↘↗ / my flight **number** is PR267, → / from Ma**NI**la. ↘",
+ "예, / 마이 플라잇 **넘**버리즈 피알 투 씩s 쎄븐, / f뤔 머**닐**라.",
+ "네, 제 항공편 번호는 PR267이고, 마닐라에서 왔습니다."),
+
+("PPBuPEv6h53E9rQh1eCr", "Yeah, / 대문자 교정",
+ "Yeah, sorry about that. I'll have our maintenance team check it right away, and we'll get it fixed as soon as possible.",
+ "Yeah, ↘↗ / **SOR**ry about that. ↘ I'll have our **main**tenance team → / **CHECK** it right away → / and we'll get it **fixed** as soon as possible. ↘",
+ "예, / **싸**뤼 어바웃 댓. 아으L 해v 아워r **메인**터넌s 팀 / **체**킷 라잇 어웨이 / 앤드 위ㄹ 게릿 **f익**sㅌ 애z 쑤-너z 파써블.",
+ "네, 죄송합니다. 바로 저희 maintenance team에게 확인시키고, 최대한 빨리 수리하겠습니다."),
+
+("kqubEzqRzJKcJhdehVsp", "So",
+ "So I checked the water pressure in the bathroom, and it's still really low. I asked Ascent when they could fix it, and they said they'll come tomorrow.",
+ "**So** ↘↗ / I **checked** the **wa**ter **pres**sure → / in the **bath**room → / and it's still really **LOW**. ↘ I **asked** As**cent** → / when they could **fix** it → / and they said they'll **come** to**MOR**row. ↘",
+ "**쏘**우 / 아이 **첵**ㅌ 더 **워**러r **프뤠**셔r / 인 더 **배ㅆ**룸 / 앤드 잇츠 스틸 륄리 **로우**. 아이 **애**s크ㅌ 애s**쎈**ㅌ / 웬 데이 쿠d **f익**씻 / 앤드 데이 쎄d 데이ㄹ **컴** 터**마**로우.",
+ "그래서 욕실 수압을 확인했는데 아직도 많이 약합니다. Ascent에 언제 고칠 수 있는지 물었고, 내일 오겠다고 했습니다."),
+
+("nzfcgKBFQrU1LR0VeDJb", "Okay, so",
+ "Okay, so we'll fix the current issue first. Then our maintenance team will do regular checks every week so this doesn't happen again.",
+ "O**kay**, ↘↗ / so we'll **fix** the **cur**rent issue **FIRST**. ↘ Then our **main**tenance team → / will do **reg**ular **checks** every week → / so this **does**n't happen a**GAIN**. ↘",
+ "오우**케**이, / 쏘우 위ㄹ **f익**s 더 **커**-r런ㅌ 이슈 **f어**-rsㅌ. 덴 아워r **메인**터넌s 팀 / 윌 두 **뤠**귤러r **첵**s 에v리 윅 / 쏘우 디s **더**즌ㅌ 해픈 어**게**인.",
+ "네, 그럼 먼저 지금 문제부터 해결할게요. 그다음 이런 일이 다시 생기지 않도록 저희 maintenance team이 매주 정기적으로 점검할 겁니다."),
+
+("7fWPEc1W2OmypmvlhZ4z", "Honestly,",
+ "Honestly, it was pretty much cold when it arrived, and it's too cold to eat. Could you replace it or send me a fresh one?",
+ "**Hon**estly, ↘↗ / it was **pret**ty much **cold** → / when it ar**rived**, ↗ / and it's too **COLD** to **eat**. ↘ Could you re**place** it ↗ / or **send** me a **FRESH** one? ↘",
+ "**아**너s리, / 잇 워z **프뤼**리 머치 **코울**d / 웨닛 어**롸이**vd / 앤드 잇츠 투- **코울**d 투 **이**-ㅌ. 쿠쥬 뤼**플레이**s 잇 / 어r **쎈**d 미 어 **프뤠쉬** 원?",
+ "솔직히 도착했을 때 거의 다 식어 있었고 너무 차가워서 먹기 힘들어요. 새것으로 교환해 주시거나 새 음식으로 다시 보내주실 수 있나요?"),
+
+("96nZzmzEjqmfk8PppYdn", "So, / honestly,",
+ "So, could you check on my order and let me know how much longer it'll take? It's already about twenty minutes past the estimated delivery time, and honestly, I'm pretty hungry. If possible, could you ask the driver to get here as soon as they can?",
+ "**So**, ↘↗ / could you **check** on → / my **or**der ↗ / and let me **know** → / how much **LONG**er it'll **take**? ↗ It's al**read**y about → / **twen**ty **min**utes past → / the **es**timated de**liv**ery time, ↗ / and **hon**estly, ↘↗ / I'm pretty **HUN**gry. ↘ If **pos**sible, ↘↗ / could you **ask** the **dri**ver → / to **get** here as **SOON** as they can? ↗",
+ "**쏘**우, / 쿠쥬 **첵** 온 / 마이 **오**-r더r / 앤드 렛 미 **노우** / 하우 머치 **러엉**어r 이럴 **테익**? 잇츠 어ㄹ**레**디 어바웃 / **트웨**니 **미**닛츠 패sㅌ / 디 **에**s터메이리d 딜**리**v어리 타임 / 앤드 **아**너s리, / 아임 프뤼리 **헝**그뤼. 이f **파**써버L / 쿠쥬 **애**sㅋ 더 **쥬롸이**v어r / 투 **겟** 히어r 어z **쑤**-ㄴ 어z 데이 큰?",
+ "저기, 제 주문 상태를 확인해서 얼마나 더 걸릴지 알려주실 수 있나요? 이미 예상 배달 시간보다 약 20분이나 지났고, 솔직히 지금 꽤 배가 고파요. 가능하다면 기사님께 최대한 빨리 와달라고 해주실 수 있나요?"),
+
+("QK7Wqjs12m8eLeOQ8Uk7", "So / going to → gonna",
+ "So since it's gonna be a two-hour delay, could you check if there's an earlier flight I can switch to? If not, I'll just wait for this one.",
+ "**So** ↘↗ / since it's **gon**na be → / a **two**-hour de**lay**, ↘↗ / could you **check** if there's → / an **EAR**lier **flight** → / I can **switch** to? ↗ If **not**, ↘↗ / I'll just **WAIT** for this one. ↘",
+ "**쏘**우 / 씬s 잇츠 **거**너 비 / 어 **투**- 아우어r 딜**레이** / 쿠쥬 **첵** 이f 데어rz / 언 **어**-r리어r **플라잇** / 아이 큰 **s위치** 투? 이f **낫** / 아으L 저sㅌ **웨잇** f어r 디s 원.",
+ "그럼 두 시간이나 지연되는 거라면, 제가 바꿔 탈 수 있는 더 이른 항공편이 있는지 확인해 주실 수 있나요? 없다면 그냥 이 비행기를 기다릴게요."),
+
+("bcEdoBDLVteTLIL9NxtX", "actually",
+ "I ordered a café latte, but I actually got an Americano instead. Could you send the latte or let me know what my options are?",
+ "I **or**dered a ca**fé lat**te, ↗ / but I **act**ually **got** an Ameri**ca**no in**STEAD**. ↘ Could you **send** the **lat**te ↗ / or let me **know** → / what my **OP**tions are? ↘",
+ "아이 **오**-r더rd 어 캐f**에이 라**테이 / 벗 아이 **액**츄얼리 **가**런 어메뤼**카**노우 인s**떼**d. 쿠쥬 **쎈**d 더 **라**테이 / 어r 렛 미 **노우** / 왓 마이 **압**션z 아r?",
+ "카페라떼를 주문했는데, 사실 Americano가 대신 왔어요. 라떼를 다시 보내주시거나 제가 선택할 수 있는 방법이 뭔지 알려주시겠어요?"),
+
+("wLSAXlSaIAilBPcJkWjk", "Yeah, / need to → gotta",
+ "Yeah, I understand. Could you let me know how much longer it'll take? We're preparing for a handover, so we gotta get this fixed as soon as possible.",
+ "Yeah, ↘↗ / I under**STAND**. ↘ Could you let me **know** → / how much **LONG**er it'll **take**? ↗ We're pre**par**ing → / for a **hand**over, → / so we **got**ta get this **FIXED** as **soon** as **pos**sible. ↘",
+ "예, / 아이 언더r**s땐**d. 쿠쥬 렛 미 **노우** / 하우 머치 **러엉**어r 이럴 **테익**? 위어r 프뤼**페어**링 / f어러 **핸**도우v어r / 쏘우 위 **가**라 겟 디s **f익**sㅌ 어z **쑤**-ㄴ 어z **파**써버L.",
+ "네, 이해합니다. 얼마나 더 걸릴지 알려주실 수 있나요? 지금 인수인계를 준비 중이라서 이 문제를 최대한 빨리 해결해야 합니다."),
+
+("5TnfqrHls9UF2PMwlzQE", "Oh, / So",
+ "Oh, I'm really sorry about that. Normally we'd need the receipt to process a refund, but since you don't have it, I'll take care of it this time. So would you rather get your money back, or swap it for a fresh one?",
+ "**Oh**, ↘↗ / I'm **rea**lly **SO**rry about that. ↘ **Nor**mally we'd **need** the re**ceipt** → / to **pro**cess a **re**fund, ↗ / but **since** you don't **have** it, ↘↗ / I'll take **CARE** of it this time. ↘ **So** ↘↗ / would you **ra**ther get your **mo**ney back, ↗ / or **swap** it for a **FRESH** one? ↘",
+ "**오**우, / 아임 **륄**리 **써**뤼 어바웃 댓. **노**r멀리 위d **니**-d 더 뤼**씨**-ㅌ / 투 **프롸**쎄s 어 **뤼**f언d, / 벗 **씬**s 유 도운ㅌ **해**v잇, / 아으L 테익 **케**어r어v잇 디s 타임. **쏘**우 / 우쥬 **뤠**더r 겟 유어r **머**니 백, / 어r **s왑** 잇 f어러 **f뤠쉬** 원?",
+ "아, 정말 죄송합니다. 원래는 환불 처리하려면 영수증이 있어야 하는데, 없으시니까 이번엔 제가 알아서 처리해 드릴게요. 그럼 환불로 받으시겠어요, 아니면 새 걸로 바꿔 드릴까요?"),
+
+("O5rm6ylds742aXzEOMkz", "Look,",
+ "John, do you have a minute? I've noticed you've been coming in late the last few days. Look, our start time is nine, and I need everyone here at the same time. Is something going on?",
+ "**John**, ↘↗ / do you have a **MI**nute? ↗ I've **no**ticed → / you've been **co**ming in **LATE** → / the last few **days**. ↘ **Look**, ↘↗ / our **start** time is **nine**, ↗ / and I need **eve**ryone here → / at the **SAME** time. ↘ Is **some**thing going **ON**? ↗",
+ "**잔**, / 두유 해버 **미**닛? 아이v **노**우티sㅌ / 유v 빈 **커**미닌 **레**잇 / 더 라sㅌ f유- **데**이z. **룩**, / 아워r **s따**-rt 타임 이z **나**인, / 앤드 아이 니-d **에**v리원 히어r / 앳 더 **쎄**임 타임. 이z **썸**씽 고우이**논**?",
+ "존, 잠깐 시간 돼요? 지난 며칠 동안 늦게 출근하는 걸 봤어요. 저기, 우리 출근 시간은 9시고, 다들 같은 시간에 여기 나와 있어야 합니다. 무슨 일 있어요?"),
+
+("nQgAsgmEEvZzvnNp1d3Y", "Oh, and",
+ "Can you call the Samsung service center and see if they can send someone out? If they can't make it today, just ask the front desk downstairs. They usually know a repair guy. Oh, and put a towel under it for now.",
+ "Can you **call** the **Sam**sung **ser**vice center ↗ / and see if they can send **SOME**one out? ↗ If they **can't** make it to**day**, ↘↗ / just **ask** the **front** desk down**STAIRS**. ↘ They **u**sually know a re**PAIR** guy. ↘ **Oh**, and → / put a **TO**wel under it for now. ↘",
+ "캔뉴 **커**어ㄹ 더 **쌤**썽 **써**-rv이s 쎄너r / 앤드 씨- 이f 데이 큰 쎈d **썸**워나웃? 이f 데이 **캔**ㅌ 메이킷 투**데**이, / 저sㅌ **애**s크 더 **f뤈**ㅌ 데sㅋ 다운**s테**어rz. 데이 **유**주얼리 노우어 뤼**페**어r 가이. **오**우, 앤d / 푸러 **타**월 언더r 잇 f어r 나우.",
+ "삼성 서비스센터에 전화해서 사람 보낼 수 있는지 확인해줄래요? 오늘 안 되면 아래층 프런트에 물어봐요. 거기서 보통 수리 기사를 알고 있어요. 아, 그리고 일단 밑에 수건 깔아두고요."),
+
+("tQGuuH8vfWm37Rb75sSm", "actually / I mean,",
+ "Could you check that again? We actually never used the minibar. I mean, we brought our own drinks from the store outside, so we didn't touch anything in there.",
+ "Could you **check** that a**GAIN**? ↗ We **act**ually **ne**ver used the **MI**nibar. ↘ I **mean**, ↘↗ / we **brought** our own **drinks** → / from the **store** out**side**, → / so we didn't **TOUCH** anything in there. ↘",
+ "쿠쥬 **첵** 댓 어**게**인? 위 **액**츄얼리 **네**v어r 유z더 **미**니바-r. 아이 **미**-ㄴ, / 위 **브러엇**ㅌ 아워r 오운 **쥬륑**ks / f뤔 더 **s토**-r 아웃**싸**이d, / 쏘우 위 디든 **터**취 **애**니씽 인 데어r.",
+ "다시 확인해 주시겠어요? 미니바는 사실 쓴 적이 없습니다. 그러니까, 밖에서 직접 사온 음료를 넣어둔 거라 안에 있는 건 전혀 손대지 않았어요."),
+
+("yZqr8z3xAHDCp2n8D7X9", "Yeah, / Look,",
+ "Yeah, I get it, but I already told the tenants it'd be done this week, so next month doesn't work for me. Can you send someone else tomorrow? Look, if your engineer's out, I need a backup crew on site.",
+ "Yeah, ↘↗ / I **get** it, ↗ / but I al**rea**dy told the **te**nants → / it'd be **done** this week, → / so next **month** doesn't **WORK** for me. ↘ Can you **send** someone else to**MOR**row? ↗ **Look**, ↘↗ / if your engi**neer's** out, ↘↗ / I need a **BACK**up crew on site. ↘",
+ "예, / 아이 **게**릿, / 벗 아이 어ㄹ**뤠**디 토울더 **테**넌츠 / 잇d 비 **던** 디s 위-ㅋ, / 쏘우 넥sㅌ **먼**ㅆ 더즌 **워**-rk f어r 미. 캔뉴 **쎈**d 썸원 엘s 투**마**로우? **룩**, / 이f 유어r 엔지**니**어rz 아웃, / 아이 니-러 **백**업 크루- 온 **싸**잇.",
+ "네, 이해는 합니다. 그런데 테넌트한테 이번 주에 끝난다고 이미 말해놨어요. 다음 달은 안 됩니다. 내일 다른 사람 보낼 수 있나요? 저기, 담당 기사가 못 나오면 대체 인력이 현장에 와야 합니다."),
+
+("2Vq8yNvUYGfJD2pLOEny", "Yeah, / I mean,",
+ "Yeah, I have a cold, so I couldn't sleep well last night. I mean, my nose is running and I can't stop coughing.",
+ "Yeah, ↘↗ / I have a **cold**, → / so I couldn't **sleep** well last **NIGHT**. ↘ I **mean**, ↘↗ / my **nose** is **run**ning ↗ / and I **can't** stop **COUGH**ing. ↘",
+ "예, / 아이 해v어 **코울**d / 쏘우 아이 쿠든ㅌ **s리**-ㅍ 웨ㄹ 래sㅌ **나잇**. 아이 **미**-ㄴ, / 마이 **노우**z 이z **뤄**닝 / 앤드 아이 **캔ㅌ** s땁 **커어**f잉.",
+ "네, 감기에 걸려서 어젯밤에 잠을 잘 못 잤어요. 그러니까, 콧물이 나고 기침이 멈추질 않아요."),
+
+("AwanvmeM2X6lyKcqnzAv", "Honestly, / because → 'cause",
+ "Honestly, I couldn't sleep last night 'cause I had a slight fever, and if it doesn't get better, I'll see a doctor.",
+ "**Hon**estly, ↘↗ / I couldn't **sleep** last **night** → / 'cause I had a slight **fe**ver, ↗ / and if it doesn't get **bet**ter, ↘↗ / I'll **see** a **DOC**tor. ↘",
+ "**아**너s리, / 아이 쿠든ㅌ **s리**-ㅍ 래sㅌ **나잇** / 커z 아이 해러 s라잇 **f이**-v어r / 앤드 이f 잇 더즌ㅌ 겟 **베**러r / 아으L **씨**- 어 **닥**터r.",
+ "솔직히 어젯밤에 열이 조금 나서 잠을 못 잤어요. 그리고 나아지지 않으면 병원에 가보려고요."),
+
+("NF92uJM9GbfqaX5GUuNg", "I guess",
+ "About two days, I guess. It started with a slight fever, then got worse. That's why I couldn't sleep.",
+ "About **TWO** days, ↗ / I **guess**. ↘ It **start**ed with a slight **fe**ver, → / then got **WORSE**. ↘ **That's** why I couldn't **SLEEP**. ↘",
+ "어바웃 **투**- 데이z, / 아이 **게s**. 잇 **s따**r리d 위더 s라잇 **f이**-v어r / 덴 갓 **워-rs**. **댓츠** 와이 아이 쿠든ㅌ **s리**-ㅍ.",
+ "이틀쯤 된 것 같아요. 가벼운 열로 시작했는데, 그다음 더 심해졌어요. 그래서 잠을 못 잤어요."),
+
+("w1AVTejxPUy4BEHYbs3S", "No,",
+ "No, I don't have any allergies, and I'm not taking any medication.",
+ "**No**, ↘↗ / I don't have any **a**llergies, ↗ / and I'm not **tak**ing any medi**CA**tion. ↘",
+ "**노**우, / 아이 도운ㅌ 해v에니 **애**러r쥐z / 앤드 아임 낫 **테**이킹 에니 메디**케**이션.",
+ "아뇨, 알레르기는 없고, 먹는 약도 없어요."),
+
+("6joNg0NwylwzAV2PFvpu", "Oh, / Actually,",
+ "Oh, thanks, that's very kind. What do you have? Actually, I don't really like things too sweet, so fruit would be great if you have it.",
+ "**Oh**, ↘↗ / **thanks**, ↗ / that's **ve**ry **KIND**. ↘ **What** do you **HAVE**? ↘ **Ac**tually, ↘↗ / I **don't rea**lly like things too **SWEET**, → / so **fruit** would be **great** → / if you **have** it. ↘",
+ "**오**우, / **쌩ks**, / 댓츠 **v에**리 **카인d**. **와**두유 **해v**? **액**츄얼리, / 아이 **도운ㅌ 륄**리 라익 씽z 투- **s위**-ㅌ, / 쏘우 **f루**-ㅌ 우d 비 **그뤠잇** / 이f유 **해v**잇.",
+ "아, 고맙습니다, 정말 친절하시네요. 어떤 게 있나요? 사실 너무 단 건 별로 안 좋아해서, 과일 있으면 좋을 것 같아요."),
+
+("jTbszkpsrm7uEsp8zEQS", "I mean,",
+ "Hi, I think there's a problem with the bill. Can you double-check it? I mean, I didn't order this wine.",
+ "**Hi**, ↘↗ / I **think** there's a **prob**lem → / with the **BILL**. ↘ Can you **dou**ble-**CHECK** it? ↗ I **mean**, ↘↗ / I **did**n't **or**der this **WINE**. ↘",
+ "**하이**, / 아이 **씽ㅋ** 데어rz 어 **프라**블럼 / 위더 **비ㄹ**. 캔뉴 **더**버L**첵**잇? 아이 **미**-ㄴ, / 아이 **디**든ㅌ **오**-r더r 디s **와인**.",
+ "안녕하세요, 계산서에 문제가 있는 것 같은데요. 다시 한번 확인해 주시겠어요? 그러니까, 저는 이 와인을 시키지 않았어요."),
+
+("4n4g5Dl8zVdi0SCzx3Yk", "'Cause / Oh, and",
+ "Could you double-check my bill? 'Cause it's a little higher than last month. Oh, and is there any way you could speed it up?",
+ "Could you **dou**ble-**CHECK** my bill? ↗ 'Cause it's a **lit**tle **high**er → / than **last** month. ↘ **Oh**, and → / is there **an**y way → / you could **speed** it **UP**? ↗",
+ "쿠쥬 **더**버L**첵** 마이 빌? 커z 잇처 **리**를 **하**이어r / 댄 **래**sㅌ 먼ㅆ. **오**우, 앤d / 이z 데어r **에**니 웨이 / 유 쿠d s**피**-릿**업**?",
+ "제 청구서 좀 확인해 주시겠어요? 지난달보다 조금 많이 나와서요. 아, 그리고 좀 더 빨리 처리해 주실 방법이 있을까요?"),
+
+("AKxVuoRGM4gn7KHpv95L", "So",
+ "So I'm moving on the twenty-first, but I still haven't submitted some reports to the admin.",
+ "**So** ↘↗ / I'm **mov**ing → / on the **twen**ty-**first**, ↗ / but I **still** haven't sub**MIT**ted → / some re**ports** → / to the **ad**min. ↘",
+ "**쏘**우 / 아임 **무**-v잉 / 온 더 **트웨**니-**f어**-rsㅌ / 벗 아이 **s띨** 해v은ㅌ 썹**미**리d / 썸 뤼**포**-r츠 / 투 디 **애**d민.",
+ "그래서 21일에 이사하는데 아직 관리사무소에 서류 몇 개를 못 냈어."),
+]
+# 이미 필러가 들어 있어 손대지 않는 카드
+SKIP = [("vzq0xYMukU8G2A8XepHp", "문장 중간에 Honestly 가 이미 있음 — 변경 없음")]

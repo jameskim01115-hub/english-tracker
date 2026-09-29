@@ -191,7 +191,7 @@ _usage_lock = threading.Lock()
 
 # 철자로 읽어야 하는 약어. 앱 index.html 의 SPELL_OUT 과 같은 목록이어야 한다.
 SPELL_OUT = {"CUSA", "CRBC", "CRLC", "OR", "BIR", "VAT", "SSS", "AEP",
-             "LOI", "NTE", "PO", "STF", "DPR", "BFP", "NTC", "FSIC"}
+             "LOI", "NTE", "PO", "STF", "DPR", "BFP", "NTC", "FSIC", "AC", "TV", "PM"}
 
 # CORS — 앱 출처만 허용. curl 은 못 막지만 브라우저 오용은 막는다.
 ALLOWED_ORIGINS = {

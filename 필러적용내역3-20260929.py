@@ -1,0 +1,181 @@
+# -*- coding: utf-8 -*-
+# 필러·연결어 배치 3 (2026-09-29) — 회화 교정 1~3단계 30장 (61~90번째)
+# pron 이 "" 인 항목은 원래 발음 칸이 비어 있던 카드 — 그 필드는 건드리지 않는다.
+B3 = [
+("PelMkfhAEV5TiGQWq3eX","Oh,",
+ "Oh, I need to let you know something. We've got an inspection scheduled for the FSIC, so what time works for you?",
+ "**Oh**, ↘↗ / I **need** to let you **KNOW** something. ↘ We've got an in**spec**tion **sched**uled → / for the FSIC, → / so what **TIME** works for you? ↘",
+ "**오**우, / 아이 니-투 레츄 노우 썸씽. 위v 가런 인s**펙**션 **s께**쥴d / f어r 더 에f에s아이씨, / 쏘우 왓 **타임** 워rks f어r 유?",
+ "아, 알려드릴 게 있어요. FSIC 점검이 잡혀 있는데, 몇 시가 괜찮으세요?"),
+
+("F7tXXPR2oTVd1xllk0vr","So / need to → gotta",
+ "So I gotta take a half day tomorrow to take my mom to a hospital appointment in the morning. I'll be back after lunch.",
+ "**So** ↘↗ / I **got**ta take a **HALF** day tomorrow → / to take my **mom** → / to a hospital ap**point**ment → / in the **morn**ing ↘ I'll be **back** → / after **LUNCH** ↘",
+ "**쏘**우 / 아이 **가**라 테이커 **해f** 데이 터모-로우 / 투 테익 마이 **맘** / 투 어 하s삐럴 어**포인**먼ㅌ / 인 더 **모-r**닝 아으L 비 **백** / 애f터r **런취**",
+ "저기, 내일 오전에 엄마 병원 진료에 모시고 가야 해서 반차를 내야 해요. 점심 이후에는 돌아올게요."),
+
+("OmIOzimuaTljXes8pgZp","Look,",
+ "Look, can we stick to the schedule this time? We really need the water pressure issue fixed before the tenant moves in next week.",
+ "**Look**, ↘↗ / can we **stick** to the schedule → / this **TIME** ↗ We **real**ly need the water pressure issue **fixed** → / before the tenant **moves** in → / next **WEEK** ↘",
+ "**룩**, / 캔 위 **s띡** 투 더 s께쥬-ㄹ / 디s **타임** 위 **뤼얼리** 니-더 워러r 프뤠셔r 이슈 **f익sㅌ** / 비f오-r 더 테넌ㅌ **무-v**즈 인 / 넥sㅌ **위-ㅋ**",
+ "저기, 이번에는 일정을 지킬 수 있을까요? 다음 주 테넌트가 입주하기 전에 water pressure 문제를 꼭 해결해야 해요."),
+
+("A0FXQPuyUPFLcXXTMSX3","Actually, / honestly,",
+ "Actually, I had a viewing scheduled so I had to come back home. The buyer came to look around the house. And I think they visited two months ago. But honestly, I'm not sure if they'll buy it.",
+ "**Ac**tually, ↘↗ / I had a **view**ing **sche**duled → / so I had to come back **HOME**. ↘ The **buy**er came to look around the **HOUSE**. ↘ And I **think** they visited → / two months a**GO**. ↘ But **hon**estly, ↘↗ / I'm not **sure** → / if they'll **BUY** it. ↘",
+ "**액**츄얼리, / 아이 해러 **v유-잉 s께쥬-ㄹd** / 쏘우 아이 핻투 컴 백 **호움**. 더 **바이**어r 케임 투 루커롸운 더 **하우s**. 앤드 아이 **씽ㅋ** 데이 비지리d / 투- 먼ㅆ츠 어**고우**. 벗 **아**너s리, / 아임 낫 **슈어r** / 이f 데이ㄹ **바이** 잇.",
+ "사실 집 보러 오는 일정이 잡혀 있어서 집에 다시 와야 했어. 매수자가 집을 둘러보러 왔어. 그리고 두 달 전에도 왔던 것 같아. 근데 솔직히 매수할지는 잘 모르겠어."),
+
+("0hwgGP42aGZX3YAPzOWI","Yeah,",
+ "Yeah, we haven't fixed the water pressure issue yet. When I turn on the faucet in the bathroom, there's barely any pressure. I already reported it to the contractor, and they said they'll check it again tomorrow.",
+ "Yeah, ↘↗ / we haven't **fixed** → / the water pressure issue **YET**. ↘ When I **turn on** the faucet → / in the bathroom, ↘↗ / there's barely any **PRES**sure. ↘ I already re**por**ted it → / to the contractor, → / and they said they'll **check** it again to**MOR**row. ↘",
+ "예, / 위 해븐ㅌ **f익sㅌ** / 더 워러r 프뤠셔r 이슈 **옛** 웬 아이 **터-r논** 더 f어-씻 / 인 더 배ㅆ루-ㅁ / 데어rz 베어r리 애니 **프뤠**셔r 아이 어ㄹ레디 뤼**포**-r리딧 / 투 더 컨추뤡터r / 앤드 데이 쎄d 데이ㄹ **체킷** 어겐 터**마**-로우",
+ "네, 수압 문제는 아직 해결하지 못했습니다. 화장실 수도꼭지를 틀어보면 수압이 거의 없습니다. 이미 업체에 전달했고, 내일 다시 확인하겠다고 했습니다."),
+
+("6gJUWa83jVn2ofYSD5u3","So",
+ "So yesterday, our glass contractor came to replace the glass, but they only removed the broken pieces. They said they'll start the actual work today. Also, Rodel got the signage permit, so we can display our sign now.",
+ "**So** ↘↗ / yesterday, our **glass** con**trac**tor → / came to re**place** the glass, ↗ / but they only re**MOVED** → / the broken pieces. ↘ They said they'll **start** → / the actual **WORK** today. ↘ Also, Rodel got the **sign**age **per**mit, → / so we can display our **SIGN** now. ↘",
+ "**쏘**우 / 예s터r데이, 아워r **글래s** 컨**추뤡**터r / 케임 투 뤼**플레이**s 더 글래s / 벗 데이 오운리 뤼**무-vd** / 더 브로우큰 피-씨z 데이 쎄d 데이ㄹ **s따-rㅌ** / 디 액츄얼 **워-rk** 터데이 어ㄹ쏘우, Rodel 갓 더 **싸이**니지 **퍼r**밋 / 쏘우 위 큰 디s플레이 아워r **싸인** 나우",
+ "그게, 어제 유리 업체가 유리를 교체하러 왔지만, 깨진 유리만 제거했습니다. 오늘 실제 작업을 시작하겠다고 했습니다. 그리고 Rodel이 signage permit을 받아서 이제 간판을 사용할 수 있습니다."),
+
+("rJ7YWMNGKbdJTQhJ7QIV","Honestly,",
+ "Honestly, I haven't checked it yet, but I'll contact the person in charge at the construction company and get back to you.",
+ "**Hon**estly, ↘↗ / I haven't **checked** it yet, ↗ / but I'll **con**tact the **per**son in charge → / at the construction company ↗ / and get **BACK** to you. ↘",
+ "**아**너s리, / 아이 해븐ㅌ **첵**팃 옛 / 버라일 **칸**택ㅌ 더 **퍼-r**스닌 차-r지 / 앳 더 컨s추뤅션 컴퍼니 / 앤드 겟 **백** 투 유",
+ "솔직히 아직 확인은 못 했지만, 건설회사 담당자에게 연락해서 다시 말씀드리겠습니다."),
+
+("7CdzHwdgtQKXrJbanWbw","So / need to → gotta · kind of → kinda",
+ "So we gotta get ready for the Metrobank handover next week. That means fixing the water pressure issue and replacing the glass before then. We're kinda short on time, so I'm hoping we can wrap it up this week.",
+ "**So** ↘↗ / we **got**ta get **rea**dy → / for the Metrobank **HAND**over → / next week. ↘ That means **fix**ing the water pressure issue ↗ / and re**pla**cing the **GLASS** → / before then. ↘ We're **kin**da **short** on **TIME**, ↘↗ / so I'm **hop**ing we can wrap it up → / this week. ↘",
+ "**쏘**우 / 위 **가**라 겟 **뤠디** / f어r 더 메추로우뱅ㅋ **핸도우v어r** / 넥sㅌ 위-ㅋ. 댓 민z **f익씽** 더 워러r 프뤠셔r 이슈- / 앤드 뤼**플레**이씽 더 **글래s** / 비f오-r 덴. 위어r **카**인더 **쇼-r**런 **타임**, / 쏘우 아임 **호우**핑 위큰 뤠피럽 / 디s 위-ㅋ.",
+ "그러니까 다음 주 Metrobank 인계를 준비해야 해. 그러려면 그 전에 수압 문제를 고치고 유리도 교체해야 해. 시간이 좀 빠듯해서 이번 주 안에 마무리했으면 해."),
+
+("QGYwDTTuNRzCscDRpz2M","Honestly,",
+ "Honestly, this morning I was in a rush and left my phone at home. I didn't realize it until I got to the office, so I had to go all the way back to get it.",
+ "**Hon**estly, ↘↗ / this **morn**ing → / I was in a **RUSH** → / and left my phone at home. ↘ I didn't **re**alize it → / until I got to the **OF**fice, → / so I had to go all the way **back** → / to get it. ↘",
+ "**아**너s리, / 디s **모-r**닝 / 아이 워z 이너 **뤄쉬** / 앤드 레fㅌ 마이 f오운 앳 호움. 아이 디든ㅌ **뤼**얼라이z잇 / 언틸 아이 가라 디 **아f**이s, / 쏘우 아이 핻투 고우 어어ㄹ 더 웨이 **백** / 터 게릿.",
+ "솔직히 오늘 아침 정신없이 나오다가 휴대폰을 집에 두고 왔어. 회사에 도착하고 나서야 알아차려서 다시 집까지 가지러 가야 했어."),
+
+("uozkwCxJqnL3nDJvCK6b","You know,",
+ "You know, when I was cleaning at home, I found some stuff I hadn't used in a long time. So I decided to sell some of it instead of just throwing it away. I took some pictures and posted them on Marketplace. I'm hoping I can sell everything before I move out.",
+ "You **know**, ↘↗ / when I was **clean**ing at home, ↘↗ / I found some **STUFF** → / I hadn't used in a long time. ↘ So I de**ci**ded to **SELL** some of it → / instead of just throwing it away. ↘ I took some **pic**tures ↗ / and posted them on **MAR**ketplace. ↘ I'm **hop**ing ↗ / I can sell **eve**rything → / before I move **OUT**. ↘",
+ "유 **노**우, / 웬 아이 워z **클리**닝 앳 호움, / 아이 f아운 썸 **s터f** / 아이 해든ㅌ 유-z디너 러엉 타임. 쏘우 아이 디**싸이**디투 **쎌** 썸 어v잇 / 인s테러v 저sㅌ 쓰로우이니러웨이. 아이 툭 썸 **픽**처rz / 앤드 포우s띠덤 온 **마-r**킷플레이s. 아임 **호우**핑 / 아이 큰 쎌 **에v**리씽 / 비f오-r 아이 무v **아웃**.",
+ "있잖아, 집을 정리하다가 오랫동안 안 쓴 물건들을 좀 발견했어. 그냥 버리는 대신 일부는 팔기로 했어. 사진을 몇 장 찍어서 Marketplace에 올렸어. 이사 나가기 전에 다 팔 수 있으면 좋겠어."),
+
+("DodDSpGUkGuTQgBkXbGT","Okay so",
+ "Okay so tomorrow morning, we have a meeting with Aqualink for the handover. But we still haven't fixed the water pressure issue. So I'm worried they'll bring it up.",
+ "O**kay** so ↘↗ / to**mor**row **morning** ↘↗ / we have a **meeting** with Aqualink → / for the **HAND**over ↘ But we **still** haven't **FIXED** → / the water **pressure** issue ↘ So I'm **worried** → / they'll bring it **UP** ↘",
+ "오우**케**이 쏘우 / **트마**로우 **모r닝** / 위 해버 **미-링** 윋 Aqualink / 퍼r 더 **핸**도우v어r 벗 위 **s띨** 해v은ㅌ **f익sㅌ** / 더 워러r **프뤠셔r** 이슈 쏘우 아임 **워리**d / 데이ㄹ 브**뤼**이럽",
+ "자, 내일 아침 Aqualink와 handover 미팅이 있어. 그런데 아직 수압 문제를 해결하지 못했어. 그래서 그쪽에서 그 얘기를 꺼낼까 봐 걱정돼."),
+
+("Gv4wL6MvyWMoBU1kcRMB","Well,",
+ "Well, I heard November is the rainy season. That's what I'm worried about. When we get there, it might rain all day. So I've already put together a backup plan just in case.",
+ "**Well**, ↘↗ / I **heard** No**vem**ber → / is the **RAI**ny season. ↘ That's **what** I'm **WOR**ried about. ↘ When we **get** there, ↘↗ / it might **rain ALL** day. ↘ So I've al**rea**dy **put** to**ge**ther → / a **BACK**up plan → / just in **case**. ↘",
+ "**웰**, / 아이 **허-rd** 노우**v엠**버r / 이z 더 **뤠이**니 씨-즌. 댓츠 **왓** 아임 **워r**리d 어바웃. 웬 위 **겟** 데어r, / 잇 마잇 **뤠인 어어ㄹ** 데이. 쏘우 아이v 얼**레**디 **풋** 투**게**더r / 어 **배**컵 플랜 / 저sㅌ 인 **케이**s.",
+ "음, 11월이 우기라고 들었어요. 그게 좀 걱정돼요. 도착했을 때 하루 종일 비가 올 수도 있거든요. 그래서 혹시 몰라서 대체 계획을 미리 짜뒀어요."),
+
+("42X3G3qeArz3LnbguRMs","So", 
+ "So this app helps me review English I studied, like words and sentences.",
+ "**So** ↘↗ / this app **helps** me re**VIEW** → / **English** I studied → / like **words** and **sentences** ↘",
+ "",
+ "그러니까 이 앱은 제가 공부했던 영어를 단어나 문장 같은 것들로 복습하는 데 도움을 줘요."),
+
+("BvUniSEzJv2zId9zSreD","Well,",
+ "Well, I just relaxed at home and created an application to help me study English.",
+ "**Well**, ↘↗ / I just **relaxed** at **HOME** ↗ / and **created** an application → / to help me **study** English ↘",
+ "",
+ "음, 집에서 그냥 쉬면서 영어 공부에 도움이 되는 앱을 만들었어요."),
+
+("BgPedL2pJlThQh9blWS8","you know,",
+ "I usually listen alone, but you know, sometimes I share it with friends.",
+ "I **usually** listen a**lone** ↗ / but you **know**, ↘↗ / sometimes I **share** it with **FRIENDS** ↘",
+ "",
+ "보통은 혼자 듣는데, 있잖아요, 가끔 친구들과 공유하기도 해요."),
+
+("PgDpjR1r0XbAPZcuSzzf","You know,",
+ "You know, when I listen to that music, I feel calm and relaxed. And it brings back memories of time with my friends.",
+ "You **know**, ↘↗ / when I **lis**ten to that **mu**sic ↘↗ / I feel **calm** and re**LAXED** ↘ And it **brings** back **MEM**ories → / of time with my **friends** ↘",
+ "",
+ "있잖아요, 그 음악을 들으면 마음이 차분하고 편안해져요. 그리고 친구들과 함께했던 추억이 떠올라요."),
+
+("y88WQXpZraQ7IsMaxMqU","Actually,",
+ "Actually, I was listening to some Korean ballads from the '90s.",
+ "**Ac**tually, ↘↗ / I was **listening** to some Korean **BAL**lads → / from the **nineties** ↘",
+ "",
+ "사실 90년대 한국 발라드를 좀 듣고 있었어요."),
+
+("7dxwP1aEm4ARQsDuqESs","Honestly, / because → 'cause",
+ "Honestly, I felt relieved 'cause it had been bugging me while I studied English.",
+ "**Hon**estly, ↘↗ / I felt re**LIEVED** → / 'cause it had been **bug**ging me → / while I **stud**ied **Eng**lish ↘",
+ "",
+ "솔직히 영어 공부를 할 때 계속 신경 쓰이던 거라서 마음이 놓였어요."),
+
+("Q5VMoPBjwD8zNUzHHU9Y","So / actually",
+ "So at that restaurant, you can pick the meat, veggies, and spice level. I actually asked the staff how the meat is cooked.",
+ "**So** ↘↗ / at that **res**taurant ↘↗ / you can **pick** the meat, **veg**gies, and spice **LEV**el ↘ I **act**ually **asked** the **STAFF** → / how the meat is **cooked** ↘",
+ "",
+ "그러니까 그 식당에서는 고기, 채소, 매운맛 단계를 고를 수 있어요. 저는 사실 직원에게 고기가 어떻게 조리되는지 물어봤어요."),
+
+("VeJjy3jSWTjor65WWpis","Oh, / because → 'cause",
+ "Oh, I fixed my app today 'cause it had some problems.",
+ "**Oh**, ↘↗ / I **fixed** my **APP** today → / 'cause it had some **prob**lems ↘",
+ "",
+ "아, 오늘 앱에 몇 가지 문제가 있었는데 수정했어요."),
+
+("dAgnvhngLw1qUWax27g6","Honestly, / because → 'cause",
+ "Honestly, it wasn't easy 'cause there were a lot of steps. I had to fix it again and again, but finally I got it.",
+ "**Hon**estly, ↘↗ / it **was**n't **EA**sy → / 'cause there were a lot of **steps** ↘ I had to **fix** it a**GAIN** and again ↗ / but **fi**nally I **got** it ↘",
+ "",
+ "솔직히 쉽지 않았어요. 여러 단계를 거쳐야 했거든요. 몇 번이고 다시 수정해야 했지만 결국 해냈어요."),
+
+("aE5BXx0NsbDMHOgtySHg","Look, / need to → gotta",
+ "Look, you're the building manager, so you gotta step up.",
+ "**Look**, ↘↗ / you're the building **MAN**ager → / so you **got**ta **step up** ↓",
+ "",
+ "저기, 당신이 빌딩 매니저니까 좀 더 나서서 책임을 다해야 해요."),
+
+("gt0mQMuGczapSqfkK70X","I mean,",
+ "I mean, I think as a building manager, he needs to take responsibility.",
+ "I **mean**, ↘↗ / I **think** → / as a **build**ing manager → / he needs to take responsi**BIL**ity ↘",
+ "",
+ "그러니까, 빌딩 매니저라면 책임을 져야 한다고 생각해요."),
+
+("yua2zSxRlFNfzMKai3lD","So",
+ "So today, we had a problem with a staff member. Our building manager Neil isn't really taking responsibility.",
+ "**So** ↘↗ / to**day** ↘↗ / we had a **PROB**lem → / with a **staff** member ↘ Our **build**ing manager **NEIL** → / isn't really taking responsibility ↘",
+ "",
+ "그게, 오늘 직원 한 명과 관련해서 문제가 있었어요. 우리 빌딩 매니저 Neil이 자기 책임을 제대로 다하지 않고 있어요."),
+
+("6DK3hXuc30rZvmZ08OoY","Yeah,",
+ "Yeah, it's going pretty well, but we ran into a few problems. The contractor kept pushing back the schedule, so I had to sort it out myself.",
+ "Yeah, ↘↗ / it's going pretty well ↗ / but we ran into a few **PROB**lems. ↘ The contractor kept pushing back the **SCHED**ule → / so I had to sort it out my**SELF**. ↘",
+ "예, / 잇츠 고잉 프리리 웰 / 벗 위 래닌투 어 퓨- **프라**블럼z / 더 컨트랙터r 켑ㅌ 푸싱 백 더 **스케**쥴 / 쏘우 아이 핻투 쏘r릿 아웃 마이**쎌**f",
+ "네, 꽤 잘 진행되고 있는데, 문제가 몇 개 생겼어요. 시공사가 일정을 계속 미뤄서 제가 직접 해결해야 했어요."),
+
+("6Mit0TwrQXu1jByiyeHT","So",
+ "So first I found a plumber, and he finally got it fixed.",
+ "**So** ↘↗ / first I found a plumber → / and he finally got it **FIXED**. ↘",
+ "**쏘**우 / 퍼rsㅌ 아이 파운더 플러머r / 앤 히 파이널리 가릿 **픽**sㅌ",
+ "그래서 일단 배관공을 구했고, 그 사람이 결국 고쳐줬어요."),
+
+("pjRBhENiwgnA9kgTG8TO","Oh, and",
+ "I watched some Netflix, mostly catching up on Korean shows. Oh, and I did some cleaning, laundry, and organizing around the house.",
+ "I watched **SOME** Netflix, → / mostly catching up → / on Ko**re**an shows. ↘ **Oh**, and I did some **clean**ing, ↗ / **laun**dry, ↗ / and or**gan**izing → / around the **HOUSE**. ↘",
+ "아이 왓치d **섬** 넽플릭스, / 모우슬리 캐칭 업 / 온 코**리**언 쇼우z. **오**우, 앤 아이 디d 섬 **클리**닝, / **런**드리, / 앤 오r**간**이징 / 어라운d 더 **하우스**.",
+ "넷플릭스를 좀 봤는데, 주로 밀린 한국 프로그램을 봤어요. 아, 그리고 청소랑 빨래도 하고 집 정리도 했어요."),
+
+("EYsUmKlqT5DMU9qRE3Sl","Well,",
+ "Well, I don't have a plan yet, but I'm thinking about taking a tour. I'll look for a travel company or search for something online.",
+ "**Well**, ↘↗ / I don't have a **plan** yet, ↗ but I'm **think**ing about **tak**ing a tour. ↘ I'll **look** for a **tra**vel company ↗ / or **search** for something **ON**line. ↘",
+ "**웰**, / 아이 도운ㅌ 해v 어 **플랜** 옛ㅌ, 벗 아임 **씽**킹 어바웃 **테이**킹 어 투어r. 아으L **룩** f어러 **추뤠**v어ㄹ 컴퍼니 / 어r **써-r취** f어r 썸씽 **안**라인.",
+ "음, 아직 계획은 없는데 투어를 할까 생각 중이에요. 여행사를 알아보거나 온라인으로 검색해볼게요."),
+
+("FhLETsU4uSPQmgfkzHIG","Oh,",
+ "Oh, it's not too long. I think it's about three and a half hours.",
+ "**Oh**, ↘↗ / it's not **too** long. ↘ I think it's a**bout THREE** and a half hours. ↘",
+ "**오**우, / 잇츠 낫 **투-** 러엉. 아이 씽k 잇츠 어바웃 **쓰뤼-** 앤더 해f 아워rz.",
+ "아, 그렇게 길지 않아요. 세 시간 반 정도인 것 같아요."),
+]
+SKIP3 = [("7qLT98tBTkRHodPNAL4O","문장 중간에 I guess 가 이미 있음")]
+# 영어↔리듬 단어 대조에서 의도적으로 다른 항목 (CLAUDE.md: '90s → nineties 는 발음용 차이, 건드리지 말 것)
+ALLOW_DIFF = {"y88WQXpZraQ7IsMaxMqU"}

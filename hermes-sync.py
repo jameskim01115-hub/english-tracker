@@ -59,7 +59,7 @@ DEDUP_JACCARD = 0.6  # 단어 집합 겹침 비율. 관사 뺀 단어 기준(_lo
 TTS_URL = "http://127.0.0.1:8080/tts"
 # 철자로 읽어야 하는 약어. **앱의 SPELL_OUT 과 같은 목록이어야 한다.**
 # 표기만으로는 `**UNWIND**`(영어 단어)와 `**CUSA**`(약어)를 구분할 수 없다 — 둘 다 화면에선 피크다.
-SPELL_OUT = re.compile(r"CUSA|CRBC|CRLC|OR|BIR|VAT|SSS|AEP|LOI|NTE|PO|STF|DPR|BFP|NTC|FSIC")
+SPELL_OUT = re.compile(r"CUSA|CRBC|CRLC|OR|BIR|VAT|SSS|AEP|LOI|NTE|PO|STF|DPR|BFP|NTC|FSIC|AC|TV|PM")
 
 # Patrick이 고른 두 목소리(2026-08-15 블라인드 청취: Emma 유일한 ★5).
 # 둘 다 미리 만들어 두면 앱에서 바꿔도 안 기다린다. index.html 의 DEFAULT_SRV_VOICE·prewarmTTS 와 같아야 한다.

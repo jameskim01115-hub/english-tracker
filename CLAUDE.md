@@ -505,6 +505,10 @@ Patrick: **「교정 문장이 너무 정리된 느낌이라 쉐도잉할 때 �
 셋을 고친 뒤 실데이터 344개 문자열로 앱 `speechText()` ↔ hermes `speech_text()` 를 대조해
 **344/344 일치**를 확인했고, `tts-server/test_ssml.py` 도 전부 통과했다.
 
+**앱만 배포하면 소리는 안 바뀐다.** `hermes-sync.py` 와 `tts-server/server.py` 는 VPS 로
+따로 보내야 한다 (각각 「hermes-sync.py 는 VPS로 따로 배포해야 한다」 절과 `tts-server/README.md`).
+2026-09-29 에 Patrick 이 직접 배포해 반영 완료 — `/health` 로 `ok: true` 확인.
+
 ## 회화 복습 노트 가져오기 (ChatGPT Live / Claude)
 
 Patrick은 매일 ChatGPT Live로 회화 연습을 하고, 끝나면 복습 노트를 만든다.

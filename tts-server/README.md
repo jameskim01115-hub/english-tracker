@@ -99,12 +99,23 @@ Traefik + Let's Encrypt가 인증서를 자동 발급한다. `*.srv1722311.hstgr
 ## 배포
 
 ```bash
-scp server.py Dockerfile docker-compose.yml helper.py hermes:/root/tts/app/
+scp server.py Dockerfile docker-compose.yml hermes:/root/tts/app/
 ssh hermes "cd /root/tts/app && docker compose up -d --build"
 ```
 
-`helper.py`는 Supertonic 저장소(`02_projects/video-automation/supertonic/py/helper.py`)의 사본이다.
-그쪽이 업데이트되면 여기도 갱신할 것.
+`server.py` 만 고쳤으면 그것만 보내도 된다 (`COPY server.py /app/` 라 이미지 재빌드는 한다).
+
+**확인은 포트 8080 이다** — 8000 이 아니다 (`docker-compose.yml` 의 `127.0.0.1:8080:8080`).
+
+```bash
+ssh hermes "curl -s localhost:8080/health"
+ssh hermes "docker logs --tail 20 english-tts"
+```
+
+`kokoro.loaded: false` 는 **정상**이다 — 지연 로딩이라 첫 남성 음성 재생 때 올라온다.
+`kokoro.models: true` 만 확인하면 된다.
+
+`helper.py` 는 **2026-08-19 Supertonic 제거 때 같이 지웠다** — 이 명령에 다시 넣지 말 것.
 
 ## 모델
 

@@ -1,0 +1,159 @@
+# -*- coding: utf-8 -*-
+# 연결어 보강 배치 2 적용 (2026-09-30) — 21장. 이번 배치는 전부 pron 이 있다.
+# updateMask 로 expression / rhythm / ko / pron 만 PATCH — stage·nextReview 는 건드리지 않는다.
+import sys, os, importlib.util
+
+# token()/patch() 는 배치 1 파일에 있다. 파일명에 하이픈이 있어 일반 import 가 안 되므로
+# 경로로 직접 읽어온다.
+_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "필러적용내역A1-20260930.py")
+_s = importlib.util.spec_from_file_location("filler_a1", _p)
+_m = importlib.util.module_from_spec(_s)
+_s.loader.exec_module(_m)
+token, patch = _m.token, _m.patch
+
+B2 = [
+("B669ronbYbFSUn5UO2Sq",
+ "Yeah, it feels a little different. I mean, on the treadmill I feel like I'm just jumping in the same spot, so it's not as fun as running outside.",
+ "**Yeah**, it feels a little **di**fferent. ↘ I **mean**, ↘↗ / on the **tread**mill ↘↗ / I feel like I'm just **jump**ing in the **same spot**, → so it's not as **fun** → / as running out**SIDE**. ↘",
+ "네, 느낌이 좀 달라요. 그러니까, 러닝머신에서는 제자리에서 뛰는 것 같아서, 밖에서 뛰는 것만큼 재미있지는 않아요.",
+ "**예**, 잍 f이-ㄹz 어 리를 **디**f런ㅌ. 아이 **민**, / 온 더 **트뤠**d밀 / 아이 f이-ㄹ 라잌 아임 저sㅌ **점핑** 인 더 **쎄임 스팥**, / 소우 잍츠 낱 애z **f언** / 애z 뤄닝 아웉**싸이**d."),
+
+("GwJaTirrQGSESiGAEaXa",
+ "Yeah, I live in Bonifacio, so I usually run through the city streets. And there's a park I like with a nice path, and it's right off the main street.",
+ "Yeah, ↘↗ / I **live** in Boni**fa**cio, → so I usually **run** through the **ci**ty **streets**. ↘ And there's a **park** I like → / with a **nice path**, ↗ and it's right **OFF** the main **street**. ↘",
+ "네, 저는 보니파시오에 살아서 보통 시내 길을 따라 뛰어요. 그리고 좋아하는 공원이 하나 있는데 길이 잘 돼 있고, 큰길 바로 옆이에요.",
+ "예, / 아이 **리v** 인 보니**f아**시오우, / 소우 아이 유주얼리 **뤈** 쓰루 더 **씨**리 **스트뤼츠**. 앤드 데어rz 어 **파rㅋ** 아이 라잌 / 위드 어 **나이s 패쓰**, / 앤드 잍츠 롸잍 **오f** 더 메인 **스트뤼ㅌ**."),
+
+("iYQ8PLzL2Fy2psemsii5",
+ "So first, we fixed the water pressure issue. Basically, when you turn on the faucet in the bathroom, there's barely any pressure coming out.",
+ "**So** ↘↗ / **first**, ↘↗ / we **FIXED** the water **press**ure issue. ↘ **Bas**ically, ↘↗ / when you **turn** on the **fau**cet → / in the **bath**room ↘↗ / there's **bare**ly any **PRESS**ure → / coming **out**. ↘",
+ "그러니까 먼저 수압 문제를 고쳤어요. 쉽게 말하면, 화장실 수도꼭지를 틀면 물이 거의 안 나와요.",
+ "**쏘**우 / **f어-rsㅌ**, / 위 **f익sㅌ** 더 워러r **프뤠**셔r 이슈-. **베**이씨끌리, / **웬**뉴 **터r논** 더 **f어-**씻 / 인 더 **배ㅆ**루-ㅁ / 데어rz **베어r**리 에니 **프뤠셔r** / 커**미나웃**."),
+
+("CaMqQZo7u1DRvYWjkKho",
+ "Honestly, I felt relieved after I finished organizing, doing laundry, and cleaning the house. After that I watched Netflix. And these days I'm really into Korean competition shows. Sometimes I put things off when I feel lazy, but I try to get it done every weekend.",
+ "**Hon**estly, ↘↗ / I felt re**LIEVED** → / after I finished organizing, ↗ / doing laundry, ↗ / and cleaning the house. ↘ After that ↘↗ / I watched **NET**flix. ↘ And these days ↘↗ / I'm really **IN**to → / Korean competition shows. ↘ Sometimes I put things **OFF** → / when I feel lazy, ↗ / but I try to get it done → / every weekend. ↘",
+ "솔직히 정리하고 빨래하고 청소까지 끝내고 나니까 마음이 놓였어. 그러고 나서 넷플릭스를 봤어. 그리고 요즘 한국 경쟁 예능에 푹 빠져 있어. 가끔 귀찮으면 미루긴 하는데, 주말마다 다 끝내려고는 해.",
+ "**아**너s리, / 아이 f엘ㅌ **뤼리-vd** / 애f터r 아이 f이니쉬ㅌ 오-r거나이z잉, / 두잉 러언쥬뤼, / 앤드 클리닝 더 하우s. 애f터r 댓 / 아이 워취ㅌ **넷f릭s**. 앤드 디-z 데이z / 아임 뤼얼리 **인투** / 커뤼-언 캄퍼티션 쇼우z. 썸타임z 아이 풋 씽z **어f** / 웬 아이 f이-ㄹ 레이z이, / 벗 아이 추롸이 투 게릿 던 / 에v리 위-켄드."),
+
+("QHd4k8TfRC7tpkN5mr6X",
+ "So this morning, I started organizing my stuff 'cause I'm moving soon. Then I went through things I don't use much, like my camera and some old gear. Before the move, I'm planning to sell a few of these items so the move is easier.",
+ "**So** ↘↗ / this morning, ↘↗ / I started organizing my stuff → / 'cause I'm moving **SOON**. ↘ Then I went through things → / I don't use much, → / like my camera ↗ / and some old **GEAR**. ↘ Before the move, ↘↗ / I'm planning to sell → / a few of these items → / so the move is **EAS**ier. ↘",
+ "그러니까 오늘 아침에 물건 정리를 시작했어, 곧 이사 가거든. 그러고 나서 잘 안 쓰는 것들을 훑어봤어, 카메라랑 오래된 장비 같은 거. 이사 전에 몇 개를 팔 생각이야, 그래야 이사가 더 수월하니까.",
+ "**쏘**우 / 디s 모-r닝, / 아이 s따-r리d 오-r거나이z잉 마이 s떠f / 커z 아임 무-v잉 **쑤-ㄴ**. 덴 아이 웬ㅌ 쓰루- 씽z / 아이 도운ㅌ 유-z 머취 / 라익 마이 캐므라 / 앤드 썸 오울d **기어r**. 비f오-r 더 무-v, / 아임 플래닝 투 쎌 / 어 f유- 어v 디-z 아이럼z / 쏘우 더 무-v 이z **이-z이어r**."),
+
+("F7tXXPR2oTVd1xllk0vr",
+ "So I gotta take a half day tomorrow to take my mom to a hospital appointment in the morning. I'll be back after lunch, though.",
+ "**So** ↘↗ / I **got**ta take a **HALF** day tomorrow → / to take my **mom** → / to a hospital ap**point**ment → / in the **morn**ing ↘ I'll be **back** → / after **LUNCH**, though ↘",
+ "저기, 내일 오전에 엄마 병원 진료에 모시고 가야 해서 반차를 내야 해요. 점심 이후에는 돌아오긴 할게요.",
+ "**쏘**우 / 아이 **가**라 테이커 **해f** 데이 터모-로우 / 투 테익 마이 **맘** / 투 어 하s삐럴 어**포인**먼ㅌ / 인 더 **모-r**닝 아으L 비 **백** / 애f터r **런취**, 도우"),
+
+("OmIOzimuaTljXes8pgZp",
+ "Look, can we stick to the schedule this time? I mean, we really need the water pressure issue fixed before the tenant moves in next week.",
+ "**Look**, ↘↗ / can we **stick** to the schedule → / this **TIME** ↗ I **mean**, ↘↗ / We **real**ly need the water pressure issue **fixed** → / before the tenant **moves** in → / next **WEEK** ↘",
+ "저기, 이번에는 일정을 지킬 수 있을까요? 그러니까, 다음 주 테넌트가 입주하기 전에 water pressure 문제를 꼭 해결해야 해요.",
+ "**룩**, / 캔 위 **s띡** 투 더 s께쥬-ㄹ / 디s **타임** 아이 **민**, / 위 **뤼얼리** 니-더 워러r 프뤠셔r 이슈 **f익sㅌ** / 비f오-r 더 테넌ㅌ **무-v**즈 인 / 넥sㅌ **위-ㅋ**"),
+
+("A0FXQPuyUPFLcXXTMSX3",
+ "Actually, I had a viewing scheduled so I had to come back home. You know, the buyer came to look around the house. And I think they visited two months ago. But honestly, I'm not sure if they'll buy it.",
+ "**Ac**tually, ↘↗ / I had a **view**ing **sche**duled → / so I had to come back **HOME**. ↘ You **know**, ↘↗ / the **buy**er came to look around the **HOUSE**. ↘ And I **think** they visited → / two months a**GO**. ↘ But **hon**estly, ↘↗ / I'm not **sure** → / if they'll **BUY** it. ↘",
+ "사실 집 보러 오는 일정이 잡혀 있어서 집에 다시 와야 했어. 있잖아, 매수자가 집을 둘러보러 왔어. 그리고 두 달 전에도 왔던 것 같아. 근데 솔직히 매수할지는 잘 모르겠어.",
+ "**액**츄얼리, / 아이 해러 **v유-잉 s께쥬-ㄹd** / 쏘우 아이 핻투 컴 백 **호움**. 유 **노**우, / 더 **바이**어r 케임 투 루커롸운 더 **하우s**. 앤드 아이 **씽ㅋ** 데이 비지리d / 투- 먼ㅆ츠 어**고우**. 벗 **아**너s리, / 아임 낫 **슈어r** / 이f 데이ㄹ **바이** 잇."),
+
+("I94OO0GSCk2rIKWa1jix",
+ "Honestly, I usually keep my weekends pretty simple. After a long week I just wanna relax at home. And I lie down on the couch and catch up on netflix. I get a little stressed during the week so I don't really wanna make too many plans. But sometimes I go for a run to clear my head.",
+ "**Hon**estly, ↘↗ / I **u**sually keep my weekends pretty **SIM**ple. ↘ After a **long** week ↘↗ / I just wanna relax at **HOME**. ↘ And I lie down on the **couch** ↗ / and catch up on **NET**flix. ↘ I get a little **stressed** during the week → / so I don't really wanna make too many **PLANS**. ↘ But sometimes → / I go for a **run** → / to clear my **HEAD**. ↘",
+ "솔직히 나는 보통 주말을 꽤 단순하게 보내. 한 주가 끝나면 그냥 집에서 쉬고 싶어. 그리고 소파에 누워서 밀린 Netflix를 보고. 평일에 스트레스를 좀 받으니까 주말에 이것저것 계획을 많이 잡고 싶지 않아. 그래도 가끔은 머리 식히려고 러닝을 해.",
+ "**아**너s리, / 아이 **유**주얼리 키-ㅍ 마이 위-켄즈 프뤼리 **씸**뽈. 애f터r 어 **러엉** 위-ㅋ / 아이 저sㅌ 워너 뤼랙s 앳 **호움**. 앤드 아이 라이 다운 온 더 **카우취** / 앤드 캐쳐판 **넷f릭s**. 아이 게러 리를 **s추뤠sㅌ** 듀륑 더 위-ㅋ / 쏘우 아이 도운ㅌ 륄리 워너 메익 투- 메니 **플랜z**. 벗 썸타임z / 아이 고우 f어러 **뤈** / 투 클리어r 마이 **헤d**."),
+
+("0hwgGP42aGZX3YAPzOWI",
+ "Yeah, we haven't fixed the water pressure issue yet. When I turn on the faucet in the bathroom, there's barely any pressure. But I already reported it to the contractor, and they said they'll check it again tomorrow.",
+ "Yeah, ↘↗ / we haven't **fixed** → / the water pressure issue **YET**. ↘ When I **turn on** the faucet → / in the bathroom, ↘↗ / there's barely any **PRES**sure. ↘ But I already re**por**ted it → / to the contractor, → / and they said they'll **check** it again to**MOR**row. ↘",
+ "네, 수압 문제는 아직 해결하지 못했습니다. 화장실 수도꼭지를 틀어보면 수압이 거의 없습니다. 그런데 이미 업체에 전달했고, 내일 다시 확인하겠다고 했습니다.",
+ "예, / 위 해븐ㅌ **f익sㅌ** / 더 워러r 프뤠셔r 이슈 **옛** 웬 아이 **터-r논** 더 f어-씻 / 인 더 배ㅆ루-ㅁ / 데어rz 베어r리 애니 **프뤠**셔r 벗 아이 어ㄹ레디 뤼**포**-r리딧 / 투 더 컨추뤡터r / 앤드 데이 쎄d 데이ㄹ **체킷** 어겐 터**마**-로우"),
+
+("6gJUWa83jVn2ofYSD5u3",
+ "So yesterday, our glass contractor came to replace the glass, but they only removed the broken pieces. They said they'll start the actual work today, though. Also, Rodel got the signage permit, so we can display our sign now.",
+ "**So** ↘↗ / yesterday, our **glass** con**trac**tor → / came to re**place** the glass, ↗ / but they only re**MOVED** → / the broken pieces. ↘ They said they'll **start** → / the actual **WORK** today, though. ↘ Also, Rodel got the **sign**age **per**mit, → / so we can display our **SIGN** now. ↘",
+ "그게, 어제 유리 업체가 유리를 교체하러 왔지만, 깨진 유리만 제거했습니다. 오늘 실제 작업을 시작하겠다고는 했어요. 그리고 Rodel이 signage permit을 받아서 이제 간판을 사용할 수 있습니다.",
+ "**쏘**우 / 예s터r데이, 아워r **글래s** 컨**추뤡**터r / 케임 투 뤼**플레이**s 더 글래s / 벗 데이 오운리 뤼**무-vd** / 더 브로우큰 피-씨z 데이 쎄d 데이ㄹ **s따-rㅌ** / 디 액츄얼 **워-rk** 터데이, 도우. 어ㄹ쏘우, Rodel 갓 더 **싸이**니지 **퍼r**밋 / 쏘우 위 큰 디s플레이 아워r **싸인** 나우"),
+
+("rJ7YWMNGKbdJTQhJ7QIV",
+ "To be honest, I haven't checked it yet, but I'll contact the person in charge at the construction company and get back to you.",
+ "To be **hon**est, ↘↗ / I haven't **checked** it yet, ↗ / but I'll **con**tact the **per**son in charge → / at the construction company ↗ / and get **BACK** to you. ↘",
+ "솔직히 말씀드리면 아직 확인은 못 했지만, 건설회사 담당자에게 연락해서 다시 말씀드리겠습니다.",
+ "투 비 **아**니sㅌ, / 아이 해븐ㅌ **첵**팃 옛 / 버라일 **칸**택ㅌ 더 **퍼-r**스닌 차-r지 / 앳 더 컨s추뤅션 컴퍼니 / 앤드 겟 **백** 투 유"),
+
+("7CdzHwdgtQKXrJbanWbw",
+ "So we gotta get ready for the Metrobank handover next week. That means fixing the water pressure issue and replacing the glass before then. Plus, we're kinda short on time, so I'm hoping we can wrap it up this week.",
+ "**So** ↘↗ / we **got**ta get **rea**dy → / for the Metrobank **HAND**over → / next week. ↘ That means **fix**ing the water pressure issue ↗ / and re**pla**cing the **GLASS** → / before then. ↘ **Plus**, ↘↗ / we're **kin**da **short** on **TIME**, ↘↗ / so I'm **hop**ing we can wrap it up → / this week. ↘",
+ "그러니까 다음 주 Metrobank 인계를 준비해야 해. 그러려면 그 전에 수압 문제를 고치고 유리도 교체해야 해. 게다가 시간이 좀 빠듯해서 이번 주 안에 마무리했으면 해.",
+ "**쏘**우 / 위 **가**라 겟 **뤠디** / f어r 더 메추로우뱅ㅋ **핸도우v어r** / 넥sㅌ 위-ㅋ. 댓 민z **f익씽** 더 워러r 프뤠셔r 이슈- / 앤드 뤼**플레**이씽 더 **글래s** / 비f오-r 덴. **플러**s, / 위어r **카**인더 **쇼-r**런 **타임**, / 쏘우 아임 **호우**핑 위큰 뤠피럽 / 디s 위-ㅋ."),
+
+("QGYwDTTuNRzCscDRpz2M",
+ "Honestly, this morning I was in a rush and left my phone at home. And I didn't realize it until I got to the office, so I had to go all the way back to get it.",
+ "**Hon**estly, ↘↗ / this **morn**ing → / I was in a **RUSH** → / and left my phone at home. ↘ And I didn't **re**alize it → / until I got to the **OF**fice, → / so I had to go all the way **back** → / to get it. ↘",
+ "솔직히 오늘 아침 정신없이 나오다가 휴대폰을 집에 두고 왔어. 그리고 회사에 도착하고 나서야 알아차려서 다시 집까지 가지러 가야 했어.",
+ "**아**너s리, / 디s **모-r**닝 / 아이 워z 이너 **뤄쉬** / 앤드 레fㅌ 마이 f오운 앳 호움. 앤드 아이 디든ㅌ **뤼**얼라이z잇 / 언틸 아이 가라 디 **아f**이s, / 쏘우 아이 핻투 고우 어어ㄹ 더 웨이 **백** / 터 게릿."),
+
+("uozkwCxJqnL3nDJvCK6b",
+ "You know, when I was cleaning at home, I found some stuff I hadn't used in a long time. So I decided to sell some of it instead of just throwing it away. Then I took some pictures and posted them on Marketplace. I'm hoping I can sell everything before I move out.",
+ "You **know**, ↘↗ / when I was **clean**ing at home, ↘↗ / I found some **STUFF** → / I hadn't used in a long time. ↘ So I de**ci**ded to **SELL** some of it → / instead of just throwing it away. ↘ Then I took some **pic**tures ↗ / and posted them on **MAR**ketplace. ↘ I'm **hop**ing ↗ / I can sell **eve**rything → / before I move **OUT**. ↘",
+ "있잖아, 집을 정리하다가 오랫동안 안 쓴 물건들을 좀 발견했어. 그냥 버리는 대신 일부는 팔기로 했어. 그러고 나서 사진을 몇 장 찍어서 Marketplace에 올렸어. 이사 나가기 전에 다 팔 수 있으면 좋겠어.",
+ "유 **노**우, / 웬 아이 워z **클리**닝 앳 호움, / 아이 f아운 썸 **s터f** / 아이 해든ㅌ 유-z디너 러엉 타임. 쏘우 아이 디**싸이**디투 **쎌** 썸 어v잇 / 인s테러v 저sㅌ 쓰로우이니러웨이. 덴 아이 툭 썸 **픽**처rz / 앤드 포우s띠덤 온 **마-r**킷플레이s. 아임 **호우**핑 / 아이 큰 쎌 **에v**리씽 / 비f오-r 아이 무v **아웃**."),
+
+("Gv4wL6MvyWMoBU1kcRMB",
+ "Well, I heard November is the rainy season. That's what I'm worried about. The thing is, when we get there, it might rain all day. So I've already put together a backup plan just in case.",
+ "**Well**, ↘↗ / I **heard** No**vem**ber → / is the **RAI**ny season. ↘ That's **what** I'm **WOR**ried about. ↘ The **thing** is, ↘↗ / when we **get** there, ↘↗ / it might **rain ALL** day. ↘ So I've al**rea**dy **put** to**ge**ther → / a **BACK**up plan → / just in **case**. ↘",
+ "음, 11월이 우기라고 들었어요. 그게 좀 걱정돼요. 문제는, 도착했을 때 하루 종일 비가 올 수도 있거든요. 그래서 혹시 몰라서 대체 계획을 미리 짜뒀어요.",
+ "**웰**, / 아이 **허-rd** 노우**v엠**버r / 이z 더 **뤠이**니 씨-즌. 댓츠 **왓** 아임 **워r**리d 어바웃. 더 **씽** 이z, / 웬 위 **겟** 데어r, / 잇 마잇 **뤠인 어어ㄹ** 데이. 쏘우 아이v 얼**레**디 **풋** 투**게**더r / 어 **배**컵 플랜 / 저sㅌ 인 **케이**s."),
+
+("dgKwaFsFj0FvUFAFi2Mm",
+ "Actually, I've got another trip lined up. I'll be going to China with my boss, and we're looking for some healthcare products to sell here in the Philippines.",
+ "**Ac**tually, ↘↗ / I've got a**no**ther **TRIP** lined up. ↘ I'll be **go**ing to **Chi**na → / with my **BOSS**, ↗ / and we're **look**ing for some **HEALTH**care products → / to sell here in the Phi**li**ppines. ↘",
+ "사실 다른 출장이 하나 더 잡혀 있어요. 대표님이랑 같이 중국에 가게 될 건데, 여기 필리핀에서 팔 헬스케어 제품을 찾고 있어요.",
+ "**액**츄얼리, / 아이v 가러**너**더r **추륍** 라인덥. 아으L 비 **고**우잉 투 **차**이나 / 위ㄷ 마이 **버어s**, / 앤드 위어r **루**킹 f어r 썸 **헤ㄹㅆ**케어r 프롸덕츠 / 투 쎌 히어r 인 더 f이**러**피-ㄴz."),
+
+("psiUBVJpm4mBkVcCGuAE",
+ "Actually, it's my first time, so I'm really excited. When I watch YouTube, there are a ton of famous local restaurants there. I've wanted to go for a while, honestly. So I wanna check out the places I saw on YouTube and on Korean TV shows.",
+ "**Ac**tually, / it's my **first** time, ↗ / so I'm **real**ly ex**CI**ted. ↘ When I **watch** You**Tube**, ↘↗ / there are a **ton** of **fa**mous → / **lo**cal **RES**taurants there. ↘ I've **want**ed to go → / for a **while**, / **HON**estly. ↘ So I wanna **check** out the **PLA**ces → / I saw on You**Tube** ↗ / and on Ko**re**an TV shows. ↘",
+ "사실 이번이 처음이라 정말 기대돼요. 유튜브 보면 거기 유명한 현지 식당이 엄청 많더라고요. 솔직히 예전부터 가보고 싶었어요. 그래서 유튜브랑 한국 TV 프로그램에서 본 곳들을 가보고 싶어요.",
+ "**액**츄얼리, / 잇츠 마이 **f어-rsㅌ** 타임, / 쏘우 아임 **륄리** 익**싸이**리d. 웬 아이 **와치** 유**튜-b**, / 데어r 아러 **터너v f에이**머s / **로우**컬 **뤠s**추란츠 데어r. 아이v **워니**투 고우 / f어러 **와이ㄹ**, / **아니sㅌ리**. 쏘우 아이 워너 **체카**웃 더 **플레이**씨z / 아이 써어 온 유**튜-b** / 앤드 온 코**뤼**언 티v이 쇼우z."),
+
+("sel8V8AiO3v52g2NMRx6",
+ "Actually, I'm going with two of my staff, and we've already talked through the plans. I also made a little itinerary for the trip. And we'll be staying in Vietnam for five days, four nights. I'm pretty excited already.",
+ "**Ac**tually, ↘↗ / I'm **go**ing with **two** of my **STAFF**, ↗ / and we've al**rea**dy **talked** through the plans. ↘ I **al**so made a little i**TIN**erary → / for the trip. ↘ And we'll be **stay**ing in Viet**nam** → / for **five** days, ↗ / **FOUR** nights. ↘ I'm **pret**ty ex**CI**ted already. ↘",
+ "사실 직원 두 명이랑 같이 가는데, 계획은 이미 다 얘기해 놨어요. 여행 일정표도 간단히 하나 만들었고요. 그리고 베트남에서 4박 5일 머물 예정이에요. 벌써 좀 설레네요.",
+ "**액**츄얼리, / 아임 **고**우잉 위ㄷ **투-** 어v 마이 **s때f**, / 앤드 위v 어**ㄹ뤠**디 **터억ㅌ** 쓰루- 더 플랜z. 아이 **어ㄹ쏘우** 메이러 리를 아이**티너**뤠리 / f어r 더 추륍. 앤드 위ㄹ 비 **s떼이**인 v이엣**남** / f어r **f아이v** 데이z, / **f오-r** 나잇츠. 아임 **프뤼**리 익**싸이**리d 어ㄹ뤠디."),
+
+("zWX6v7wUx0hX5Zu7lfWG",
+ "Actually, I'm hoping to go to Vietnam, especially Da Nang. I mean, there are a ton of Korean restaurants there. Some people even call it little Korea. So I wanna go soon, maybe November.",
+ "**Ac**tually, ↘↗ / I'm **hop**ing to go ↗ / to Viet**nam**, → / especially da **NANG**. ↘ I **mean**, ↘↗ / there are a **ton** of → / Ko**re**an **RES**taurants there. ↘ Some **peo**ple **e**ven → / call it **LIT**tle Ko**re**a. ↘ So I wanna go **soon**, ↗ / maybe No**VEM**ber. ↘",
+ "사실 저는 베트남, 특히 다낭에 가고 싶어요. 그러니까, 거기 한국 식당이 엄청 많거든요. 어떤 사람들은 아예 리틀 코리아라고 부르기도 해요. 그래서 곧 가려고요, 아마 11월쯤에요.",
+ "액츄얼리, / 아임 **호우**핑 투 고우 / 투 v이엣**남**, / 이s뻬셜리 더 **낭**. 아이 **민**, / 데어r 아러 **터너v** / 코**뤼**언 **뤠s**추란츠 데어r. 썸 **피뽈** 이**v**은 / 커어릿 **리**를 코**뤼**아. 쏘우 아이 워너 고우 **쑤-ㄴ**, / 메이비 노우**v엠**버r."),
+
+("BFyors6i0ACASwob2HbT",
+ "Well, I actually got udon instead. It's a different kind of noodle, so I think your staff mixed up the packages.",
+ "**Well**, ↘↗ / I **act**ually **got** u**DON** in**stead**. ↘ It's a **dif**ferent kind of **noo**dle, → / so I think your **staff** → / **MIXED** up the **pack**ages. ↘",
+ "음, 사실 우동이 대신 왔어요. 다른 종류의 면이라서, 직원분이 포장을 바꿔 담은 것 같아요.",
+ "**웰**, / 아이 **액**츄얼리 **갓** 우**도운** 인s**떼**d. 잇처 **d이f**런ㅌ 카인더v **누**-를, / 쏘우 아이 씽큐어r **s때f** / **믹s**떱 더 **패**키쥐z."),
+]
+
+if __name__ == "__main__":
+    dry = "--apply" not in sys.argv
+    tok = token()
+    print(("[DRY RUN] " if dry else "[APPLY] ") + "배치 2 — %d장" % len(B2))
+    ok = 0
+    for doc_id, expr, rh, ko, pron in B2:
+        fields = {"expression": expr, "rhythm": rh, "ko": ko, "pron": pron}
+        if dry:
+            print("  %s  %s" % (doc_id, " ".join(sorted(fields))))
+            continue
+        try:
+            patch(tok, doc_id, fields)
+            ok += 1
+            print("  ok  %s" % doc_id)
+        except Exception as e:
+            print("  FAIL %s  %s" % (doc_id, e))
+    if not dry:
+        print("\n적용 %d / %d" % (ok, len(B2)))

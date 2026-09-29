@@ -469,6 +469,9 @@ Patrick 지적에서 나왔다. 진입점은 둘이다 — **「표현」 탭의
 Patrick: **「교정 문장이 너무 정리된 느낌이라 쉐도잉할 때 딱딱하고 책 읽는 느낌이 든다.」**
 그래서 필러(Yeah, Actually, I mean, You know, Honestly, Look, Anyway, So, Hmm, I guess …)와
 축약형(gonna, wanna, gotta, kinda, 'cause)을 넣는다. 규칙 전문은 Patrick 이 준 「필러·연결어 교정 규칙」.
+**ChatGPT 에 붙여넣는 지시문 사본은 `chatgpt-note-rules.md` 의 「교정 문장은 「글」이 아니라
+「말」로 쓴다」 블록에 있다** (2026-09-29 추가). 옛 카드만 고치면 새로 들어오는 노트는
+계속 정리된 문장이라 여기와 그 파일이 어긋나지 않게 할 것.
 
 - **한 문장에 하나, 쌓지 않는다.** `Well, actually, yeah. Um, …` ❌ / `Yeah, actually, …` ⭕
 - **뼈대와 뜻은 그대로.** 필러를 넣었다고 Patrick 이 말하지 않은 내용을 추가하지 않는다.

@@ -1161,7 +1161,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-30-01";
+const BUILD = "2026-09-30-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3177,6 +3177,26 @@ function usePhrases(e) {
   const one = String(e.expression || "").trim();
   return one ? [one] : [];
 }
+// 「이 표현으로」에 띄울 **딱 하나의 조각**을 고른다 (2026-09-30).
+// **`useCases` 3문장이 전부 이 조각을 쓰도록 데이터를 맞춰 뒀다** — 그러니 앱도 같은
+// 규칙으로 골라야 한다. 어긋나면 「prepare for the handover 로 말해보세요」라고 띄워놓고
+// `go over their requests` 문장을 주게 된다 (2026-09-30 Patrick 지적, 175/181장이 그랬다).
+//
+// **회차마다 조각을 바꾸지 않는다.** 예전에는 `floor(usedCount/3)` 으로 4회차부터 다음
+// 조각으로 넘어갔는데, 문장은 3개뿐이라 같은 3문장에 다른 라벨이 붙었다.
+//
+// 거르는 것: 리듬 표기가 섞인 조각(`**`·`/`·화살표 — chunks 에 리듬맵이 통째로 들어간
+// 카드가 있다)과 1단어/7단어 이상. 쓸 만한 게 없으면 **빈 문자열** — 표현 줄을 아예
+// 그리지 않는다. 틀린 표현을 띄우느니 안 띄우는 게 낫다.
+const USE_PHRASE_BAD = /\*\*|[→↗↘↓]|\//;
+function usePhrase(e) {
+  const ps = usePhrases(e);
+  return ps.find(p => {
+    if (USE_PHRASE_BAD.test(p)) return false;
+    const w = p.replace(/~/g, " ").split(/\s+/).filter(Boolean).length;
+    return w >= 2 && w <= 6;
+  }) || "";
+}
 // 정답 표시. 회화 교정은 Rhythm Map 표기 그대로 — 평문을 따로 또 보여주지 않는다.
 // Rhythm Map 이 정답 전체를 덮지 못할 때 남는 뒷부분을 돌려준다.
 // ChatGPT 가 첫 문장까지만 리듬 표기를 해 보내는 일이 잦다. 그대로 두면 화면에는
@@ -3474,15 +3494,14 @@ function exprCard(e, mode, dir) {
       const cases = useCasesOf(e);
 
       if (btnUse.dataset.armed !== "1") {
-        // **표현은 한 바퀴(3회) 도는 동안 고정한다.** Patrick 의 방식이
-        // 「한 표현 × 여러 상황」이기 때문이다 — `Just to double-check,` 를 고정해두고
+        // **표현은 카드마다 하나로 고정한다.** Patrick 의 방식이 「한 표현 × 여러 상황」
+        // 이기 때문이다 — `Just to double-check,` 를 고정해두고
         // `~ is breakfast included?` · `~ do you need the original copy?` ·
         // `~ is the meeting still at three?` 처럼 뒤만 바꿔 말한다.
         // 탭마다 다른 조각을 주면 「여러 표현 × 한 상황씩」이 되어 정반대가 된다
         // (2026-09-09 최초 구현이 그랬다 — Patrick 지적으로 바로잡음).
-        const phrases = usePhrases(e);
-        const cycle = Math.floor(usedOf(e) / USE_TARGET);
-        const phrase = phrases.length ? phrases[cycle % phrases.length] : "";
+        // 어떤 조각인지는 `usePhrase()` 가 정하고, `useCases` 3문장이 전부 그 조각을 쓴다.
+        const phrase = usePhrase(e);
         const phraseHtml = phrase
           ? `<div class="use-sit-p"><span class="use-sit-l">이 표현으로</span>${rhythmHtml(phrase)}</div>` : "";
         if (cases.length) {

@@ -555,6 +555,27 @@ Patrick: **「교정 문장이 너무 정리된 느낌이라 쉐도잉할 때 �
   라이브 교정부터 적용돼야 하고, 노트(§14)는 그 교정문을 그대로 옮기므로 자동으로 따라간다.
   검수 항목은 §15 에 넣는다. 붙여넣기용 블록: `라이브지침-필러추가-20260929.md`.
 
+### ⛔ 맨 앞 필러를 넣으려고 문장 중간 연결어를 내리지 말 것 (2026-09-30)
+
+A1 배치에서 실제로 한 번 냈다. 맨 앞에 `So` 를 넣으면서 **`so` 가 두 번 되는 게 싫어
+원래 문장 중간에 있던 `so` 를 `and` 로 내렸다.** 그 `so` 는 인과를 지고 있던 연결어라
+두 일이 그냥 나열됐고, Patrick 이 **복습하다 바로 잡아냈다**(「억지로 연결어를 넣은 것
+같은 느낌이 있어서 좀 어색한데」).
+
+```
+원래  ... to go over some issues and their requests, so this week we gotta make a few decisions.
+잘못  So we had a meeting ... and their requests, and this week we gotta make a few decisions.
+고침  We had a meeting ... and their requests, so we gotta make a few decisions this week.
+```
+
+- **맨 앞 필러가 목적이 아니다.** 이미 인과·전환 연결어가 있는 문장이면 **그대로 두는 게 맞다** —
+  맨 앞에 뭔가 붙이려고 있는 연결어를 희생하면 규칙을 정확히 거꾸로 적용한 것이 된다
+- 같이 고친 것: **시간 표현을 앞으로 빼지 않는다.** `and this week we gotta ~` 는 글처럼 들린다 —
+  `we gotta ~ this week` 가 말이다 (Patrick 지적)
+- **전수 검사했다.** 배치 문서 218쌍을 대조해 `, so/because/but → , and` 로 내려간 카드를 찾았고
+  **이 한 장뿐**이었다(`Qou8L4dcjTxHtOzlBPYP`). `expression`·`rhythm`·`ko`·`pron` 넷만 PATCH 해
+  고쳤다 — 기타 필드 변화 0, `stage`·`nextReview`·`useCases` 보존 확인
+
 ### ⚠️ 1차 적용은 반쪽이었다 — 맨 앞 필러만 넣고 연결어를 빼먹었다 (2026-09-29 재검토)
 
 Patrick 지적으로 실데이터 227장을 세어 확인했다. **두 가지가 다 틀렸다.**

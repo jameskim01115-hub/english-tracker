@@ -159,6 +159,10 @@ Natural Corrected Answer 는 **입으로 실제로 말하는 문장**이어야 �
 5. **분포 — 앞 항목에서 쓴 필러를 다음 항목에서 또 쓰지 않는다.** 노트 하나 안에서 같은
    것이 반복되면 그건 「상황에 맞게 고른 것」이 아니라 기본값을 찍은 것이다.
    특히 `Yeah,`·`Honestly,` 로 시작하는 항목이 연달아 나오면 다시 고른다.
+   **맨 앞 필러는 그 항목의 질문(상대 말)에 맞춘다** — 답 문장만 보고 고르지 않는다.
+   wh- 질문(What·How·Where·When·Why·Who)에 `Yeah,` ❌ · 뒤집을 전제가 없는 열린 질문에 `Actually,` ❌ ·
+   첫 마디를 `Oh, and` · `And` · `Anyway` 로 시작 ❌. wh- 질문엔 `Well,` · `So` · `Honestly,` ·
+   `Basically,`, yes/no 질문엔 `Yeah,` · `No,`, 상대 전제를 뒤집는 답에만 `Actually,`.
 6. 축약형 — gonna, wanna, gotta, kinda, 'cause 를 그대로 쓴다. going to 로 펴지 않는다.
 7. 원칙 — **필러는 뼈대를 바꾸지 않는다.** 필러를 넣는다고 Patrick 이 말하지 않은 내용을
    덧붙이지 않는다. 뜻이 달라지면 그건 필러가 아니라 다른 문장이다.

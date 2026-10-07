@@ -181,6 +181,13 @@ Natural Corrected Answer 는 **입으로 실제로 말하는 문장**이어야 �
    ⭕ `I couldn't sleep 'cause I had a fever.` ↔ 「잠을 못 잤어요. 왜냐하면 열이 났거든요.」
    `because`·`'cause` 는 한국어에도 **`왜냐하면 … 거든요`** 로 눈에 보이게 옮긴다 (2026-10-07 Patrick).
    단어도 1:1 로 — `paperwork` 를 「서류」가 아니라 `reports`(보고서) 로 옮기는 식의 미끄러짐 금지.
+10. **영어에 주어·대상이 있으면 한국어에도 살린다.** (2026-10-07)
+   한국어는 주어를 생략하지만 영어는 못 한다 — 한국어만 보고 영어를 말할 때 **누구 얘기인지** 알 수 없으면
+   I·we·you·he·they 를 고를 수가 없다. `we`/`our` → 「저희가·저희」(존댓말) · 「우리가·우리」(반말),
+   `he`/`she` → 「그 사람이」, `they`/`them` → 「그쪽이·그쪽에」 · 「그 사람들이」, `it`(물건) → 「그것·그 물건」.
+   ❌ `I think as a building manager, he needs to take responsibility.` ↔ 「빌딩 매니저라면 책임을 져야 한다고 생각해요.」
+   ⭕ ↔ 「제 생각엔 빌딩 매니저로서 그 사람이 책임을 져야 해요.」 (`~라면`=if 이 아니라 `~로서`=as a)
+   `I` 는 「제가」를 매번 쓰지 않아도 된다 — 한국어에서 가장 자연스럽게 생략되고, 영어가 `I` 로 시작하는 게 기본이라서.
 
 **문장을 하나씩 끊어 읽는 느낌이 나면 연결어가 빠진 것이다.**
    ❌ `I was busy today. We had a meeting. The contractor was late. We couldn't finish the work.`

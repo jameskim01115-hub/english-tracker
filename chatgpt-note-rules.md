@@ -173,6 +173,13 @@ Natural Corrected Answer 는 **입으로 실제로 말하는 문장**이어야 �
    That's why → 「그래서」 · Basically, → 「쉽게 말하면,」 · ~, though → 「~긴 한데」
    영어에만 넣으면 **한국어만 보고 영어를 떠올릴 때 그 필러가 어디서 나오는지 알 수가 없어**
    1:1 이 깨진다.
+9. **한국어 뜻은 영어의 절 순서를 그대로 따른다.** (2026-10-07)
+   `A because B` → 「A해요. B거든요.」 · `B, so A` → 「B해서 A해요.」 · `If A, B` → 「A면 B해요.」
+   「자연스러운 번역」으로 순서를 뒤집지 않는다 — 한국어만 보고 영어를 떠올리는 연습이라
+   순서가 뒤집히면 복원이 안 된다. 실제로 17장이 이 때문에 어긋나 있었다.
+   ❌ `I couldn't sleep 'cause I had a fever.` ↔ 「열이 나서 잠을 못 잤어요.」
+   ⭕ `I couldn't sleep 'cause I had a fever.` ↔ 「잠을 못 잤어요. 열이 났거든요.」
+   단어도 1:1 로 — `paperwork` 를 「서류」가 아니라 `reports`(보고서) 로 옮기는 식의 미끄러짐 금지.
 
 **문장을 하나씩 끊어 읽는 느낌이 나면 연결어가 빠진 것이다.**
    ❌ `I was busy today. We had a meeting. The contractor was late. We couldn't finish the work.`
@@ -303,6 +310,7 @@ I just **relaxed** at **HOME** → / and **created** an application / to help me
 - **교정 문장에 필러가 들어가 있는가?** (2026-09-29 추가 — 한 문장에 하나, 최대 두 개.
   `Yeah,` `Actually,` `Honestly,` `I mean,` 같은 것. 없으면 쉐도잉할 때 책 읽는 느낌이 난다)
 - **한국어 뜻에도 같은 필러가 들어가 있는가?** (영어에만 있으면 한→영 인출에서 1:1 이 깨진다)
+- **한국어 뜻이 영어와 같은 절 순서인가?** (2026-10-07 — `because`/`so`/`if` 가 한국어에서 뒤집히지 않았는가)
 - **필러를 넣은 문장의 피크가 볼드로 감싸여 있는가?** (`SOON` ❌ / `**SOON**` ⭕ —
   문장에 `**` 가 하나라도 있으면 맨 대문자는 강세로 안 읽힌다)
 - `**` 개수가 짝수인가? 홀수면 하나가 어딘가에서 빠진 것이고, 그 지점부터 뒤 문장

@@ -86,7 +86,8 @@ def main():
     for d in all_docs(token()):
         for t in texts_of(d["fields"]):
             t = t.strip()
-            if t and t not in seen:
+            # 글자가 하나도 없는 문자열(`--` 같은 기호 덩어리)은 읽을 소리가 없어 Kokoro 가 500 을 낸다.
+            if t and re.search(r"[A-Za-z]", t) and t not in seen:
                 seen.add(t)
                 texts.append(t)
 

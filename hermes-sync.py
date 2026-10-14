@@ -61,9 +61,11 @@ TTS_URL = "http://127.0.0.1:8080/tts"
 # 표기만으로는 `**UNWIND**`(영어 단어)와 `**CUSA**`(약어)를 구분할 수 없다 — 둘 다 화면에선 피크다.
 SPELL_OUT = re.compile(r"CUSA|CRBC|CRLC|OR|BIR|VAT|SSS|AEP|LOI|NTE|PO|STF|DPR|BFP|NTC|FSIC|AC|TV|PM")
 
-# Patrick이 고른 두 목소리(2026-08-15 블라인드 청취: Emma 유일한 ★5).
-# 둘 다 미리 만들어 두면 앱에서 바꿔도 안 기다린다. index.html 의 DEFAULT_SRV_VOICE·prewarmTTS 와 같아야 한다.
-TTS_VOICES = ["Emma", "Puck"]
+# Patrick이 고른 목소리(2026-08-15 블라인드 청취: Emma 유일한 ★5). **Andrew 는 2026-10-14 추가** —
+# 가장 많이 쓰는 음성인데 미리 만든 적이 없어, 새 카드를 처음 누를 때마다 서버가 합성하느라 느렸고
+# edge-tts 가 막히면 기기 음성으로 폴백했다. 전부 미리 만들어 두면 앱에서 바꿔도 안 기다린다.
+# index.html 의 DEFAULT_SRV_VOICE·prewarmTTS 와 같아야 한다.
+TTS_VOICES = ["Emma", "Puck", "Andrew"]
 TTS_SPEED = "0.9"
 
 FIRESTORE_URL = (

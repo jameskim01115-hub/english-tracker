@@ -1161,7 +1161,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-10-14-01";
+const BUILD = "2026-10-14-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -5285,8 +5285,8 @@ function prewarmTTS(items) {
   // 재생은 `speechText()` 로 가므로 캐시 키를 맞추려면 똑같이 가공해야 한다 — `plain()` 은 화살표를
   // 공백으로 지워 키가 어긋난다 (2026-10-14).
   items.forEach(e => { texts.push(e.expression); if (e.rhythm) texts.push(e.rhythm); });
-  // Emma(여성)·Puck(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
-  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Puck"];
+  // Emma(여성)·Puck·Andrew(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
+  const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Puck", "Andrew"];
   texts.filter(Boolean).forEach(t => voices.forEach(v => {
     fetch(`${TTS_URL}?t=${encodeURIComponent(speechText(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));

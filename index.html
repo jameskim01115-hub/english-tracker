@@ -1161,7 +1161,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-09-30-02";
+const BUILD = "2026-10-14-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1858,7 +1858,7 @@ function speakServer(text, voice, btn, onEnd) {
     const d = audioEl.duration;
     onEnd(isFinite(d) && d > 0 ? d * 1000 : performance.now() - startedAt);
   };
-  audioEl.onerror = () => { done(); speakDevice(text, btn, onEnd); };   // 서버가 죽어도 소리는 나게
+  audioEl.onerror = () => { done(); noteFallback(); speakDevice(text, btn, onEnd); };   // 서버가 죽어도 소리는 나게
   const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
   // 같은 문장을 다시 틀면 받아둔 소리를 되감는다 — 반복 재생이 회차마다 서버에 가지 않게.
   if (audioEl.src === url && !audioEl.error) audioEl.currentTime = 0;
@@ -1869,8 +1869,19 @@ function speakServer(text, voice, btn, onEnd) {
   // 여기서 기기 음성으로 넘기면 **방금 끈 문장이 기기 음성으로 한 번 더 나온다.**
   if (p && p.catch) p.catch(err => {
     if (err && err.name === "AbortError") return;
-    done(); speakDevice(text, btn, onEnd);
+    done(); noteFallback(); speakDevice(text, btn, onEnd);
   });
+}
+
+// 서버 음성이 실패해 기기 음성으로 넘어갈 때 **알린다** (2026-10-14). 예전에는 조용히 넘어가서
+// 「선택한 음성이 아닌 게 섞여 나온다」는 걸 알 방법이 없었다 (캐시에 없는 문장이 429·500 을 맞는 경우).
+// 반복 재생·오디오북은 회차마다 실패할 수 있어 30초에 한 번만 띄운다.
+let fallbackToastAt = 0;
+function noteFallback() {
+  const now = Date.now();
+  if (now - fallbackToastAt < 30000) return;
+  fallbackToastAt = now;
+  toast("서버 음성 실패 — 이 문장은 기기 음성으로 재생합니다");
 }
 
 function speakDevice(text, btn, onEnd) {
@@ -5271,11 +5282,13 @@ document.getElementById("impSave").onclick = async () => {
 // 새로 들어온 문장 음성을 미리 받아둔다. 실패해도 무시 — 필요할 때 그 자리에서 만들어진다.
 function prewarmTTS(items) {
   const texts = [];
-  items.forEach(e => { texts.push(e.expression); if (e.rhythm) texts.push(plain(e.rhythm)); });
+  // 재생은 `speechText()` 로 가므로 캐시 키를 맞추려면 똑같이 가공해야 한다 — `plain()` 은 화살표를
+  // 공백으로 지워 키가 어긋난다 (2026-10-14).
+  items.forEach(e => { texts.push(e.expression); if (e.rhythm) texts.push(e.rhythm); });
   // Emma(여성)·Puck(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
   const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Puck"];
   texts.filter(Boolean).forEach(t => voices.forEach(v => {
-    fetch(`${TTS_URL}?t=${encodeURIComponent(plain(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
+    fetch(`${TTS_URL}?t=${encodeURIComponent(speechText(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));
 }
 

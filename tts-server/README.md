@@ -141,8 +141,12 @@ Firestore의 표현·예문 음성을 한꺼번에 만들어 둔다. 컨테이�
 
 ```bash
 ssh hermes "docker cp /root/tts/prewarm.py english-tts:/tmp/ && \
-            docker exec english-tts python /tmp/prewarm.py F2,M1 0.9"
+            docker exec english-tts python /tmp/prewarm.py Emma,Puck 0.9"
 ```
+
+대상은 표현·리듬·질문·예문·입에 붙일 표현·응용 문장·덩어리 전부다(`prewarm.py` 머리 주석 참조).
+**기존 카드의 영어를 PATCH 로 고친 작업(필러·교정 등) 뒤에는 반드시 다시 돌릴 것** — 캐시에 없는
+문장은 첫 재생에서 합성하다 429·500 을 맞으면 앱이 기기 음성으로 폴백한다(2026-10-14 원인 분석).
 
 속도나 기본 음성을 바꾸면 캐시가 전부 무효가 되므로 다시 돌릴 것.
 

@@ -748,17 +748,16 @@
   .ab-seg button.on { background: var(--card2); color: var(--text); }
   /* 분류 칩 — 한 줄 가로 스크롤. 개수는 굵게. */
   .ab-cats {
-    display: flex; gap: 6px; overflow-x: auto; padding: 0 18px 10px;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 14px 10px;
   }
-  .ab-cats::-webkit-scrollbar { display: none; }
   .ab-cats button {
     flex: 0 0 auto; background: var(--card); border: 1px solid var(--line); color: var(--dim);
-    border-radius: 999px; padding: 7px 12px; font-family: inherit; font-size: 12px; font-weight: 700;
+    border-radius: 999px; padding: 7px 11px; font-family: inherit; font-size: 12px; font-weight: 700;
     cursor: pointer; white-space: nowrap;
   }
   .ab-cats button b { color: var(--sub); margin-left: 2px; }
   .ab-cats button.on { background: var(--card2); color: var(--text); border-color: var(--blue); }
+  .ab-cats-note { align-self: center; font-size: 11px; color: var(--dim); }
   .ab-shuf { opacity: .45; font-size: 17px; }
   .ab-shuf.on { opacity: 1; }
   /* 쉐도잉의 따라 말하기 구간 — 영어를 흐리게, 뜻을 크게 */
@@ -1187,7 +1186,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-10-23-02";
+const BUILD = "2026-10-23-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2483,6 +2482,15 @@ async function abStart() {
     abMediaInit();
     abMediaState("paused");
     abPaint();
+    // 전체를 뒤에서 읽어(읽기 전용) 칩 개수를 채운다. 고른 분류가 비어 있으면 「오늘 복습」으로 돌아간다.
+    if (!allLoaded) abEnsureAll().then(ok => {
+      if (!ab) return;
+      if (ok && abCat !== "today" && !abPool(abCat).length) {
+        abCat = "today"; localStorage.setItem("et_ab_cat", "today");
+        if (ab.ready) abRebuild();
+      }
+      abPaintCats();
+    });
   } finally { abStarting = false; }
 }
 
@@ -2516,13 +2524,17 @@ async function abSetCat(id) {
   abRebuild();
 }
 
+// 분류 칩. **0개인 분류는 숨긴다** (2026-10-23 Patrick: 막힌 표현·봇 표현이 0 인데 보인다) — 실제로 그 종류
+// 카드가 없는 것이다. 전체를 읽기 전에는 개수를 모르므로 `needsAll` 칩은 그동안 숨기고 「불러오는 중…」만 보인다.
+// 「오늘 복습」과 지금 고른 칩은 0 이어도 보인다(고른 게 사라지면 헷갈린다).
 function abPaintCats() {
   const box = document.getElementById("abCats");
   if (!box) return;
-  box.innerHTML = AB_CATS.map(c => {
-    const n = c.needsAll && !allLoaded ? "—" : abPool(c.id).length;
-    return `<button data-c="${c.id}" class="${c.id === abCat ? "on" : ""}">${c.label} <b>${n}</b></button>`;
-  }).join("");
+  const rows = AB_CATS.map(c => ({ c, n: c.needsAll && !allLoaded ? null : abPool(c.id).length }))
+    .filter(x => x.c.id === "today" || x.c.id === abCat || (x.n !== null && x.n > 0));
+  box.innerHTML = rows.map(x =>
+    `<button data-c="${x.c.id}" class="${x.c.id === abCat ? "on" : ""}">${x.c.label} <b>${x.n === null ? "—" : x.n}</b></button>`
+  ).join("") + (allLoaded ? "" : `<span class="ab-cats-note">불러오는 중…</span>`);
   box.querySelectorAll("button").forEach(b => b.addEventListener("click", () => abSetCat(b.dataset.c)));
 }
 

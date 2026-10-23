@@ -556,7 +556,13 @@ Patrick 지적에서 나왔다. 진입점은 둘이다 — **「표현」 탭의
 아무 영어 문장이나 넣고 원어민 발음을 듣는다. Patrick이 평소 표현을 찾아본 뒤
 "실제로 어떻게 발음하나"를 확인하고 싶어서 만들었다.
 
-- **음성 7개** — 여성 **Emma** / 남성 **Puck·Echo**(Kokoro) · **Christopher·Steffan·Andrew·Brian**(Neural).
+- **음성 4개** (2026-10-23 정리) — 여성 **Emma** / 남성 **Puck**(Kokoro) · **Andrew·Brian**(Neural).
+  Patrick: 「Andrew·Puck 외에는 대화톤에 안 맞는다」 → **Puck 낮게·Andrew 낮게·Christopher·Steffan 을 뺐고**
+  블라인드 ★4 였던 Brian 을 올렸다. 저장돼 있던 선택값은 `VOICE_REMAP` 으로 Andrew·Puck 로 옮긴다
+  (설정 `et_voice` 는 한 번, 발음 탭 `et_say_voice` 는 읽을 때마다). 서버는 빠진 이름도 계속 받아준다.
+  **Brian 은 프리워밍 대상이 아니다**(Emma·Puck·Andrew 만) — 첫 재생에서 서버가 합성한다.
+  (아래 줄들은 정리 전 기록이다.)
+- (정리 전) **음성 7개** — 여성 **Emma** / 남성 **Puck·Echo**(Kokoro) · **Christopher·Steffan·Andrew·Brian**(Neural).
   Puck·Echo 가 기본 추천이고 나머지 넷은 ★4로 남은 것들이다 (2026-08-19 Patrick 요청으로 추가).
   **Patrick이 블라인드 청취로 직접 채점한 것만 넣는다 — 들어보지 않은 음성을 추가하지 말 것.**
   - **남성이 Kokoro인 이유** (2026-08-19, 3라운드): Patrick 지적 — 모델 음이 자기 음역(105~112Hz)보다

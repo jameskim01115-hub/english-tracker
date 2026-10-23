@@ -1186,7 +1186,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-10-23-03";
+const BUILD = "2026-10-23-04";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1205,15 +1205,17 @@ const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
 // 자기 목소리 톤("레·미 중간")에 맞춰 실제 MP3로 여러 라운드 비교해 고른 값이다.
 // Brian도 같은 레시피로 만든 AndrewLow로 교체했다.
 // PuckSlow·Brian 매핑은 서버에 남겨둬서 예전 선택값도 계속 동작한다.
+// **2026-10-23: 대화톤에 맞는 넷만 남겼다** (Patrick: Andrew·Puck 외에는 대화톤에 안 맞는다). Puck 낮게·Andrew 낮게·
+// Christopher·Steffan 은 목록에서 뺐고, 블라인드 ★4 였던 Brian 을 올렸다. 서버는 빠진 이름도 계속 받아준다 —
+// 저장돼 있던 선택값은 아래 `VOICE_REMAP` 으로 한 번 옮긴다. 목록에 다시 추가하지 말 것.
 const SRV_VOICES = [
   { v: "Emma",        g: "F", n: "Emma ★5" },
   { v: "Puck",        g: "M", n: "Puck ★5" },
-  { v: "PuckLow",     g: "M", n: "Puck 낮게" },
-  { v: "Christopher", g: "M", n: "Christopher" },
-  { v: "Steffan",     g: "M", n: "Steffan" },
   { v: "Andrew",      g: "M", n: "Andrew" },
-  { v: "AndrewLow",   g: "M", n: "Andrew 낮게" },
+  { v: "Brian",       g: "M", n: "Brian ★4" },
 ];
+// 목록에서 빠진 음성 → 대신 쓸 음성. 가장 많이 쓰는 Andrew·Puck 로 옮긴다.
+const VOICE_REMAP = { PuckLow: "Puck", AndrewLow: "Andrew", Christopher: "Andrew", Steffan: "Andrew" };
 const SRV_PREFIX = "srv:";
 // Emma(여성)·Puck(남성)을 미리 생성해 둔다. `hermes-sync.py` 의 TTS_VOICES 와 같아야 한다 —
 // 다르면 캐시 키가 어긋나 미리 만든 음성을 못 쓰고 앱에서 매번 새로 생성한다.
@@ -1223,6 +1225,16 @@ const DEFAULT_SRV_VOICE = SRV_PREFIX + "Emma";
 // 그대로 두면 Patrick 기기는 계속 Supertonic 이 나온다(실제로 그랬다).
 // 예전 기본값이던 srv:F2 만 한 번 Emma 로 옮긴다. 그 외 선택은 존중한다.
 // 플래그가 있어 한 번만 돌고, 이후 Supertonic 을 다시 골라도 되돌리지 않는다.
+(function migrateRemovedVoicesOnce() {
+  try {
+    if (localStorage.getItem("et_voice_m2")) return;
+    localStorage.setItem("et_voice_m2", "1");
+    const cur = localStorage.getItem("et_voice") || "";
+    if (cur.startsWith(SRV_PREFIX) && VOICE_REMAP[cur.slice(SRV_PREFIX.length)]) {
+      localStorage.setItem("et_voice", SRV_PREFIX + VOICE_REMAP[cur.slice(SRV_PREFIX.length)]);
+    }
+  } catch (e) { /* 저장 실패는 무시 */ }
+})();
 (function migrateVoiceOnce() {
   try {
     if (localStorage.getItem("et_voice_m1")) return;
@@ -2739,19 +2751,11 @@ const SAY_VOICES_F = [
 // 남성은 Kokoro 다 (2026-08-19). Edge 남성은 톤이 맞아도 전부 「책 읽는 느낌」이라 뺐다.
 const SAY_VOICES_M = [
   { v: "Puck", n: "Puck", top: true },     // 2026-08-19 두 라운드 연속 ★5
-  // 2026-09-05: Echo 대신 PuckSlow(속도 고정)를 넣었다가 PuckLow로 교체 — Puck과
-  // 같은 화자에 피치만 -1세미톤(R2 엔진·포먼트 보존 끔). 속도는 이 탭의 속도 칩을
-  // 그대로 따른다(PuckSlow와 달리 서버가 강제하지 않는다).
-  { v: "PuckLow", n: "Puck 낮게" },
-  // ★4 로 남은 둘 (2026-08-19 Patrick 요청으로 추가). 낭독체라 「책 읽는 느낌」 평이 붙었지만
-  // Steffan 은 "가장 맘에 든다", Christopher 는 F0 가 Patrick 음역 한가운데다.
-  { v: "Christopher", n: "Christopher" },  // 106.7Hz ★4
-  { v: "Steffan",     n: "Steffan" },      // 117.6Hz ★4
   // 2026-08-19 Patrick 요청으로 되살렸다. 처음엔 "맘에 안 든다"고 뺐지만
   // 블라인드에서는 둘 다 ★4였다 — 이름을 가리면 평가가 달랐던 사례.
-  { v: "Andrew",      n: "Andrew" },       // 114.8Hz ★4
-  // 2026-09-05: Brian 대신 — Andrew와 같은 화자, PuckLow와 같은 레시피로 피치만 낮춘 버전.
-  { v: "AndrewLow",   n: "Andrew 낮게" },
+  { v: "Andrew", n: "Andrew" },            // 114.8Hz ★4 — 가장 많이 쓰는 음성
+  { v: "Brian",  n: "Brian" },             // ★4 — 2026-10-23 Christopher·Steffan 대신
+  // Puck 낮게·Andrew 낮게·Christopher·Steffan 은 2026-10-23 에 뺐다(대화톤에 안 맞는다 — Patrick).
 ];
 // 이산 5단계로 고정한다. 연속 슬라이더로 두면 캐시 키가 sha1(voice|speed|text) 라
 // 값마다 새로 생성돼 캐시가 무의미해진다.
@@ -2764,7 +2768,7 @@ function paintSayCount() {
   if (el) el.textContent = `원어민 음성 ${SAY_VOICES_F.length + SAY_VOICES_M.length}명`;
 }
 
-let sayVoice = localStorage.getItem("et_say_voice") || "Emma";
+let sayVoice = (v => VOICE_REMAP[v] || v)(localStorage.getItem("et_say_voice") || "Emma");
 let saySpeed = parseFloat(localStorage.getItem("et_say_speed")) || 0.9;
 let sayAudio = null;
 

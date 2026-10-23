@@ -175,7 +175,7 @@ def kokoro_synth(text, voice, speed):
     """Kokoro 로 mp3 바이트를 만든다. 24kHz float32 → mp3."""
     k = kokoro_engine()
     with _kokoro_lock:      # ONNX 세션 하나를 공유하므로 직렬화한다
-        audio, sr = k.create(text, voice=KOKORO_VOICES[voice], speed=speed, lang="en-us")
+        audio, sr = k.create(spell_acronyms(text), voice=KOKORO_VOICES[voice], speed=speed, lang="en-us")
     semitones = PITCH_SHIFT.get(voice)
     if semitones:
         audio = pitch_shift_audio(audio, sr, semitones)
@@ -192,6 +192,30 @@ _usage_lock = threading.Lock()
 # 철자로 읽어야 하는 약어. 앱 index.html 의 SPELL_OUT 과 같은 목록이어야 한다.
 SPELL_OUT = {"CUSA", "CRBC", "CRLC", "OR", "BIR", "VAT", "SSS", "AEP",
              "LOI", "NTE", "PO", "STF", "DPR", "BFP", "NTC", "FSIC", "AC", "TV", "PM"}
+
+# ── Kokoro 는 대문자 약어를 철자로 읽지 않는다 (2026-10-23 Patrick: Puck 이 FSIC 를 단어로 읽는다) ──
+# Microsoft Neural(Emma·Andrew 등)은 `FSIC` 를 알아서 철자로 읽지만 Kokoro(espeak 발음기)는
+# 그냥 한 단어로 읽는다. 그래서 Kokoro 로 보낼 때만 `SPELL_OUT` 약어를 **글자 이름**으로 풀어 쓴다
+# (`FSIC` → `eff ess eye see`). 글자 이름 단어로 쓰는 이유: `F S I C` 처럼 낱글자를 띄우면
+# 발음기가 `A` 를 관사처럼 읽을 수 있어 결과가 불확실하지만, 이름 단어는 항상 같게 읽힌다.
+# **캐시 키에도 반영한다**(`cache_key`) — 안 그러면 옛 단어 읽기 mp3 가 계속 나온다.
+_LETTER_NAMES = {
+    "A": "ay", "B": "bee", "C": "see", "D": "dee", "E": "ee", "F": "eff", "G": "gee", "H": "aitch",
+    "I": "eye", "J": "jay", "K": "kay", "L": "el", "M": "em", "N": "en", "O": "oh", "P": "pee",
+    "Q": "cue", "R": "ar", "S": "ess", "T": "tee", "U": "you", "V": "vee", "W": "double you",
+    "X": "ex", "Y": "why", "Z": "zee",
+}
+_ACRONYM_RE = re.compile(r"\b(" + "|".join(sorted(SPELL_OUT, key=len, reverse=True)) + r")\b")
+
+
+def spell_acronyms(text):
+    """SPELL_OUT 약어를 글자 이름으로 푼다. 약어가 없으면 그대로(캐시 키도 안 바뀐다)."""
+    return _ACRONYM_RE.sub(lambda m: " ".join(_LETTER_NAMES[c] for c in m.group(1)), text)
+
+
+def has_acronym(text):
+    return bool(_ACRONYM_RE.search(text))
+
 
 # CORS — 앱 출처만 허용. curl 은 못 막지만 브라우저 오용은 막는다.
 ALLOWED_ORIGINS = {
@@ -449,7 +473,9 @@ def cache_key(text, voice, speed, use_ssml):
     PITCH_SHIFT 세미톤 값도 넣는다 — 안 그러면 세미톤 값을 튜닝할 때마다
     옛 캐시가 계속 나와서 값을 바꾼 걸 못 알아챈다."""
     pitch = PITCH_SHIFT.get(voice)
-    tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{text}"
+    # Kokoro + 약어가 든 문장만 키를 바꾼다 — 약어 없는 문장의 기존 캐시는 그대로 쓴다.
+    spell = "spell1|" if voice in KOKORO_VOICES and has_acronym(text) else ""
+    tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{spell}{text}"
     return hashlib.sha1(tag.encode("utf-8")).hexdigest()
 
 

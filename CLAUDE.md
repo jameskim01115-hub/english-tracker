@@ -241,6 +241,19 @@ speechText()  → "I just relaxed at home and created an application to help me 
 - 끝이 `?`·`!` 면 덮어쓰지 않는다. 다만 **문장 끝 `↗` 는 마침표가 된다** — 상승 억양인데
   하강으로 읽힌다. 드문 경우라 두었지만 문제가 되면 `plainFromRhythm()` 에서 갈라야 한다.
 
+### Kokoro(Puck)는 약어를 단어로 읽는다 — 서버가 글자 이름으로 푼다 (2026-10-23)
+
+Patrick: **「Puck 은 FSIC 를 영어 단어로 읽는다」.** Microsoft Neural(Emma·Andrew)은 대문자 약어를 알아서 철자로
+읽지만 **Kokoro(espeak 발음기)는 한 단어로 읽는다.** `SPELL_OUT` 에 넣어 대문자를 지켜도 Puck 에는 소용이 없다.
+- 서버 `kokoro_synth()` 가 **Kokoro 로 보낼 때만** `SPELL_OUT` 약어를 글자 이름으로 푼다: `FSIC` → `eff ess eye see`
+  (`spell_acronyms()`). **글자 이름 단어**로 쓴 이유 — `F S I C` 처럼 낱글자를 띄우면 `A` 를 관사처럼 읽을 수 있어 불확실하다.
+- **캐시 키에 반영한다**(`cache_key` 의 `spell1|`): Kokoro + 약어가 든 문장만 키가 바뀐다. 약어 없는 문장의 캐시는 그대로다.
+  **옛 단어 읽기 mp3 는 새 키로 다시 만들어야 한다** → 서버를 배포한 뒤 `prewarm.py` 를 한 번 돌릴 것(바뀐 문장만 만든다).
+- **앱·`hermes-sync.py` 는 안 바뀐다** — 캐시 키는 앱이 보내는 문장으로 정해지고 변환은 서버 안에서만 한다.
+  Emma·Andrew 에는 영향 없다(변환은 Kokoro 한정).
+- **새 약어는 `SPELL_OUT` 에 넣으면 된다**(앱·`hermes-sync.py`·서버 세 곳 — 위 절). Puck 은 그 목록으로 자동 풀린다.
+- 샌드박스에서 Kokoro 모델을 돌릴 수 없어 **실제 소리는 확인하지 못했다.** 변환 결과 문자열만 검증했다 — 배포 후 귀로 확인할 것.
+
 ### 대문자는 소리로 보낼 때 벗긴다 (`unstressCaps`)
 
 TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」(U.N. + wind)로 나왔다 — 실측으로

@@ -241,6 +241,19 @@ speechText()  → "I just relaxed at home and created an application to help me 
 - 끝이 `?`·`!` 면 덮어쓰지 않는다. 다만 **문장 끝 `↗` 는 마침표가 된다** — 상승 억양인데
   하강으로 읽힌다. 드문 경우라 두었지만 문제가 되면 `plainFromRhythm()` 에서 갈라야 한다.
 
+### Kokoro(Puck)는 약어를 단어로 읽는다 — 서버가 글자 이름으로 푼다 (2026-10-23)
+
+Patrick: **「Puck 은 FSIC 를 영어 단어로 읽는다」.** Microsoft Neural(Emma·Andrew)은 대문자 약어를 알아서 철자로
+읽지만 **Kokoro(espeak 발음기)는 한 단어로 읽는다.** `SPELL_OUT` 에 넣어 대문자를 지켜도 Puck 에는 소용이 없다.
+- 서버 `kokoro_synth()` 가 **Kokoro 로 보낼 때만** `SPELL_OUT` 약어를 글자 이름으로 푼다: `FSIC` → `eff ess eye see`
+  (`spell_acronyms()`). **글자 이름 단어**로 쓴 이유 — `F S I C` 처럼 낱글자를 띄우면 `A` 를 관사처럼 읽을 수 있어 불확실하다.
+- **캐시 키에 반영한다**(`cache_key` 의 `spell1|`): Kokoro + 약어가 든 문장만 키가 바뀐다. 약어 없는 문장의 캐시는 그대로다.
+  **옛 단어 읽기 mp3 는 새 키로 다시 만들어야 한다** → 서버를 배포한 뒤 `prewarm.py` 를 한 번 돌릴 것(바뀐 문장만 만든다).
+- **앱·`hermes-sync.py` 는 안 바뀐다** — 캐시 키는 앱이 보내는 문장으로 정해지고 변환은 서버 안에서만 한다.
+  Emma·Andrew 에는 영향 없다(변환은 Kokoro 한정).
+- **새 약어는 `SPELL_OUT` 에 넣으면 된다**(앱·`hermes-sync.py`·서버 세 곳 — 위 절). Puck 은 그 목록으로 자동 풀린다.
+- 샌드박스에서 Kokoro 모델을 돌릴 수 없어 **실제 소리는 확인하지 못했다.** 변환 결과 문자열만 검증했다 — 배포 후 귀로 확인할 것.
+
 ### 대문자는 소리로 보낼 때 벗긴다 (`unstressCaps`)
 
 TTS 는 대문자 덩어리를 약어로 본다. `UNWIND` 가 「유엔윈드」(U.N. + wind)로 나왔다 — 실측으로
@@ -556,7 +569,13 @@ Patrick 지적에서 나왔다. 진입점은 둘이다 — **「표현」 탭의
 아무 영어 문장이나 넣고 원어민 발음을 듣는다. Patrick이 평소 표현을 찾아본 뒤
 "실제로 어떻게 발음하나"를 확인하고 싶어서 만들었다.
 
-- **음성 7개** — 여성 **Emma** / 남성 **Puck·Echo**(Kokoro) · **Christopher·Steffan·Andrew·Brian**(Neural).
+- **음성 4개** (2026-10-23 정리) — 여성 **Emma** / 남성 **Puck**(Kokoro) · **Andrew·Brian**(Neural).
+  Patrick: 「Andrew·Puck 외에는 대화톤에 안 맞는다」 → **Puck 낮게·Andrew 낮게·Christopher·Steffan 을 뺐고**
+  블라인드 ★4 였던 Brian 을 올렸다. 저장돼 있던 선택값은 `VOICE_REMAP` 으로 Andrew·Puck 로 옮긴다
+  (설정 `et_voice` 는 한 번, 발음 탭 `et_say_voice` 는 읽을 때마다). 서버는 빠진 이름도 계속 받아준다.
+  **Brian 은 프리워밍 대상이 아니다**(Emma·Puck·Andrew 만) — 첫 재생에서 서버가 합성한다.
+  (아래 줄들은 정리 전 기록이다.)
+- (정리 전) **음성 7개** — 여성 **Emma** / 남성 **Puck·Echo**(Kokoro) · **Christopher·Steffan·Andrew·Brian**(Neural).
   Puck·Echo 가 기본 추천이고 나머지 넷은 ★4로 남은 것들이다 (2026-08-19 Patrick 요청으로 추가).
   **Patrick이 블라인드 청취로 직접 채점한 것만 넣는다 — 들어보지 않은 음성을 추가하지 말 것.**
   - **남성이 Kokoro인 이유** (2026-08-19, 3라운드): Patrick 지적 — 모델 음이 자기 음역(105~112Hz)보다

@@ -748,17 +748,16 @@
   .ab-seg button.on { background: var(--card2); color: var(--text); }
   /* 분류 칩 — 한 줄 가로 스크롤. 개수는 굵게. */
   .ab-cats {
-    display: flex; gap: 6px; overflow-x: auto; padding: 0 18px 10px;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 14px 10px;
   }
-  .ab-cats::-webkit-scrollbar { display: none; }
   .ab-cats button {
     flex: 0 0 auto; background: var(--card); border: 1px solid var(--line); color: var(--dim);
-    border-radius: 999px; padding: 7px 12px; font-family: inherit; font-size: 12px; font-weight: 700;
+    border-radius: 999px; padding: 7px 11px; font-family: inherit; font-size: 12px; font-weight: 700;
     cursor: pointer; white-space: nowrap;
   }
   .ab-cats button b { color: var(--sub); margin-left: 2px; }
   .ab-cats button.on { background: var(--card2); color: var(--text); border-color: var(--blue); }
+  .ab-cats-note { align-self: center; font-size: 11px; color: var(--dim); }
   .ab-shuf { opacity: .45; font-size: 17px; }
   .ab-shuf.on { opacity: 1; }
   /* 쉐도잉의 따라 말하기 구간 — 영어를 흐리게, 뜻을 크게 */
@@ -1187,7 +1186,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-10-23-01";
+const BUILD = "2026-10-23-03";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -2473,15 +2472,25 @@ async function abStart() {
     stopLoop(); stopSayLoop();      // 다른 소리와 겹치지 않게
     if (abBlobUrl) { URL.revokeObjectURL(abBlobUrl); abBlobUrl = null; }
     abDropNextCache();
-    ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0, marks: null };
-    abPaused = false;
+    // **열자마자 재생하지 않는다** (2026-10-23 Patrick: 「선택하기도 전에 재생이 된다」).
+    // 대기 상태(`ready`)로 열어 두고 분류·상한·모드를 고른 뒤 ▶ 를 눌러야 시작한다.
+    // 덤으로 첫 재생이 사용자 탭 안에서 일어나 iOS 오디오 잠금에도 안전하다.
+    ab = { id: ++abSeq, items, i: 0, steps: [], s: 0, timer: 0, tick: 0, marks: null, ready: true };
+    abPaused = true;
     document.getElementById("abBg").classList.add("show");
     abPaintCtl(); abPaintCats();
     abMediaInit();
-    if (!items.length) { abPaint(); return; }
-    abMediaState("playing");
-    toast(`${items.length}개 · 약 ${abEstimate(items)}분`);
-    abLoadItem();
+    abMediaState("paused");
+    abPaint();
+    // 전체를 뒤에서 읽어(읽기 전용) 칩 개수를 채운다. 고른 분류가 비어 있으면 「오늘 복습」으로 돌아간다.
+    if (!allLoaded) abEnsureAll().then(ok => {
+      if (!ab) return;
+      if (ok && abCat !== "today" && !abPool(abCat).length) {
+        abCat = "today"; localStorage.setItem("et_ab_cat", "today");
+        if (ab.ready) abRebuild();
+      }
+      abPaintCats();
+    });
   } finally { abStarting = false; }
 }
 
@@ -2495,6 +2504,7 @@ function abRebuild() {
   ab.id = ++abSeq;
   abPaintCats();
   if (!items.length) { toast("이 분류에는 들을 표현이 없습니다"); abPaint(); return; }
+  if (ab.ready) { abPaint(); return; }    // 대기 중 — ▶ 를 눌러야 시작
   toast(`${items.length}개 · 약 ${abEstimate(items)}분`);
   abLoadItem();
 }
@@ -2514,13 +2524,17 @@ async function abSetCat(id) {
   abRebuild();
 }
 
+// 분류 칩. **0개인 분류는 숨긴다** (2026-10-23 Patrick: 막힌 표현·봇 표현이 0 인데 보인다) — 실제로 그 종류
+// 카드가 없는 것이다. 전체를 읽기 전에는 개수를 모르므로 `needsAll` 칩은 그동안 숨기고 「불러오는 중…」만 보인다.
+// 「오늘 복습」과 지금 고른 칩은 0 이어도 보인다(고른 게 사라지면 헷갈린다).
 function abPaintCats() {
   const box = document.getElementById("abCats");
   if (!box) return;
-  box.innerHTML = AB_CATS.map(c => {
-    const n = c.needsAll && !allLoaded ? "—" : abPool(c.id).length;
-    return `<button data-c="${c.id}" class="${c.id === abCat ? "on" : ""}">${c.label} <b>${n}</b></button>`;
-  }).join("");
+  const rows = AB_CATS.map(c => ({ c, n: c.needsAll && !allLoaded ? null : abPool(c.id).length }))
+    .filter(x => x.c.id === "today" || x.c.id === abCat || (x.n !== null && x.n > 0));
+  box.innerHTML = rows.map(x =>
+    `<button data-c="${x.c.id}" class="${x.c.id === abCat ? "on" : ""}">${x.c.label} <b>${x.n === null ? "—" : x.n}</b></button>`
+  ).join("") + (allLoaded ? "" : `<span class="ab-cats-note">불러오는 중…</span>`);
   box.querySelectorAll("button").forEach(b => b.addEventListener("click", () => abSetCat(b.dataset.c)));
 }
 
@@ -2574,6 +2588,11 @@ function abPlay() {
 function abNext(dir) {
   if (!ab) return;
   abResetPlayback();
+  if (ab.ready) {                        // 대기 중 — 표현만 미리 훑어본다, 재생은 ▶ 로
+    if (ab.items.length) ab.i = (ab.i + dir + ab.items.length) % ab.items.length;
+    abPaint();
+    return;
+  }
   ab.i += dir;
   if (ab.i >= ab.items.length) {     // 한 바퀴 — 처음부터 다시 (배경음악처럼 계속 돌게)
     ab.i = 0;
@@ -2586,6 +2605,15 @@ function abNext(dir) {
 
 function abTogglePause() {
   if (!ab) return;
+  if (ab.ready) {                        // 대기 중이던 첫 ▶ — 여기서 처음 재생한다
+    if (!ab.items.length) { toast("들을 표현이 없습니다 — 다른 분류를 골라 보세요"); return; }
+    ab.ready = false; abPaused = false;
+    abMediaState("playing");
+    toast(`${ab.items.length}개 · 약 ${abEstimate(ab.items)}분`);
+    abPaint();
+    abLoadItem();
+    return;
+  }
   abPaused = !abPaused;
   abMediaState(abPaused ? "paused" : "playing");
   if (abPaused) {
@@ -2617,6 +2645,7 @@ function abSet(key, val) {
   abPaintCtl();
   if (!ab) return;
   if (key === "cap" || key === "shuf") { abRebuild(); return; }
+  if (ab.ready) { abPaint(); return; }    // 대기 중 — 예상 시간만 갱신
   abResetPlayback();
   abDropNextCache();   // 모드·반복 횟수가 바뀌면 구워둔 다음 표현의 내용 자체가 달라진다
   ab.id = ++abSeq;
@@ -2664,7 +2693,8 @@ function abPaint() {
   const play = document.getElementById("abPlay");
   play.textContent = abPaused ? "▶︎" : "⏸";
   let now = "";
-  if (abPaused) now = "일시정지";
+  if (ab.ready) now = `${ab.items.length}개 · 약 ${abEstimate(ab.items)}분 — 분류를 고르고 ▶ 로 시작`;
+  else if (abPaused) now = "일시정지";
   else if (!st) now = "다음 표현…";
   else if (st.ex) now = "예문";
   else if (abMode === "shadow") {

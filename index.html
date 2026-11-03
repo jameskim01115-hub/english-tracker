@@ -224,6 +224,20 @@
     border-radius: 999px; background: rgba(255,255,255,0.07);
   }
   .cal-cell svg { position: absolute; width: 27px; height: 27px; z-index: 2; pointer-events: none; }
+  .weak-row {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 7px;
+  }
+  .weak-n { flex-shrink: 0; width: 22px; font-size: 15px; font-weight: 900; color: var(--accent); }
+  .weak-tx b { display: block; font-size: 13.5px; font-weight: 800; }
+  .weak-tx span { display: block; font-size: 12px; color: var(--sub); margin-top: 3px; line-height: 1.5; word-break: break-word; }
+  .weak-note { font-size: 11px; color: var(--dim); line-height: 1.6; margin: 2px 0 14px; }
+  .rest-btn {
+    width: 100%; margin-top: 10px; background: transparent; color: var(--dim);
+    border: 1px dashed var(--line); border-radius: 12px; padding: 9px;
+    font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .rest-btn.on { color: #f5b942; border-color: rgba(245,185,66,.45); border-style: solid; }
   .cal-toggle {
     width: 100%; margin-top: 8px; padding: 7px; border-radius: 9px;
     background: none; border: none; color: var(--dim);
@@ -936,6 +950,7 @@
     </div>
     <div class="routines" id="routines"></div>
     <div class="allDone" id="allDone">🎉 오늘 습관 전부 완료! 달력에 동그라미 쾅.</div>
+    <button class="rest-btn" id="restBtn"></button>
 
     <div class="sec-head">
       <div class="sec-title">배울 표현 <small>아직 공부 안 한 것</small></div>
@@ -969,6 +984,7 @@
         <div class="dirseg" id="dirSeg">
           <button data-d="ko2en">한→영</button>
           <button data-d="en2ko">영→한</button>
+          <button data-d="q2en">질문</button>
         </div>
       </div>
     </div>
@@ -1029,6 +1045,12 @@
       ✏️ 카드 수정 — 키워드로 찾기</button>
     <div class="filters" id="filters"></div>
     <div id="bankList"></div>
+
+    <div class="sec-head">
+      <div class="sec-title">내 약점 TOP3</div>
+      <div class="sec-sub" id="weakSub"></div>
+    </div>
+    <div id="weakBox"></div>
 
     <div class="sec-head">
       <div class="sec-title">누적</div>
@@ -1219,7 +1241,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-11-04-01";
+const BUILD = "2026-11-04-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1731,6 +1753,10 @@ function promptFor(e) {
   // 상황 태그 폴백은 없앴다 — 「이럴 때」를 화면에서 전부 뺐기 때문이다 (2026-08-17 Patrick).
   // 한국어가 하나도 없는 카드는 한→영을 포기하고 영→한으로 내려간다.
   return { ok: false };
+}
+function questionPrompt(e) {
+  return { ok: true, label: "이 질문에 45초 영어로 답하기", text: plain(e.question),
+           sub: e.questionKo || "", q: true };
 }
 function wordCount(s) {
   const w = String(s || "").trim().split(/\s+/).filter(Boolean);
@@ -3226,7 +3252,25 @@ function renderRoutines() {
     box.appendChild(item);
   }
   updateProgress();
+  paintRest();
 }
+
+// 쉬는 날 — 여행·인터넷 문제·몸살 같은 날. 연속이 끊기지 않고 달력에 노란 동그라미가 뜬다.
+// 복습은 따로 손대지 않는다: 안 한 복습은 다음 날 열 때 balanceReviews 가 하루 상한(DAILY_CAP)에 맞춰 나눠 배치한다.
+function paintRest() {
+  const btn = document.getElementById("restBtn");
+  const on = !!(dayData[today] && dayData[today].rest === true);
+  btn.classList.toggle("on", on);
+  btn.textContent = on ? "🌴 오늘은 쉬는 날 · 연속 유지 중 (누르면 취소)" : "🌴 오늘은 쉬는 날로 표시 (여행·아파요)";
+}
+document.getElementById("restBtn").addEventListener("click", async () => {
+  if (!canWrite()) return;
+  const on = !(dayData[today] && dayData[today].rest === true);
+  dayData[today] = { ...(dayData[today] || { tasks: {} }), rest: on };
+  paintRest(); renderCalendar(); renderStreak(); saveCache();
+  toast(on ? "쉬는 날로 표시했어요 — 연속은 그대로예요" : "쉬는 날 표시를 풀었어요");
+  await saveDay(today);
+});
 
 async function toggleRoutine(key, card) {
   if (!canWrite()) return;
@@ -3271,10 +3315,15 @@ function updateProgress() {
 // 루틴 개수가 바뀌기 전에 저장된 날은 그 날의 기준(저장해 둔 total)으로 판정한다.
 // 안 그러면 5개 시절에 완주한 날들이 오늘 갑자기 「부분 완료」로 강등된다 (2026-09-02).
 // 여행·인터넷 문제로 못 한 날. 연속이 끊기지 않게 「면제」로 처리하고 달력에 노란 동그라미로 표시한다.
+// 앞으로의 쉬는 날은 「오늘 습관」 아래 버튼으로 표시한다(그 날 문서의 `rest` 필드). 아래 목록은 그 전 기록.
 const PASS_DAYS = new Set(["2026-10-30"]);
+function isPassDay(iso) {
+  const d = dayData[iso];
+  return PASS_DAYS.has(iso) || !!(d && d.rest === true);
+}
 function dayStatus(iso) {
   const real = dayStatusReal(iso);
-  return real === 0 && PASS_DAYS.has(iso) ? 1 : real;
+  return real === 0 && isPassDay(iso) ? 1 : real;
 }
 function dayStatusReal(iso) {
   const d = dayData[iso];
@@ -3301,7 +3350,7 @@ function calCellHtml(y, m, day) {
   const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const st = dayStatus(iso);
   let mark = "";
-  if (st > 0 && PASS_DAYS.has(iso) && dayStatusReal(iso) === 0) {
+  if (st > 0 && isPassDay(iso) && dayStatusReal(iso) === 0) {
     mark = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" fill="none"
       stroke="#f5b942" stroke-width="5" stroke-linecap="round" opacity="0.95"/></svg>`;
   } else if (st > 0) {
@@ -3470,8 +3519,11 @@ function exprCard(e, mode, dir) {
   card.dataset.id = e.id;
 
   // 한→영은 프롬프트로 쓸 한글(또는 상황)이 있을 때만. 없으면 영→한으로 내려간다.
-  const pr = promptFor(e);
-  const recall = dir === "ko2en" && pr.ok;
+  // 「질문」 방향(OPIc식): 한국어 뜻 대신 원래 질문을 앞면에 준다. 질문이 없는 카드는 한→영으로 내려간다.
+  // 기본값은 한→영이다 — 질문만 주면 정답이 하나로 정해지지 않는다는 2026-08-10 지적이 있어
+  // 이 방향은 켜는 사람이 고른 연습으로만 둔다(자유롭게 답한 뒤 정답과 비교하는 말하기 연습).
+  const pr = (dir === "q2en" && isReview(e) && e.question) ? questionPrompt(e) : promptFor(e);
+  const recall = (dir === "ko2en" || dir === "q2en") && pr.ok;
   // 「오늘」 탭은 영어 밑에 뜻을 앞면에 띄운다. 그러면 뒷면 「뜻」 블록은 **같은 문장을 두 번**
   // 보여주는 셈이라 그린다 (2026-08-31 Patrick 지적). 앞면에 이미 나왔으면 뒷면은 건너뛴다.
   const koOnFront = mode === "new" && !!koTextOf(e);
@@ -3550,7 +3602,7 @@ function exprCard(e, mode, dir) {
     // 한→영이면 ko 는 이미 앞면 프롬프트라 다시 띄우지 않는다 — 같은 문장이 두 번 나온다.
     // (정답 바로 밑에는 `.ans-ko` 로 따로 붙는다. 문장이 길면 앞면 프롬프트가 화면 밖으로
     //  밀려 정답을 읽을 때 뜻이 안 보인다 — 질문의 영문/한글 짝과 같은 이유다. 2026-08-30 Patrick)
-    if (koOf(e) && !koOnFront && !(recall && pr.text === e.ko)) {
+    if (koOf(e) && !koOnFront && !(recall && (pr.text === e.ko || pr.q))) {
       html += `<div class="blk"><div class="blk-l">뜻</div>
         <div class="blk-mean">${esc(koOf(e))}</div></div>`;
     }
@@ -4143,7 +4195,7 @@ function renderPractice() {
   back.textContent = "연습 끝내기";
   back.onclick = renderDue;
   box.appendChild(back);
-  toast(revDir === "ko2en" ? "한→영 연습 시작" : "영→한 연습 시작");
+  toast({ ko2en: "한→영 연습 시작", en2ko: "영→한 연습 시작", q2en: "질문 연습 시작" }[revDir] || "연습 시작");
 }
 
 async function grade(e, kind, card) {
@@ -4181,6 +4233,51 @@ async function grade(e, kind, card) {
 }
 
 // ═══════════════ 단계별 현황 ═══════════════
+// ═══════════════ 내 약점 TOP3 ═══════════════
+// 회화 교정 카드의 「왜 틀렸나」(`why`, ChatGPT 가 쓴 한국어 해설)를 키워드로 묶어 센다.
+// 해설이 자유 문장이라 **대략적인 분류다** — 정확한 통계가 아니라 「요즘 어디서 자주 걸리나」를 보는 용도.
+// 읽기만 하는 카드라 할 일이 늘지 않는다. 새 API 호출 없음.
+const WEAK_KINDS = [
+  { k: "시제", re: /시제|현재완료|과거진행|과거형|현재진행|진행 중|진행형|\bwas\b|\bhave\s+\w+ed\b/ },
+  { k: "관사 (a/the)", re: /관사|\ba\s+\w+\s*→|→\s*a\s|→\s*the\s|\bthe\b.*(빼|필요|붙)/ },
+  { k: "전치사", re: /전치사|\b(in|on|at|to|for|with|about)\b.*(대신|아니라|쓰)/ },
+  { k: "수 일치 (단수·복수)", re: /복수|단수|수가 안|수 일치|3인칭/ },
+  { k: "문장 연결·필러", re: /연결|필러|한 호흡|이어 말|접속|because|but\b.*앞/ },
+  { k: "어순·문장 구조", re: /어순|to부정사|동명사|문장 구조|구조가|주어|목적어/ },
+];
+// 「더 자연스럽다」는 해설 거의 전부(실측 155장 중 106장)에 나온다 — 넣으면 늘 1위라 약점 구분이 안 돼서 뺐다.
+function weakExample(why, re) {
+  const line = String(why).split("\n").find(l => re.test(l) && l.includes("→"));
+  if (!line) return "";
+  const t = line.replace(/\*\*/g, "").trim();
+  return t.length > 70 ? t.slice(0, 68) + "…" : t;
+}
+function renderWeak() {
+  const cards = expressions.filter(e => isReview(e) && e.why);
+  const sub = document.getElementById("weakSub");
+  const box = document.getElementById("weakBox");
+  if (cards.length < 5) {
+    sub.textContent = "";
+    box.innerHTML = `<div class="weak-note">회화 교정 카드가 5장 이상 쌓이면 자주 걸리는 패턴이 나옵니다.</div>`;
+    return;
+  }
+  const rows = WEAK_KINDS
+    .map(w => {
+      const hit = cards.filter(e => w.re.test(String(e.why)));
+      // 최근 카드부터 보며 예시 줄이 있는 첫 카드를 쓴다.
+      let ex = "";
+      for (let i = hit.length - 1; i >= 0 && !ex; i--) ex = weakExample(hit[i].why, w.re);
+      return { k: w.k, n: hit.length, ex };
+    })
+    .filter(r => r.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 3);
+  sub.textContent = `회화 교정 ${cards.length}장 기준`;
+  box.innerHTML = rows.map((r, i) => `<div class="weak-row"><div class="weak-n">${i + 1}</div>
+    <div class="weak-tx"><b>${esc(r.k)} · ${r.n}장</b>${r.ex ? `<span>예) ${esc(r.ex)}</span>` : ""}</div></div>`).join("")
+    + `<div class="weak-note">「왜 틀렸나」 해설을 키워드로 묶은 대략적인 분류입니다. 불러온 카드만 셉니다.</div>`;
+}
+
 function renderDist() {
   const rows = [
     // INTERVALS 에서 파생한다 — 단계 수를 바꿀 때 이 목록을 같이 고치는 걸 잊으면
@@ -4200,6 +4297,7 @@ function renderDist() {
       <div class="tr"><div class="bf" style="width:${(n / max * 100).toFixed(1)}%"></div></div>
       <div class="vn">${n}</div>
     </div>`).join("");
+  renderWeak();
 }
 
 // ═══════════════ 게임 ═══════════════
@@ -4679,7 +4777,8 @@ document.querySelectorAll("#dirSeg button").forEach(b => {
     localStorage.setItem("et_dir", revDir);
     paintDir();
     renderDue();
-    toast(revDir === "ko2en" ? "한→영 · 입으로 꺼내기" : "영→한 · 눈으로 익히기");
+    toast({ ko2en: "한→영 · 입으로 꺼내기", en2ko: "영→한 · 눈으로 익히기",
+            q2en: "질문 · 45초 답하고 정답 비교 (질문 없는 카드는 한→영)" }[revDir] || "");
   });
 });
 paintDir();

@@ -1186,7 +1186,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-10-28-02";
+const BUILD = "2026-11-03-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3238,7 +3238,13 @@ function updateProgress() {
 // ═══════════════ RENDER: STREAK ═══════════════
 // 루틴 개수가 바뀌기 전에 저장된 날은 그 날의 기준(저장해 둔 total)으로 판정한다.
 // 안 그러면 5개 시절에 완주한 날들이 오늘 갑자기 「부분 완료」로 강등된다 (2026-09-02).
+// 여행·인터넷 문제로 못 한 날. 연속이 끊기지 않게 「면제」로 처리하고 달력에 노란 동그라미로 표시한다.
+const PASS_DAYS = new Set(["2026-10-30"]);
 function dayStatus(iso) {
+  const real = dayStatusReal(iso);
+  return real === 0 && PASS_DAYS.has(iso) ? 1 : real;
+}
+function dayStatusReal(iso) {
   const d = dayData[iso];
   if (!d || !d.tasks) return 0;
   // 오늘은 항상 지금 기준으로 본다 — 저장된 total 은 마지막 저장 시점의 것이다.
@@ -3263,7 +3269,10 @@ function calCellHtml(y, m, day) {
   const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const st = dayStatus(iso);
   let mark = "";
-  if (st > 0) {
+  if (st > 0 && PASS_DAYS.has(iso) && dayStatusReal(iso) === 0) {
+    mark = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" fill="none"
+      stroke="#f5b942" stroke-width="5" stroke-linecap="round" opacity="0.95"/></svg>`;
+  } else if (st > 0) {
     // 정원. 완주는 실선, 부분 완료는 균일한 점선.
     const color = st === 2 ? "#ff5c5c" : "#f5b942";
     const dash = st === 2 ? "" : ` stroke-dasharray="3.6 4.4"`;

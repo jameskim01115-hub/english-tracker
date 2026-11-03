@@ -660,6 +660,26 @@
   .m-save { background: var(--accent); color: #fff; }
   .m-cancel { background: var(--card2); color: var(--sub); }
 
+  /* ───── 말하기 준비·마무리 시트 (2026-11-04) ───── */
+  .sp-modal { max-height: 88vh; overflow-y: auto; }
+  .sp-sub { font-size: 12px; color: var(--dim); line-height: 1.6; margin: -8px 0 12px; }
+  .sp-lb { font-size: 11.5px; font-weight: 800; color: var(--sub); margin: 4px 0 7px; }
+  .sp-card {
+    display: flex; align-items: center; gap: 10px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 7px;
+  }
+  .sp-card.used { opacity: .6; }
+  .sp-tx { flex: 1; min-width: 0; }
+  .sp-tx b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.45; word-break: break-word; }
+  .sp-tx span { display: block; font-size: 11.5px; color: var(--sub); margin-top: 3px; line-height: 1.45; }
+  .sp-use {
+    flex-shrink: 0; background: var(--card2); color: var(--sub); border: 1px solid var(--line);
+    border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 800;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .sp-use.on { background: rgba(62,207,142,.14); border-color: rgba(62,207,142,.4); color: #3ecf8e; }
+  .sp-empty { font-size: 12.5px; color: var(--dim); padding: 8px 2px 12px; line-height: 1.6; }
+
   /* ───── 카드 수정 (2026-09-28 Patrick 요청) ───── */
   /* 4칸(영어·발음·뜻·입에 붙일 표현)을 직접 고친다. 복습 기록은 건드리지 않는다. */
   .ed-modal { max-height: 88vh; overflow-y: auto; }
@@ -1087,6 +1107,21 @@
   </div>
 </div>
 
+<div class="modal-bg" id="spBg">
+  <div class="modal sp-modal">
+    <h3>🗣️ 오늘 말하기</h3>
+    <div class="sp-sub">ChatGPT 대화에서 써볼 표현입니다. 대화가 끝나면 노트를 가져오고 완료를 눌러요.</div>
+    <div class="sp-lb">① 오늘 써볼 표현</div>
+    <div id="spCards"></div>
+    <button class="more-btn" id="spCopy" style="margin:0 0 8px">② ChatGPT 시작 문구 복사</button>
+    <button class="more-btn" id="spImport" style="margin:0 0 12px">③ 끝난 뒤 — 회화 복습 노트 가져오기</button>
+    <div class="row">
+      <button class="m-cancel" id="spClose">닫기</button>
+      <button class="m-save" id="spDone">말하기 완료</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="impBg">
   <div class="modal imp-modal">
     <h3>회화 복습 노트 가져오기</h3>
@@ -1184,7 +1219,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-11-03-02";
+const BUILD = "2026-11-04-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -3186,7 +3221,8 @@ function renderRoutines() {
     item.dataset.k = r.k;
     item.title = r.name;
     item.innerHTML = `<div class="r-dot">${r.icon}</div><div class="r-lb">${esc(r.short)}</div>`;
-    item.addEventListener("click", () => toggleRoutine(r.k, item.querySelector(".r-dot")));
+    item.addEventListener("click", () =>
+      r.k === "speaking" ? openSpeakSheet() : toggleRoutine(r.k, item.querySelector(".r-dot")));
     box.appendChild(item);
   }
   updateProgress();
@@ -5289,6 +5325,118 @@ try {
     toast("새 버전으로 다시 열었습니다 — 노트를 그대로 복원했습니다");
   }
 } catch (e) { /* 사생활 보호 모드 등 — 복원 없이 그냥 진행 */ }
+// ═══════════════ 말하기 준비·마무리 시트 ═══════════════
+// 「말하기」 칸은 예전엔 체크박스였다. 카드의 대부분이 이 대화에서 나오는데 앱은 앞뒤로 한 일이 없었다.
+// 시트가 앞(오늘 써볼 표현 + ChatGPT 시작 문구)과 뒤(노트 가져오기 + 완료)를 잇는다.
+// **새 API 호출 없음.** 표현은 이미 있는 카드에서 고르고, 「썼다」는 응용 훈련과 같은 `usedCount` 를 올린다.
+// 복습 일정(stage·nextReview)은 건드리지 않는다.
+const SP_PICK_N = 3;
+let spPicked = { date: "", ids: [] };   // 같은 날 다시 열어도 같은 3장 — 고른 걸 기억해야 「썼다」가 의미 있다
+const spBg = document.getElementById("spBg");
+
+function pickSpeakCards() {
+  if (spPicked.date === today && spPicked.ids.length) {
+    const byId = new Map(expressions.map(e => [e.id, e]));
+    const kept = spPicked.ids.map(id => byId.get(id)).filter(Boolean);
+    if (kept.length) return kept;
+  }
+  const pool = expressions.filter(e => isStudied(e) && !isGraduated(e) && plain(e.expression || ""));
+  // 자주 틀린 것 먼저 → 덜 써본 것 → 낮은 단계. 문장보다 짧은 표현이 「써보기」에 맞아서 먼저 채운다.
+  const rank = (a, b) => (missOf(b) - missOf(a)) || (usedOf(a) - usedOf(b)) || ((a.stage || 0) - (b.stage || 0));
+  const phrases = pool.filter(e => !isFullSentence(e.expression)).sort(rank);
+  const sentences = pool.filter(e => isFullSentence(e.expression)).sort(rank);
+  const picked = phrases.concat(sentences).slice(0, SP_PICK_N);
+  spPicked = { date: today, ids: picked.map(e => e.id) };
+  return picked;
+}
+
+function renderSpeakCards() {
+  const box = document.getElementById("spCards");
+  const cards = pickSpeakCards();
+  if (!cards.length) {
+    box.innerHTML = `<div class="sp-empty">아직 써볼 표현이 없어요. 「오늘」 탭에서 표현을 학습하면 여기에 나옵니다.</div>`;
+    return;
+  }
+  box.innerHTML = cards.map(e => {
+    const n = usedOf(e);
+    return `<div class="sp-card${n ? " used" : ""}" data-id="${esc(e.id)}">
+      <div class="sp-tx"><b>${esc(plain(e.expression))}</b><span>${esc(meaningOf(e))}</span></div>
+      <button class="sp-use${n ? " on" : ""}">${n ? "썼다 ✓ " + useCountTxt(n) : "썼다"}</button></div>`;
+  }).join("");
+  box.querySelectorAll(".sp-card").forEach(row => {
+    row.querySelector(".sp-use").addEventListener("click", () => markSpeakUsed(row.dataset.id));
+  });
+}
+
+async function markSpeakUsed(id) {
+  if (!canWrite()) return;
+  const e = expressions.find(x => x.id === id);
+  if (!e) return;
+  const n = usedOf(e) + 1;
+  expressions = expressions.map(x => x.id === id ? { ...x, usedCount: n } : x);
+  haptic(40);
+  renderSpeakCards();
+  saveCache();
+  await saveExpr(id, { usedCount: n });
+}
+
+function speakStarter() {
+  const cards = pickSpeakCards();
+  const list = cards.map((e, i) => `${i + 1}. ${plain(e.expression)}`).join("\n");
+  return [
+    "Let's start today's speaking session.",
+    cards.length ? `Expressions I want to use today:\n${list}` : "",
+    "First 3 minutes: I'll talk freely in English about my day, no translating in my head.",
+    "If a natural spot comes up for one of the expressions, nudge me to use it.",
+    "When we finish, give me the review note in our usual format.",
+  ].filter(Boolean).join("\n\n");
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+}
+
+function openSpeakSheet() {
+  renderSpeakCards();
+  const done = routineDone(todayTasks(), ROUTINES.find(r => r.k === "speaking"));
+  document.getElementById("spDone").textContent = done ? "완료 취소" : "말하기 완료";
+  spBg.classList.add("show");
+}
+document.getElementById("spClose").onclick = () => spBg.classList.remove("show");
+spBg.addEventListener("click", ev => { if (ev.target === spBg) spBg.classList.remove("show"); });
+document.getElementById("spCopy").onclick = async () => {
+  toast(await copyText(speakStarter()) ? "복사했어요 — ChatGPT 에 붙여넣으세요" : "복사 실패 — 다시 눌러주세요");
+};
+document.getElementById("spImport").onclick = async () => {
+  spBg.classList.remove("show");
+  impShow(false);
+  impBg.classList.add("show");
+  // 클립보드에 노트가 있으면 채워 둔다. 권한이 없거나 막히면 그냥 빈 칸으로 둔다.
+  try {
+    const box = document.getElementById("impText");
+    if (!box.value.trim() && navigator.clipboard && navigator.clipboard.readText) {
+      const t = await navigator.clipboard.readText();
+      if (t && t.length > 80) { box.value = t; toast("클립보드의 노트를 붙여넣었어요 — 확인 후 「읽어보기」"); }
+    }
+  } catch (err) { /* 권한 거부 — 직접 붙여넣으면 된다 */ }
+};
+document.getElementById("spDone").onclick = async () => {
+  spBg.classList.remove("show");
+  const dot = document.querySelector('#routines [data-k="speaking"] .r-dot');
+  if (dot) await toggleRoutine("speaking", dot);
+};
+
 document.getElementById("impCancel").onclick = () => impBg.classList.remove("show");
 document.getElementById("impBack").onclick = () => impShow(false);
 impBg.addEventListener("click", ev => { if (ev.target === impBg) impBg.classList.remove("show"); });

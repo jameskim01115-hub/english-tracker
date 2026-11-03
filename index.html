@@ -154,7 +154,7 @@
   .day-progress .num { font-size: 13px; font-weight: 800; color: var(--gold); min-width: 30px; text-align: right; }
 
   /* ───── habit strip (컴팩트) ───── */
-  .routines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px 7px; margin-top: 12px; }
+  .routines { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 7px; margin-top: 12px; }
   .r-item {
     flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
     cursor: pointer; user-select: none; -webkit-user-select: none;
@@ -167,17 +167,15 @@
     transition: transform .12s ease, background .25s, border-color .25s;
   }
   .r-item:active .r-dot { transform: scale(0.92); }
-  /* 1줄 = 영어(5), 2줄 = 몸·생활(5) */
+  /* 1줄 = 영어(4), 2줄 = 몸·생활(4) */
   .r-item[data-k="podcast"]  .r-dot { background: linear-gradient(135deg,#3b2a17,#2a1d10); }
   .r-item[data-k="expr"]     .r-dot { background: linear-gradient(135deg,#1a2a3f,#131d2c); }
   .r-item[data-k="review"]   .r-dot { background: linear-gradient(135deg,#1b3327,#12231b); }
   .r-item[data-k="speaking"] .r-dot { background: linear-gradient(135deg,#2c1e3d,#1e1529); }
   .r-item[data-k="stretch"]  .r-dot { background: linear-gradient(135deg,#17303b,#102028); }
-  .r-item[data-k="workout"]  .r-dot { background: linear-gradient(135deg,#3b1f22,#281416); }
   .r-item[data-k="pushup"]   .r-dot { background: linear-gradient(135deg,#3a2b14,#261c0d); }
-  .r-item[data-k="minilog"]  .r-dot { background: linear-gradient(135deg,#233a2b,#16261c); }
   .r-item[data-k="vitamin"]  .r-dot { background: linear-gradient(135deg,#332a3f,#211a29); }
-  .r-item[data-k="sleep"]    .r-dot { background: linear-gradient(135deg,#1c2440,#131829); }
+  .r-item[data-k="reading"]  .r-dot { background: linear-gradient(135deg,#1c2440,#131829); }
   .r-lb { font-size: 10px; font-weight: 700; color: var(--sub); text-align: center; line-height: 1.25; }
   .r-item.done .r-dot { border-color: rgba(62,207,142,.5); filter: grayscale(.5); opacity: .62; }
   .r-item.done .r-dot::after {
@@ -1186,7 +1184,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-11-03-01";
+const BUILD = "2026-11-03-02";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1259,11 +1257,9 @@ const ROUTINES = [
   { k: "review",   icon: "🔁",  short: "복습",      name: "복습" },
   { k: "speaking", icon: "🗣️",  short: "말하기",    name: "ChatGPT 음성 대화" },
   { k: "stretch",  icon: "🤸",  short: "스트레칭",  name: "스트레칭" },
-  { k: "workout",  icon: "🏋️",  short: "홈트",      name: "홈트레이닝" },
   { k: "pushup",   icon: "💪",  short: "푸쉬업",    name: "푸쉬업" },
-  { k: "minilog",  icon: "📔",  short: "미니로그",  name: "미니로그 쓰기" },
   { k: "vitamin",  icon: "💊",  short: "비타민",    name: "비타민 챙겨 먹기" },
-  { k: "sleep",    icon: "🌙",  short: "11시 취침", name: "밤 11시 취침" },
+  { k: "reading",  icon: "📖",  short: "독서",      name: "독서 10쪽" },
 ];
 
 // 그 날 그 루틴을 했는가. 새 키가 아직 없으면 예전 키로 물러나 본다.

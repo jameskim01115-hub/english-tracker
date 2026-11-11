@@ -1241,7 +1241,7 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-11-09-01";
+const BUILD = "2026-11-11-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
@@ -1581,6 +1581,10 @@ function speechText(s) {
 function isStudied(e) { return e.studied === true || (e.stage || 0) > 0; }
 function isGraduated(e) { return (e.stage || 0) >= INTERVALS.length; }
 const SRC_REVIEW = "chatgpt-review";
+// 업무 회의 영어 — 직원과의 회의·지시에 쓰는 문장 코스. 졸업 상태(stage 6)로 넣어
+// 「배울 표현」·복습 큐에 쌓이지 않고, 오디오북 「업무 회의」 칩과 표현 탭 필터로만 쓴다.
+const SRC_WORK = "work";
+function isWork(e) { return e.source === SRC_WORK; }
 function isReview(e) { return e.source === SRC_REVIEW; }
 
 // ═══════════════ 응용(재사용) 훈련 ═══════════════
@@ -1727,6 +1731,7 @@ function srcOf(e) {
   if (e.source === "hermes-wanted") return { cls: "wanted", label: "막힌 표현" };
   if (e.source === "hermes-delivered") return { cls: "delivered", label: "봇 배달" };
   if (isReview(e)) return { cls: "review", label: "회화 교정" };
+  if (isWork(e)) return { cls: "manual", label: "업무 회의" };
   return { cls: "manual", label: "직접 추가" };
 }
 function slotLabel(s) {
@@ -2192,12 +2197,14 @@ const AB_CATS = [
   { id: "all",     label: "전체",      needsAll: true,  match: e => true },
   { id: "new",     label: "미학습",    needsAll: false, match: e => !isStudied(e) },
   { id: "learning",label: "학습중",    needsAll: true,  match: e => isStudied(e) && !isGraduated(e) },
-  { id: "grad",    label: "졸업",      needsAll: true,  match: e => isGraduated(e) },
+  { id: "grad",    label: "졸업",      needsAll: true,  match: e => isGraduated(e) && !isWork(e) },
   { id: "wanted",  label: "막힌 표현", needsAll: true,  match: e => e.source === "hermes-wanted" },
   { id: "bot",     label: "봇 표현",   needsAll: true,  match: e => e.source === "hermes-delivered" },
   { id: "fix",     label: "회화 교정", needsAll: true,  match: e => e.source === SRC_REVIEW },
   { id: "manual",  label: "내가 추가", needsAll: true,  match: e => e.source === "manual" },
   { id: "miss",    label: "자주 틀린", needsAll: true,  match: e => missOf(e) >= 2 },
+  // 업무 회의 영어(2026-11-11): 복습 주기 밖의 고정 코스. `seq` 순서대로 듣는다.
+  { id: "work",    label: "업무 회의", needsAll: true,  match: e => isWork(e) },
   { id: "recent",  label: "최근 7일",  needsAll: false, match: e => !!e.learnedDate && e.learnedDate >= addDays(today, -7) },
 ];
 // 백그라운드에서 타이머가 얼어 재생이 끊긴 채로 돌아오는 경우를 구제한다.
@@ -2407,6 +2414,7 @@ function abPool(cat) {
         (isStudied(a) ? 1 : 0) - (isStudied(b) ? 1 : 0)
         || ((a.nextReview || "") < (b.nextReview || "") ? -1 : (a.nextReview || "") > (b.nextReview || "") ? 1 : 0)
         || ((a.learnedDate || "") < (b.learnedDate || "") ? 1 : -1));
+  if (def.id === "work") list.sort((a, b) => (a.seq || 0) - (b.seq || 0));   // 코스 순서
   const seen = new Set();
   return list.filter(e => {
     if (!e || seen.has(e.id) || !String(e.expression || "").trim()) return false;
@@ -4287,7 +4295,7 @@ function renderDist() {
       `${i + 1}단계`,
       expressions.filter(e => isStudied(e) && !isGraduated(e) && (e.stage || 0) === i).length,
     ]),
-    ["졸업", expressions.filter(isGraduated).length],
+    ["졸업", expressions.filter(e => isGraduated(e) && !isWork(e)).length],
   ];
   const max = Math.max(1, ...rows.map(r => r[1]));
   document.getElementById("distTotal").textContent = `총 ${expressions.length}개`;
@@ -4676,6 +4684,7 @@ const FILTERS = [
   { k: "delivered", label: "봇 배달" },
   { k: "review",    label: "회화 교정" },
   { k: "manual",    label: "직접 추가" },
+  { k: "work",      label: "업무 회의" },
   { k: "new",       label: "미학습" },
   { k: "unused",    label: "응용 0회" },
   { k: "grad",      label: "졸업" },
@@ -4694,11 +4703,12 @@ function renderBank() {
   else if (bankFilter === "delivered") items = items.filter(e => e.source === "hermes-delivered");
   else if (bankFilter === "review") items = items.filter(isReview);
   else if (bankFilter === "manual") items = items.filter(e => e.source === "manual");
+  else if (bankFilter === "work") items = items.filter(isWork).sort((a, b) => (a.seq || 0) - (b.seq || 0));
   else if (bankFilter === "new") items = items.filter(e => !isStudied(e));
   // 학습을 시작했는데 아직 한 번도 다른 상황에 안 써본 것. 미학습은 제외한다 —
   // 그건 「응용을 안 한 것」이 아니라 아직 배우지도 않은 것이라 목록만 어지럽힌다.
   else if (bankFilter === "unused") items = items.filter(e => isStudied(e) && !usedOf(e));
-  else if (bankFilter === "grad") items = items.filter(isGraduated);
+  else if (bankFilter === "grad") items = items.filter(e => isGraduated(e) && !isWork(e));
   if (q) items = items.filter(e =>
     (e.expression || "").toLowerCase().includes(q) ||
     (e.meaning || "").toLowerCase().includes(q) ||

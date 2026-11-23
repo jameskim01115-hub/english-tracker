@@ -1241,11 +1241,14 @@ const COL_DEL = "english_deleted";
 // 배포할 때마다 바꾼다. 실행 중인 페이지가 최신인지 판별하는 유일한 근거다.
 // GitHub Pages가 max-age=600을 보내고 iOS Safari는 그보다 더 오래 들고 있어서,
 // "고쳤는데 왜 그대로냐"가 반복됐다. 이 값으로 감지해 새로고침을 띄운다.
-const BUILD = "2026-11-11-01";
+const BUILD = "2026-11-23-01";
 
 // Supertonic 3 TTS 릴레이 (Hostinger VPS). iOS Safari가 프리미엄 음성을 웹에 주지 않아
 // 아이폰에서 기계음밖에 못 쓰던 문제를 서버 생성 mp3로 해결한다. 실패하면 기기 음성으로 폴백.
 const TTS_URL = "https://tts.srv1722311.hstgr.cloud/tts";
+// 소리 주소의 판. 서버는 mp3 를 1년 캐시(immutable)로 내려서, 발음 규칙을 고쳐도 같은 주소면 기기가 옛 소리를 계속 튼다.
+// 서버의 발음 보정(pronounce.py 등)을 바꿨으면 올릴 것. 서버는 이 값을 무시한다.
+const TTS_REV = "2";
 // 서버 음성 목록. **Patrick이 블라인드 청취로 직접 고른 것만 남긴다.**
 //   여성 Emma — 2026-08-15 유일한 ★5
 //   남성 Puck·Echo — 2026-08-19 Kokoro. Edge 남성(Andrew·Brian)은 최고 ★4에 그쳤고
@@ -1958,7 +1961,7 @@ function speakServer(text, voice, btn, onEnd) {
     onEnd(isFinite(d) && d > 0 ? d * 1000 : performance.now() - startedAt);
   };
   audioEl.onerror = () => { done(); noteFallback(); speakDevice(text, btn, onEnd); };   // 서버가 죽어도 소리는 나게
-  const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
+  const url = `${TTS_URL}?r=${TTS_REV}&t=${encodeURIComponent(t)}&v=${voice}&s=${TTS_SPEED}`;
   // 같은 문장을 다시 틀면 받아둔 소리를 되감는다 — 반복 재생이 회차마다 서버에 가지 않게.
   if (audioEl.src === url && !audioEl.error) audioEl.currentTime = 0;
   else audioEl.src = url;
@@ -2286,7 +2289,7 @@ async function abBuildBlob(steps) {
   const ctx = abGetCtx();
   if (!ctx) return null;
   const enVoice = k.slice(SRV_PREFIX.length);
-  const urlFor = st => `${TTS_URL}?t=${encodeURIComponent(speechText(st.t))}&v=${enVoice}&s=${TTS_SPEED}`;
+  const urlFor = st => `${TTS_URL}?r=${TTS_REV}&t=${encodeURIComponent(speechText(st.t))}&v=${enVoice}&s=${TTS_SPEED}`;
 
   const urls = [...new Set(steps.map(urlFor))];
   const buffers = new Map();
@@ -2913,7 +2916,7 @@ function saySpeak(text, voice, speed, onEnd) {
   };
 
   // ssml=1 은 서버가 Azure 키를 가졌을 때만 실제로 켜진다. 없으면 무시된다.
-  const url = `${TTS_URL}?t=${encodeURIComponent(t)}&v=${voice}&s=${speed}&ssml=1`;
+  const url = `${TTS_URL}?r=${TTS_REV}&t=${encodeURIComponent(t)}&v=${voice}&s=${speed}&ssml=1`;
   // 같은 문장을 다시 틀면 받아둔 소리를 되감는다 — 반복이 회차마다 서버에 가지 않게.
   if (sayAudio.src === url && !sayAudio.error) sayAudio.currentTime = 0;
   else sayAudio.src = url;
@@ -5755,7 +5758,7 @@ function prewarmTTS(items) {
   // Emma(여성)·Puck·Andrew(남성). hermes-sync.py 의 TTS_VOICES 와 같아야 캐시가 맞는다.
   const voices = [DEFAULT_SRV_VOICE.slice(SRV_PREFIX.length), "Puck", "Andrew"];
   texts.filter(Boolean).forEach(t => voices.forEach(v => {
-    fetch(`${TTS_URL}?t=${encodeURIComponent(speechText(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
+    fetch(`${TTS_URL}?r=${TTS_REV}&t=${encodeURIComponent(speechText(t))}&v=${v}&s=${TTS_SPEED}`).catch(() => {});
   }));
 }
 

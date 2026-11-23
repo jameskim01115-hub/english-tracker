@@ -217,6 +217,9 @@ def has_acronym(text):
     return bool(_ACRONYM_RE.search(text))
 
 
+from pronounce import has_food, respell_foods   # 외국어 음식 이름 → 영어식 철자 (2026-11-23)
+
+
 # CORS — 앱 출처만 허용. curl 은 못 막지만 브라우저 오용은 막는다.
 ALLOWED_ORIGINS = {
     "https://jameskim01115-hub.github.io",
@@ -475,7 +478,9 @@ def cache_key(text, voice, speed, use_ssml):
     pitch = PITCH_SHIFT.get(voice)
     # Kokoro + 약어가 든 문장만 키를 바꾼다 — 약어 없는 문장의 기존 캐시는 그대로 쓴다.
     spell = "spell1|" if voice in KOKORO_VOICES and has_acronym(text) else ""
-    tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{spell}{text}"
+    # 음식 이름이 든 문장만 키를 바꾼다 — 옛 발음 mp3 가 계속 나오지 않게. 나머지 캐시는 그대로다.
+    food = "food1|" if has_food(text) else ""
+    tag = f"{voice}|{speed}|{f'pitch{pitch}|' if pitch else ''}{'ssml|' if use_ssml else ''}{spell}{food}{text}"
     return hashlib.sha1(tag.encode("utf-8")).hexdigest()
 
 
@@ -488,10 +493,11 @@ def synth(text, voice, speed, use_ssml=False):
 
     if voice in NEURAL_VOICES or voice in KOKORO_VOICES:
         # Neural 은 네트워크 호출이라 락을 잡지 않는다. Kokoro 는 자기 락을 쓴다.
+        spoken = respell_foods(text)   # 캐시 키는 원문 기준, 엔진에는 바꾼 철자를 보낸다
         if voice in KOKORO_VOICES:
-            data = kokoro_synth(text, voice, speed)   # 피치 시프트가 필요하면 내부에서 처리
+            data = kokoro_synth(spoken, voice, speed)   # 피치 시프트가 필요하면 내부에서 처리
         else:
-            data = neural_synth(text, voice, speed, use_ssml)
+            data = neural_synth(spoken, voice, speed, use_ssml)
             semitones = PITCH_SHIFT.get(voice)
             if semitones:
                 # edge-tts/Azure 는 원본 오디오 배열을 안 주고 mp3 바이트만 준다 —

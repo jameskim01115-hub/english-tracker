@@ -12,7 +12,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends espeak-ng r
 # 이미지가 커지지 않는다. 모델 파일(353MB)은 이미지에 넣지 않고 호스트에서 마운트한다.
 RUN pip install --no-cache-dir onnxruntime==1.23.1 numpy soundfile "edge-tts>=7.3.1" kokoro-onnx pyrubberband
 WORKDIR /app
-COPY server.py /app/
+COPY server.py pronounce.py /app/
 ENV TTS_CACHE=/cache TTS_PORT=8080 KOKORO_DIR=/kokoro
 EXPOSE 8080
 CMD ["python", "-u", "server.py"]

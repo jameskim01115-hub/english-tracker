@@ -99,7 +99,7 @@ Traefik + Let's Encrypt가 인증서를 자동 발급한다. `*.srv1722311.hstgr
 ## 배포
 
 ```bash
-scp server.py Dockerfile docker-compose.yml hermes:/root/tts/app/
+scp server.py pronounce.py Dockerfile docker-compose.yml hermes:/root/tts/app/
 ssh hermes "cd /root/tts/app && docker compose up -d --build"
 ```
 
@@ -180,3 +180,14 @@ ssh hermes "docker cp /root/tts/prewarm.py english-tts:/tmp/ && \
 curl -s https://tts.srv1722311.hstgr.cloud/health | python3 -m json.tool   # kokoro.models 가 true 여야 한다
 curl -s -o /tmp/t.mp3 -w "%{http_code} %{size_download}\n" "https://tts.srv1722311.hstgr.cloud/tts?t=hello&v=Puck&s=0.9"
 ```
+
+
+## 외국어 음식 이름 발음 (2026-11-23)
+
+`gyudon`·`bun cha`·`gnocchi` 같은 이름은 영어 철자 규칙대로 읽혀 어색했다(espeak: gyudon → 「자이우던」).
+`pronounce.py` 의 `FOOD_RESPELL` 이 **TTS 에 보내기 직전** 영어식 철자로 바꾼다(`gyudon` → `gheeyoodohn`).
+- 화면·저장 문장은 그대로고, 엔진(Neural·Kokoro 둘 다)에만 바뀐 철자가 간다. edge-tts 는 SSML 이 없어 이 방법뿐이다.
+- 캐시 키에 `food1|` 이 붙는다 — **음식 이름이 든 문장만** 새로 만들어진다. 나머지 캐시는 그대로.
+- 새 이름 추가: `FOOD_RESPELL` 에 한 줄. 하이픈 없이 붙여 쓰고, 단단한 g 는 `ghee`·`gah`로 쓴다.
+  `espeak-ng -q --ipa -v en-us <철자>` 로 발음기호를 확인한 뒤 **귀로 확인**한다.
+- 시험: `python3 test_pronounce.py`
